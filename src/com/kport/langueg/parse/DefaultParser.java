@@ -154,9 +154,7 @@ public class DefaultParser implements Parser{
                 exprIsBlock = true;
             }
 
-            System.out.println(iterator.current() + "  " + iterator.current().lineNum);
             exprs.add(parseExpr());
-            System.out.println(iterator.current() + "  " + iterator.current().lineNum);
 
             if (!exprIsBlock && iterator.current().tok != TokenType.Semicolon) {
                 throw new Error("Expected semicolon at line " + iterator.current().lineNum + ". Got: " + iterator.current());
