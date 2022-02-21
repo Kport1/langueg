@@ -18,7 +18,11 @@ public abstract class ASTValue {
         return false;
     }
 
-    public boolean isOp() {
+    public boolean isBool(){
+        return false;
+    }
+
+    public boolean isTok() {
         return false;
     }
 
@@ -34,7 +38,11 @@ public abstract class ASTValue {
         return Double.NaN;
     }
 
-    public TokenType getOp() {
+    public boolean getBool(){
+        return false;
+    }
+
+    public TokenType getTok() {
         return TokenType.Undefined;
     }
 

@@ -5,66 +5,101 @@ public enum TokenType {
     Assign,
     Var,
 
-    //Binary Ops
+    //Binary Ops----------
+        //Num
+        Plus,
+        Minus,
+        Mul,
+        Div,
+        Mod,
+        Pow,
+        ShiftR,
+        ShiftL,
 
-    //Num
-    Plus,
-    Minus,
-    Mul,
-    Div,
-    Mod,
-    Pow,
-    ShiftR,
-    ShiftL,
+        //Bool
+        Greater,
+        Less,
+        GreaterEq,
+        LessEq,
+        Eq,
+        NotEq,
+        And,
+        AndAnd,
+        Or,
+        OrOr,
+        XOR,
+    //--------------------
 
-    //Bool
-    Greater,
-    Less,
-    GreaterEq,
-    LessEq,
-    Eq,
-    NotEq,
-    And,
-    Or,
-    XOR,
+    //Unary Ops----------
+        //Num
+        Inc,
+        Dec,
 
-    //UnaryOps
+        //Bool
+        Not,
+    //-------------------
 
-    //Num
-    Inc,
-    Dec,
+    //Control----------
+        If,
+        Else,
+        Return,
+        Break,
+        Continue,
+        Switch,
+        While,
+        For,
+    //-----------------
 
-    //Bool
-    Not,
+    //Func----------
+        Fn,
+    //--------------
 
-    //Control
-    If,
-    Else,
-    Return,
-    Break,
-    Continue,
-    Switch,
-    While,
-    For,
+    //Class---------
+        Class,
+        New,
+        Dot,
+    //--------------
 
-    //Func
+    //Modifiers-----
+        Public,
+        Private,
+        Protected,
+        Static,
 
-    //Struct
-    LParen,
-    RParen,
-    LBrack,
-    RBrack,
-    LCurl,
-    RCurl,
-    Semicolon,
-    Comma,
+    //--------------
+
+    //Struct----------
+        LParen,
+        RParen,
+        LBrack,
+        RBrack,
+        LCurl,
+        RCurl,
+        Semicolon,
+        Comma,
+    //----------------
 
 
-    String,
-    Number,
-    Identifier,
-    True,
-    False,
+    //Literals----------
+        StringL,
+        NumberL,
+        Identifier,
+        True,
+        False,
+    //------------------
+
+    //Types----------
+        //Primitive
+        Boolean,
+        Byte,
+        Int,
+        Long,
+        Float,
+        Double,
+
+        FnType,
+        Void,
+    //---------------
 
 
     Undefined

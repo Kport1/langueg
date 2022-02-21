@@ -4,7 +4,6 @@ import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 
 public class DefaultLexer implements Lexer{
 
@@ -54,7 +53,7 @@ public class DefaultLexer implements Lexer{
                     iterator.previous();
                 }
                 addTok(outTokens, iterator, true);
-                outTokens.add(new Token(TokenType.String, collectStr(iterator)));
+                outTokens.add(new Token(TokenType.StringL, collectStr(iterator)));
                 continue;
             }
             /*if(c == '\n'){
@@ -97,7 +96,7 @@ public class DefaultLexer implements Lexer{
             wasToken = false;
         }
         else if(wasNumber){
-            outTokens.add(new Token(TokenType.Number, word.substring(0, word.length() - 1), lineCounter));
+            outTokens.add(new Token(TokenType.NumberL, word.substring(0, word.length() - 1), lineCounter));
             iterator.previous();
             word = "";
             wasNumber = false;
@@ -168,7 +167,9 @@ public class DefaultLexer implements Lexer{
         tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
         tokens.put("&", TokenType.And);
+        tokens.put("&&", TokenType.AndAnd);
         tokens.put("|", TokenType.Or);
+        tokens.put("||", TokenType.OrOr);
         tokens.put("^", TokenType.XOR);
 
         tokens.put("++", TokenType.Inc);
@@ -185,6 +186,17 @@ public class DefaultLexer implements Lexer{
         tokens.put("while", TokenType.While);
         tokens.put("for", TokenType.For);
 
+        tokens.put("fn", TokenType.Fn);
+
+        tokens.put("class", TokenType.Class);
+        tokens.put("new", TokenType.New);
+        tokens.put(".", TokenType.Dot);
+
+        tokens.put("public", TokenType.Public);
+        tokens.put("private", TokenType.Private);
+        tokens.put("protected", TokenType.Protected);
+        tokens.put("static", TokenType.Static);
+
         tokens.put("(", TokenType.LParen);
         tokens.put(")", TokenType.RParen);
         tokens.put("[", TokenType.LBrack);
@@ -194,9 +206,17 @@ public class DefaultLexer implements Lexer{
         tokens.put(";", TokenType.Semicolon);
         tokens.put(",", TokenType.Comma);
 
-
         tokens.put("true", TokenType.True);
         tokens.put("false", TokenType.False);
+
+        tokens.put("boolean", TokenType.Boolean);
+        tokens.put("byte", TokenType.Byte);
+        tokens.put("int", TokenType.Int);
+        tokens.put("long", TokenType.Long);
+        tokens.put("float", TokenType.Float);
+        tokens.put("double", TokenType.Double);
+        tokens.put("Fn", TokenType.FnType);
+        tokens.put("void", TokenType.Void);
     }
 
     private static void skipToChar(char c, CharacterIterator iterator){

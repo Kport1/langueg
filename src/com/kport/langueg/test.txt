@@ -1,0 +1,6 @@
+int x = 10;
+String s = "hi";
+
+private fn Integer hello(String n){
+
+}

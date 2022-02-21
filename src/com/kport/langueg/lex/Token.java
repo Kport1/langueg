@@ -28,9 +28,6 @@ public class Token {
 
     @Override
     public String toString(){
-        if(tok == null){
-            System.out.println(val + "  :  " + lineNum);
-        }
 
         return tok.name() + (val == null ? "" : "('" + val + "')");
     }

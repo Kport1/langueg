@@ -7,16 +7,22 @@ public enum ASTType {
     Str,
     Dub,
     Int,
+    Bool,
 
     //Control
     If,
     Switch,
+    While,
+    For,
     Call,
     Block,
+    Return,
 
     //Data type
-    Func,
+    Fn,
+    FnArg,
     Tuple,
+    Class,
 
     //Op
     Var,
@@ -24,6 +30,7 @@ public enum ASTType {
     UnaryOpBefore,
     UnaryOpAfter,
 
-    Identifier,
+    Modifier,
 
+    Identifier,
 }
