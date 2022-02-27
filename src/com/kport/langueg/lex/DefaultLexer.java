@@ -217,6 +217,7 @@ public class DefaultLexer implements Lexer{
         tokens.put("double", TokenType.Double);
         tokens.put("Fn", TokenType.FnType);
         tokens.put("void", TokenType.Void);
+        tokens.put("null", TokenType.Null);
     }
 
     private static void skipToChar(char c, CharacterIterator iterator){

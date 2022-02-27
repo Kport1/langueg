@@ -5,8 +5,11 @@ public enum ASTType {
 
     //Data literal
     Str,
-    Dub,
+    Double,
+    Float,
     Int,
+    Byte,
+    Long,
     Bool,
 
     //Control

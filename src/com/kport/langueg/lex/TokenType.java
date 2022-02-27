@@ -99,6 +99,7 @@ public enum TokenType {
 
         FnType,
         Void,
+        Null,
     //---------------
 
 

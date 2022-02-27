@@ -335,7 +335,7 @@ public class DefaultParser implements Parser{
                 }
                 catch (NumberFormatException e){
                     try {
-                        return new AST(ASTType.Dub, new ASTDub(Double.parseDouble(cur.val)));
+                        return new AST(ASTType.Double, new ASTDub(Double.parseDouble(cur.val)));
                     }
                     catch (NumberFormatException e1){
                         throw new Error("Invalid number " + cur.val + " on line " + cur.lineNum);
