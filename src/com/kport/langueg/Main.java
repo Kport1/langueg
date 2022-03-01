@@ -16,7 +16,7 @@ import java.util.Map;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException {
 
         String code = Files.readString(Path.of("src/com/kport/langueg/test.txt"));
 

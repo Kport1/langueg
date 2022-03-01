@@ -52,6 +52,7 @@ public enum TokenType {
 
     //Func----------
         Fn,
+        SingleArrow,
     //--------------
 
     //Class---------

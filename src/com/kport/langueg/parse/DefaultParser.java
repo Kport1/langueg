@@ -180,15 +180,16 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseFn(){
-        Token typeToken = iterator.current();
+        AST returnType = parseAtom();
+        System.out.println(iterator.current());
 
-        if(!(ASTTokTypeValues.containsKey(typeToken.tok) || typeToken.tok == TokenType.Void || typeToken.val != null)){
+        /*if(!(ASTTokTypeValues.containsKey(typeToken.tok) || typeToken.tok == TokenType.Void || typeToken.val != null)){
             throw new Error("Expected type token at line " + typeToken.lineNum + ". Got: " + typeToken);
-        }
+        }*/
 
         //iterator.inc();
         String name = null;
-        if(iterator.next().tok == TokenType.Identifier){
+        if(iterator.current().tok == TokenType.Identifier){
             name = iterator.current().val;
             iterator.inc();
         }
@@ -215,7 +216,86 @@ public class DefaultParser implements Parser{
             asts[asts.length - 1] = new AST(ASTType.Identifier, new ASTStr(name));
         }
 
-        return new AST(ASTType.Fn, typeToken.val == null? new ASTTok(typeToken.tok) : new ASTStr(typeToken.val), asts);
+        if(returnType.val.getTok() != TokenType.FnType) {
+            System.out.println(returnType.val);
+            return new AST(ASTType.Fn, returnType.val, asts);
+        }
+        asts = Arrays.copyOf(asts, asts.length + returnType.children.length);
+        System.arraycopy(returnType.children, 0, asts, asts.length - returnType.children.length, returnType.children.length);
+        return new AST(ASTType.Fn, ASTTokTypeValues.get(TokenType.FnType), asts);
+    }
+
+    private AST[] parseFnType(){
+        if(iterator.current().tok != TokenType.LBrack){
+            throw new Error("Expected LBrack at line " + iterator.current().lineNum);
+        }
+
+        AST fnArgs;
+        if(iterator.peek().tok == TokenType.LParen){
+            iterator.inc();
+            fnArgs = parseTuple();
+            if(fnArgs.type == ASTType.Tuple && fnArgs.children != null && fnArgs.children.length > 0){
+                for (AST argType : fnArgs.children) {
+                    if(argType.type != ASTType.Type){
+                        if(argType.type == ASTType.Identifier){
+                            argType.type = ASTType.Type;
+                        }
+                        else {
+                            throw new Error("Invalid argument type " + argType + " for function type on line " + iterator.current().lineNum);
+                        }
+                    }
+                }
+            }
+
+            if(fnArgs.type != ASTType.Tuple && fnArgs.type != ASTType.Type){
+                throw new Error("Invalid argument type " + fnArgs + " for function type on line " + iterator.current().lineNum);
+            }
+        }
+        else{
+            iterator.inc();
+            fnArgs = parseAtom();
+            if(fnArgs.type != ASTType.Type){
+                if(fnArgs.type == ASTType.Identifier){
+                    fnArgs.type = ASTType.Type;
+                }
+                else {
+                    throw new Error("Invalid argument type " + fnArgs + " for function type on line " + iterator.current().lineNum);
+                }
+            }
+        }
+
+        if(iterator.current().tok != TokenType.SingleArrow){
+            throw new Error("Expected -> at line" + iterator.current().lineNum);
+        }
+        iterator.inc();
+
+        AST returnType = parseAtom();
+        if(returnType.type != ASTType.Type){
+            if(returnType.type == ASTType.Identifier){
+                returnType.type = ASTType.Type;
+            }
+            else {
+                throw new Error("Expected function return type after -> at line " + iterator.current().lineNum);
+            }
+        }
+
+        if(iterator.current().tok != TokenType.RBrack){
+            throw new Error("Expected RBrack at line " + iterator.current().lineNum);
+        }
+        iterator.inc();
+
+        if(fnArgs.type == ASTType.Tuple){
+            if(fnArgs.children == null || fnArgs.children.length < 1){
+                return new AST[]{returnType};
+            }
+            AST[] result = new AST[fnArgs.children.length + 1];
+            System.arraycopy(fnArgs.children, 0, result, 0, fnArgs.children.length);
+            result[result.length - 1] = returnType;
+            return result;
+        }
+        else {
+            return new AST[]{fnArgs, returnType};
+        }
     }
 
     private boolean exprIsBlock = false;
@@ -344,7 +424,7 @@ public class DefaultParser implements Parser{
             }
 
             case Identifier -> {
-                if(iterator.current().tok == TokenType.Identifier){
+                if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen){
                     String type = cur.val;
                     AST varAST = parseVar();
                     varAST.val = new ASTStr(type);
@@ -361,9 +441,29 @@ public class DefaultParser implements Parser{
             case Boolean, Byte, Int, Long, Float, Double -> {
                 TokenType type = cur.tok;
 
-                AST varAST = parseVar();
-                varAST.val = ASTTokTypeValues.get(type);
-                return varAST;
+                if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
+                    AST varAST = parseVar();
+                    varAST.val = ASTTokTypeValues.get(type);
+                    return varAST;
+                }
+
+                return new AST(ASTType.Type, ASTTokTypeValues.get(type));
+            }
+
+            case FnType -> {
+                AST[] fnType = parseFnType();
+
+                if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
+                    AST varAST = parseVar();
+                    varAST.val = ASTTokTypeValues.get(TokenType.FnType);
+                    AST[] newChildren = new AST[varAST.children.length + fnType.length];
+                    System.arraycopy(varAST.children, 0, newChildren, 0, varAST.children.length);
+                    System.arraycopy(fnType, 0, newChildren, varAST.children.length, fnType.length);
+                    varAST.children = newChildren;
+                    return varAST;
+                }
+
+                return new AST(ASTType.Type, ASTTokTypeValues.get(TokenType.FnType), fnType);
             }
 
             case If -> {
@@ -413,7 +513,7 @@ public class DefaultParser implements Parser{
 
     private AST[] parseDelim(TokenType start, TokenType end, TokenType separator){
         if(iterator.current().tok != start) {
-            throw new Error("Expected " + start.name() + " at line " + iterator.current().lineNum);
+            throw new Error("Expected " + start.name() + " at line " + iterator.current().lineNum + " got " + iterator.current());
         }
         ArrayList<AST> exprs = new ArrayList<>();
 

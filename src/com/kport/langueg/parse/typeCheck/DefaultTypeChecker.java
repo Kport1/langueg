@@ -125,7 +125,7 @@ public class DefaultTypeChecker implements TypeChecker{
         return inScope;
     }
 
-    private Type getExprReturnType(AST expr, int depth, int count){
+    /*private Type getExprReturnType(AST expr, int depth, int count){
         switch(expr.type){
             case Byte -> {
                 return new Type(TokenType.Byte);
@@ -163,7 +163,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
             }
         }
-    }
+    }*/
 
     private boolean hasChildren(AST ast){
         return ast.children != null && ast.children.length != 0;

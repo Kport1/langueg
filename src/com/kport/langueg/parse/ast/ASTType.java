@@ -2,6 +2,7 @@ package com.kport.langueg.parse.ast;
 
 public enum ASTType {
     Prog,
+    Type,
 
     //Data literal
     Str,

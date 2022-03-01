@@ -187,6 +187,7 @@ public class DefaultLexer implements Lexer{
         tokens.put("for", TokenType.For);
 
         tokens.put("fn", TokenType.Fn);
+        tokens.put("->", TokenType.SingleArrow);
 
         tokens.put("class", TokenType.Class);
         tokens.put("new", TokenType.New);
