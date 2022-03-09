@@ -1,6 +1,6 @@
-package com.kport.langueg.parse.ast;
+package com.kport.langueg.parse.ast.astVals;
 
-public class ASTDub extends ASTValue{
+public class ASTDub extends ASTValue {
     private final double val;
 
     @Override

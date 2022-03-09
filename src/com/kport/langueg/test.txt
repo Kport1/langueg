@@ -1,0 +1,5 @@
+String x = "abc";
+//Fn[(String, efg) -> Fn[(int, Boolean) -> abc]] x = 1;
+
+fn Fn[(String, efg) -> Fn[(int, Boolean) -> abc]] hello(ACD b){
+}

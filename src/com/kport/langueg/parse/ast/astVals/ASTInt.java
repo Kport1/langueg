@@ -1,6 +1,6 @@
-package com.kport.langueg.parse.ast;
+package com.kport.langueg.parse.ast.astVals;
 
-public class ASTInt extends ASTValue{
+public class ASTInt extends ASTValue {
     private final int val;
 
     @Override

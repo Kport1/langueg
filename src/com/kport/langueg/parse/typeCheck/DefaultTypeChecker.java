@@ -1,21 +1,19 @@
 package com.kport.langueg.parse.typeCheck;
 
-import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.ast.ASTType;
+import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class DefaultTypeChecker implements TypeChecker{
     @Override
     public void check(AST ast) {
         //construct block tree
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            if(expr.type == ASTType.Block){
+            if(expr.type == Block){
                 BlockTree containingBlock = blockTree.findInChildren(depthCount.getKey(), depthCount.getValue());
                 int newBlockDepth = depthCount.getKey() + 1;
                 int newBlockCount = depthCounter.get(newBlockDepth);
@@ -27,7 +25,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
         //Find fn types
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            if(expr.type == ASTType.Fn && isNamedFn(expr)){
+            if(isNamedFn(expr)){
                 AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
                 Type[] argTypes = Arrays.stream(args).map((arg) -> {
                     if (arg.val.isTok()) {
@@ -37,14 +35,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 }).toArray(Type[]::new);
 
                 FnIdentifier identifier = new FnIdentifier(depthCount, expr.children[expr.children.length - 1].val.getStr(), argTypes);
-
-                Type returnType;
-                if(expr.val.isTok()){
-                    returnType = new Type(expr.val.getTok());
-                }
-                else {
-                    returnType = new Type(expr.val.getStr());
-                }
+                Type returnType = expr.val.getType();
 
                 fnTypes.put(identifier, returnType);
             }
@@ -78,7 +69,7 @@ public class DefaultTypeChecker implements TypeChecker{
                     consumer.accept(expr, Map.entry(blockDepth, depthCounter.get(blockDepth)));
                 }
 
-                if(expr.type == ASTType.Block){
+                if(expr.type == Block){
                     searchBlocks(expr, blockDepth + 1, true, consumer);
                     //System.out.println("1 Found block: d = " + blockDepth + "  c = " + count);
                     depthCounter.put(blockDepth + 1, ++count);
@@ -170,6 +161,6 @@ public class DefaultTypeChecker implements TypeChecker{
     }
 
     private boolean isNamedFn(AST fn){
-        return fn.children[fn.children.length - 1].type == ASTType.Identifier;
+        return fn.type == Fn && fn.children[fn.children.length - 1].type == Identifier;
     }
 }

@@ -1,25 +1,27 @@
 package com.kport.langueg.parse.ast;
 
+import com.kport.langueg.parse.ast.astVals.ASTValue;
+
 public class AST {
     public AST[] children;
     public ASTValue val;
-    public ASTType type;
+    public ASTTypeE type;
 
-    public AST(ASTType type_){
+    public AST(ASTTypeE type_){
         type = type_;
     }
 
-    public AST(ASTType type_, AST... children_){
+    public AST(ASTTypeE type_, AST... children_){
         children = children_;
         type = type_;
     }
 
-    public AST(ASTType type_, ASTValue val_){
+    public AST(ASTTypeE type_, ASTValue val_){
         val = val_;
         type = type_;
     }
 
-    public AST(ASTType type_, ASTValue val_, AST... children_){
+    public AST(ASTTypeE type_, ASTValue val_, AST... children_){
         children = children_;
         val = val_;
         type = type_;

@@ -1,6 +1,6 @@
 package com.kport.langueg.parse.ast;
 
-public enum ASTType {
+public enum ASTTypeE {
     Prog,
     Type,
 

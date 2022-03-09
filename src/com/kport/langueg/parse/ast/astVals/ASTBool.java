@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.ast;
+package com.kport.langueg.parse.ast.astVals;
 
 public class ASTBool extends ASTValue {
     private final boolean val;

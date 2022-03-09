@@ -1,7 +1,8 @@
-package com.kport.langueg.parse.ast;
+package com.kport.langueg.parse.ast.astVals;
 
 
 import com.kport.langueg.lex.TokenType;
+import com.kport.langueg.parse.typeCheck.Type;
 
 //String, Integer, Double
 public abstract class ASTValue {
@@ -26,6 +27,10 @@ public abstract class ASTValue {
         return false;
     }
 
+    public boolean isType(){
+        return false;
+    }
+
     public String getStr() {
         return "";
     }
@@ -44,6 +49,10 @@ public abstract class ASTValue {
 
     public TokenType getTok() {
         return TokenType.Undefined;
+    }
+
+    public Type getType(){
+        return null;
     }
 
 }
