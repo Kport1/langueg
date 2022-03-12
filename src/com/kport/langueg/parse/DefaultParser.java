@@ -88,16 +88,16 @@ public class DefaultParser implements Parser{
         if(iterator.current().tok == TokenType.LParen){
             AST tup = parseTuple();
             if(tup.type == Tuple && tup.children == null) {
-                return new AST(Call, left);
+                return call(new AST(Call, left));
             }
             if(tup.type != Tuple){
-                return new AST(Call, left, tup);
+                return call(new AST(Call, left, tup));
             }
             AST[] callArgs = new AST[tup.children.length + 1];
             System.arraycopy(tup.children, 0, callArgs, 1, tup.children.length);
             callArgs[0] = left;
 
-            return new AST(Call, callArgs);
+            return call(new AST(Call, callArgs));
         }
         return left;
     }
@@ -118,6 +118,9 @@ public class DefaultParser implements Parser{
         AST condition = parseTuple();
 
         if(condition.type == Tuple){
+            if(condition.children == null || condition.children.length < 1){
+                throw new Error("Condition of if statement cannot be empty. Line: " + conditionLine);
+            }
             throw new Error("Condition of if statement cannot be a tuple. Line: " + conditionLine);
         }
 
@@ -182,7 +185,6 @@ public class DefaultParser implements Parser{
 
     private AST parseFn(){
         AST returnType = parseAtom();
-        System.out.println(iterator.current());
 
         /*if(!(ASTTokTypeValues.containsKey(typeToken.tok) || typeToken.tok == TokenType.Void || typeToken.val != null)){
             throw new Error("Expected type token at line " + typeToken.lineNum + ". Got: " + typeToken);
@@ -218,7 +220,6 @@ public class DefaultParser implements Parser{
         }
 
         if(returnType.val.getTok() != TokenType.FnType) {
-            System.out.println(returnType.val);
             return new AST(Fn, returnType.val, asts);
         }
         asts = Arrays.copyOf(asts, asts.length + returnType.children.length);
@@ -328,6 +329,7 @@ public class DefaultParser implements Parser{
         throw new Error("Reached EOF before block was closed");
     }
 
+    //TODO
     private AST parseClass(){
         Token name = iterator.current();
         iterator.inc();
@@ -371,6 +373,7 @@ public class DefaultParser implements Parser{
         ASTTokTypeValues.put(TokenType.Long, new ASTType(new Type(TokenType.Long)));
         ASTTokTypeValues.put(TokenType.Float, new ASTType(new Type(TokenType.Float)));
         ASTTokTypeValues.put(TokenType.Double, new ASTType(new Type(TokenType.Double)));
+        ASTTokTypeValues.put(TokenType.Void, new ASTType(new Type(TokenType.Void)));
         ASTTokTypeValues.put(TokenType.FnType, new ASTType(new Type(TokenType.FnType)));
     }
     private AST parseVar(){
@@ -424,7 +427,7 @@ public class DefaultParser implements Parser{
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen){
                     String type = cur.val;
                     AST varAST = parseVar();
-                    varAST.val = new ASTStr(type);
+                    varAST.val = new ASTType(new Type(type));
                     return varAST;
                 }
                 return new AST(Identifier, new ASTStr(cur.val));
@@ -445,6 +448,10 @@ public class DefaultParser implements Parser{
                 }
 
                 return new AST(Type, ASTTokTypeValues.get(type));
+            }
+
+            case Void -> {
+                return new AST(Type, ASTTokTypeValues.get(TokenType.Void));
             }
 
             case FnType -> {

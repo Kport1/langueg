@@ -13,6 +13,9 @@ public class Type {
     private Type fnReturn = null;
     private boolean isFn;
 
+    protected Type[] overloadedFns = null;
+    protected boolean isOverloaded;
+
     public Type(TokenType primitive){
         primitiveType = primitive;
     }
@@ -27,6 +30,8 @@ public class Type {
         isFn = true;
     }
 
+    protected Type(){}
+
     public boolean isPrimitive(){
         return primitiveType != null;
     }
@@ -37,6 +42,10 @@ public class Type {
 
     public boolean isFn(){
         return isFn;
+    }
+
+    public boolean isOverloaded(){
+        return isOverloaded;
     }
 
     public TokenType primitive() {
@@ -53,6 +62,10 @@ public class Type {
 
     public Type[] getFnArgs() {
         return fnArgs;
+    }
+
+    public Type[] getOverloadedFns(){
+        return overloadedFns;
     }
 
     @Override
@@ -79,7 +92,20 @@ public class Type {
 
             return sb.toString();
         }
-        return null;
+        else if(isOverloaded()){
+            StringBuilder sb = new StringBuilder("Overload[ ");
+
+            for (int i = 0; i < overloadedFns.length; i++) {
+                sb.append(overloadedFns[i]);
+                if(i != overloadedFns.length - 1){
+                    sb.append("; ");
+                }
+            }
+
+            sb.append(" ]");
+            return sb.toString();
+        }
+        return "";
     }
 
     @Override
@@ -88,8 +114,10 @@ public class Type {
             return t.primitiveType == primitiveType &&
                     Objects.equals(t.typeName, typeName) &&
                     Arrays.equals(t.fnArgs, fnArgs) &&
-                    t.fnReturn.equals(fnReturn) &&
-                    t.isFn == isFn;
+                    Objects.equals(t.fnReturn, fnReturn) &&
+                    t.isFn == isFn &&
+                    Arrays.equals(t.overloadedFns, overloadedFns) &&
+                    t.isOverloaded == isOverloaded;
         }
         return false;
     }

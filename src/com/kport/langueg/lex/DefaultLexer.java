@@ -39,9 +39,7 @@ public class DefaultLexer implements Lexer{
             if(word.equals(comment)){
                 skipToChar('\n', iterator);
 
-                wasIdentifier = false;
-                wasNumber = false;
-                wasToken = false;
+                resetWas();
 
                 word = "";
                 lineCounter++;
@@ -60,12 +58,15 @@ public class DefaultLexer implements Lexer{
                 lineCounter++;
             }*/
             if(isValidToken(word)){
+                resetWas();
                 wasToken = true;
             }
             else if(isValidNum(word)){
+                resetWas();
                 wasNumber = true;
             }
             else if(isValidIdentifier(word)){
+                resetWas();
                 wasIdentifier = true;
             }
             else{
@@ -79,9 +80,7 @@ public class DefaultLexer implements Lexer{
             }
         }
 
-        wasIdentifier = false;
-        wasNumber = false;
-        wasToken = false;
+        resetWas();
         word = "";
         lineCounter++;
 
@@ -93,19 +92,19 @@ public class DefaultLexer implements Lexer{
             outTokens.add(new Token(tokens.get(word.substring(0, word.length() - 1)), lineCounter));
             iterator.previous();
             word = "";
-            wasToken = false;
+            resetWas();
         }
         else if(wasNumber){
             outTokens.add(new Token(TokenType.NumberL, word.substring(0, word.length() - 1), lineCounter));
             iterator.previous();
             word = "";
-            wasNumber = false;
+            resetWas();
         }
         else if(wasIdentifier){
             outTokens.add(new Token(TokenType.Identifier, word.substring(0, word.length() - 1), lineCounter));
             iterator.previous();
             word = "";
-            wasIdentifier = false;
+            resetWas();
         }
         else if(reqValid && word.length() != 0){
             throw new Error("Invalid Token: " + word.substring(0, word.length() - 1) + " on line " + lineCounter);
@@ -143,6 +142,12 @@ public class DefaultLexer implements Lexer{
 
     private static boolean isValidToken(String str){
         return tokens.containsKey(str);
+    }
+
+    private void resetWas(){
+        wasToken = false;
+        wasNumber = false;
+        wasIdentifier = false;
     }
 
     private static final HashMap<String, TokenType> tokens = new HashMap<>();

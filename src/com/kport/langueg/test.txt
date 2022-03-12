@@ -1,5 +1,5 @@
-String x = "abc";
-//Fn[(String, efg) -> Fn[(int, Boolean) -> abc]] x = 1;
+fn int x(float y, double z) {}
 
-fn Fn[(String, efg) -> Fn[(int, Boolean) -> abc]] hello(ACD b){
-}
+Fn[(float, double) -> int] fnx = x;
+
+//fn void x(float y) {}

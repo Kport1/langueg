@@ -15,6 +15,14 @@ public record FnIdentifier(Map.Entry<Integer, Integer> depthCount, String name, 
         return false;
     }
 
+    public boolean equalsIgnoreArgs(Object o){
+        if(o instanceof FnIdentifier other){
+            return other.depthCount.equals(depthCount) &&
+                    other.name.equals(name);
+        }
+        return false;
+    }
+
     @Override
     public String toString(){
         return "fnId(d = " + depthCount.getKey() + ", c = " + depthCount.getValue() + ", n = " + name + ", a = " + Arrays.toString(args) + ")";
