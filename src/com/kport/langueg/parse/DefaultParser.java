@@ -4,7 +4,9 @@ import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.astVals.*;
-import com.kport.langueg.parse.typeCheck.Type;
+import com.kport.langueg.parse.typeCheck.types.OverloadedFnType;
+import com.kport.langueg.parse.typeCheck.types.TupleType;
+import com.kport.langueg.parse.typeCheck.types.Type;
 import com.kport.langueg.util.Iterator;
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
@@ -184,13 +186,12 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseFn(){
-        AST returnType = parseAtom();
+        //Identifier(ASTStr), Type(ASTType)
+        AST returnAST = parseAtom();
+        ASTType returnType = returnAST.type == Identifier?
+                new ASTType(new Type(returnAST.val.getStr()))
+                : (ASTType) returnAST.val;
 
-        /*if(!(ASTTokTypeValues.containsKey(typeToken.tok) || typeToken.tok == TokenType.Void || typeToken.val != null)){
-            throw new Error("Expected type token at line " + typeToken.lineNum + ". Got: " + typeToken);
-        }*/
-
-        //iterator.inc();
         String name = null;
         if(iterator.current().tok == TokenType.Identifier){
             name = iterator.current().val;
@@ -199,6 +200,7 @@ public class DefaultParser implements Parser{
 
         AST[] args = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
 
+        //verify, that args follow: type argName
         for (AST arg : args) {
             if (arg.type != Var || arg.val == null) {
                 throw new Error("Invalid function arguments at line " + iterator.current().lineNum);
@@ -208,23 +210,21 @@ public class DefaultParser implements Parser{
 
         AST block = parseExpr();
 
+        //don't require semicolon after block
         if(block.type == Block){
             exprIsBlock = true;
         }
 
+        //args, block, (name)
         AST[] asts = new AST[args.length + (name == null? 1 : 2)];
         System.arraycopy(args, 0, asts, 0, args.length);
         asts[args.length] = block;
+
         if(name != null){
             asts[asts.length - 1] = new AST(Identifier, new ASTStr(name));
         }
 
-        if(returnType.val.getTok() != TokenType.FnType) {
-            return new AST(Fn, returnType.val, asts);
-        }
-        asts = Arrays.copyOf(asts, asts.length + returnType.children.length);
-        System.arraycopy(returnType.children, 0, asts, asts.length - returnType.children.length, returnType.children.length);
-        return new AST(Fn, ASTTokTypeValues.get(TokenType.FnType), asts);
+        return new AST(Fn, returnType, asts);
     }
 
     private Type parseFnType(){
@@ -232,68 +232,77 @@ public class DefaultParser implements Parser{
             throw new Error("Expected LBrack at line " + iterator.current().lineNum);
         }
 
-        AST[] fnArgASTs;
-        if(iterator.peek().tok == TokenType.LParen){
-            iterator.inc();
-            fnArgASTs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-            if(fnArgASTs.length > 0) {
-                for (AST argType : fnArgASTs) {
-                    if (argType.type != Type) {
-                        if (argType.type == Identifier) {
-                            argType.type = Type;
-                        } else {
-                            throw new Error("Invalid argument type " + argType + " for function type on line " + iterator.current().lineNum);
+        ArrayList<Type> overloadedFns = new ArrayList<>();
+
+        do {
+            AST[] fnArgASTs;
+            if (iterator.peek().tok == TokenType.LParen) {
+                iterator.inc();
+                fnArgASTs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
+                if (fnArgASTs.length > 0) {
+                    for (AST argType : fnArgASTs) {
+                        if (argType.type != Type) {
+                            if (argType.type == Identifier) {
+                                argType.type = Type;
+                            } else {
+                                throw new Error("Invalid argument type " + argType + " for function type on line " + iterator.current().lineNum);
+                            }
                         }
                     }
                 }
+            } else {
+                iterator.inc();
+                fnArgASTs = new AST[]{parseAtom()};
+                if (fnArgASTs[0].type != Type) {
+                    if (fnArgASTs[0].type == Identifier) {
+                        fnArgASTs[0].type = Type;
+                    } else {
+                        throw new Error("Invalid argument type " + fnArgASTs[0] + " for function type on line " + iterator.current().lineNum);
+                    }
+                }
             }
-        }
-        else{
+
+            if (iterator.current().tok != TokenType.SingleArrow) {
+                throw new Error("Expected -> at line" + iterator.current().lineNum);
+            }
             iterator.inc();
-            fnArgASTs = new AST[]{parseAtom()};
-            if(fnArgASTs[0].type != Type){
-                if(fnArgASTs[0].type == Identifier){
-                    fnArgASTs[0].type = Type;
-                }
-                else {
-                    throw new Error("Invalid argument type " + fnArgASTs[0] + " for function type on line " + iterator.current().lineNum);
+
+            AST returnAST = parseAtom();
+            if (returnAST.type != Type) {
+                if (returnAST.type == Identifier) {
+                    returnAST.type = Type;
+                } else {
+                    throw new Error("Expected function return type after -> at line " + iterator.current().lineNum);
                 }
             }
-        }
 
-        if(iterator.current().tok != TokenType.SingleArrow){
-            throw new Error("Expected -> at line" + iterator.current().lineNum);
-        }
-        iterator.inc();
+            Type returnType = returnAST.val.isStr()? new Type(returnAST.val.getStr()) : returnAST.val.getType();
 
-        AST returnAST = parseAtom();
-        if(returnAST.type != Type){
-            if(returnAST.type == Identifier){
-                returnAST.type = Type;
+            if(fnArgASTs.length > 0){
+                Type[] fnArgTypes = Arrays.stream(fnArgASTs).map((arg) -> {
+                    if (arg.val.isStr()) {
+                        return new Type(arg.val.getStr());
+                    }
+                    return arg.val.getType();
+                }).toArray(Type[]::new);
+                overloadedFns.add(new Type(returnType, fnArgTypes));
             }
             else {
-                throw new Error("Expected function return type after -> at line " + iterator.current().lineNum);
+                overloadedFns.add(returnType);
             }
-        }
+
+        } while(iterator.current().tok == TokenType.Comma);
 
         if(iterator.current().tok != TokenType.RBrack){
             throw new Error("Expected RBrack at line " + iterator.current().lineNum);
         }
         iterator.inc();
 
-        Type returnType = returnAST.val.isStr()? new Type(returnAST.val.getStr()) : returnAST.val.getType();
-
-        if(fnArgASTs.length > 0){
-            Type[] fnArgTypes = Arrays.stream(fnArgASTs).map((arg) -> {
-                if (arg.val.isStr()) {
-                    return new Type(arg.val.getStr());
-                }
-                return arg.val.getType();
-            }).toArray(Type[]::new);
-            return new Type(returnType, fnArgTypes);
+        if(overloadedFns.size() == 1){
+            return overloadedFns.get(0);
         }
 
-        return new Type(returnType);
+        return new OverloadedFnType(overloadedFns.toArray(new Type[0]));
     }
 
     private boolean exprIsBlock = false;
@@ -301,13 +310,13 @@ public class DefaultParser implements Parser{
         ArrayList<AST> exprs = new ArrayList<>();
 
         if(iterator.current().tok == TokenType.RCurl){
+            exprIsBlock = true;
             return new AST(Block);
         }
 
         do {
-            TokenType curTok = iterator.current().tok;
-            if (curTok == TokenType.LCurl) {
-                exprIsBlock = true;
+            if(exprIsBlock){
+                exprIsBlock = false;
             }
 
             exprs.add(parseExpr());
@@ -317,10 +326,10 @@ public class DefaultParser implements Parser{
             }
             iterator.inc();
             if(iterator.current().tok == TokenType.RCurl && !iterator.isEOF() && !isProg){
+                exprIsBlock = true;
                 return new AST(Block, exprs.toArray(new AST[0]));
             }
 
-            exprIsBlock = false;
         } while(!iterator.isEOF());
 
         if(isProg){
@@ -402,7 +411,22 @@ public class DefaultParser implements Parser{
 
             case LParen -> {
                 iterator.dec();
-                return parseTuple();
+                AST tup = parseTuple();
+
+                if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
+                    AST varAST = parseVar();
+
+                    Type[] tupleTypes = Arrays.stream(tup.children).map((type) -> {
+                        if (type.val.isStr()) {
+                            return new Type(type.val.getStr());
+                        }
+                        return type.val.getType();
+                    }).toArray(Type[]::new);
+
+                    varAST.val = new ASTType(new TupleType(tupleTypes));
+                    return varAST;
+                }
+                return tup;
             }
 
             case StringL -> {

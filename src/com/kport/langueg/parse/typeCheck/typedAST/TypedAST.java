@@ -1,7 +1,7 @@
 package com.kport.langueg.parse.typeCheck.typedAST;
 
 import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.typeCheck.Type;
+import com.kport.langueg.parse.typeCheck.types.Type;
 
 import java.util.Arrays;
 

@@ -1,6 +1,6 @@
 package com.kport.langueg.parse.ast.astVals;
 
-import com.kport.langueg.parse.typeCheck.Type;
+import com.kport.langueg.parse.typeCheck.types.Type;
 
 public class ASTType extends ASTValue {
     public Type type;

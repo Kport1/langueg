@@ -4,6 +4,9 @@ import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.astVals.ASTType;
 import com.kport.langueg.parse.typeCheck.typedAST.TypedAST;
+import com.kport.langueg.parse.typeCheck.types.OverloadedFnType;
+import com.kport.langueg.parse.typeCheck.types.TupleType;
+import com.kport.langueg.parse.typeCheck.types.Type;
 
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
@@ -59,17 +62,23 @@ public class DefaultTypeChecker implements TypeChecker{
                     throw new Error("Duplicate var " + name + " in current scope");
                 }
 
+                //Duplicate fn
+                if(anyFnExists(name, depthCount.getKey(), depthCount.getValue())){
+                    throw new Error("Var and fn cannot have the same name (" + name + ")");
+                }
+
                 if (expr.children.length > 1) {
                     Type varType = getExprType(expr.children[1], depthCount.getKey(), depthCount.getValue());
+                    Type expectedType = null;
 
                     if(expr.val != null && expr.val.isType()){
-                        Type expectedType = expr.val.getType();
-                        if(!Objects.equals(varType, expectedType)){
+                        expectedType = expr.val.getType();
+                        if(!Objects.equals(varType, expectedType) && !varType.anyOverloadedFnMatches(expectedType)){
                             throw new Error("Cannot assign value of type " + varType + " to variable of type " + expectedType);
                         }
                     }
 
-                    varTypes.put(new VarIdentifier(depthCount, name), varType);
+                    varTypes.put(new VarIdentifier(depthCount, name), expectedType == null? varType : expectedType);
                     expr.val = new ASTType(varType);
                 }
                 else if(expr.val == null || !expr.val.isType()){
@@ -264,7 +273,7 @@ public class DefaultTypeChecker implements TypeChecker{
             //case Prog -> {}
             //case Type -> {}
             case Str -> {
-                return new Type(TokenType.StringL);
+                return new Type("String");
             }
             case Double -> {
                 return new Type(TokenType.Double);
@@ -314,7 +323,7 @@ public class DefaultTypeChecker implements TypeChecker{
                     if(fnType == null){
                         Type varType = getVarType(called.val.getStr(), depth, count);
                         if(varType == null){
-                            throw new Error();
+                            throw new Error("Function or variable " + called.val.getStr() + " doesn't exist or cannot be called with " + Arrays.toString(args));
                         }
                         if(varType.isOverloaded()){
                             Type[] correctFnFromArgs = Arrays.stream(varType.getOverloadedFns()).filter((fn) -> Arrays.equals(fn.getFnArgs(), args)).toArray(Type[]::new);
@@ -326,7 +335,8 @@ public class DefaultTypeChecker implements TypeChecker{
                             return correctFnFromArgs[0];
                         }
                         if(varType.isFn()) {
-                            return varType.getFnReturn();
+                            //return varType.getFnReturn();
+                            return getReturnTypeAndVerifyArgs(varType, args);
                         }
                         throw new Error("Called variable " + called.val.getStr() + " has type " + varType);
                     }
@@ -344,7 +354,10 @@ public class DefaultTypeChecker implements TypeChecker{
             //case FnArg -> {}
 
             //TODO: tuple types
-            //case Tuple -> {}
+            case Tuple -> {
+                Type[] tupTypes = Arrays.stream(expr.children).map((type) -> getExprType(type, depth, count)).toArray(Type[]::new);
+                return new TupleType(tupTypes);
+            }
             //case Class -> {}
 
             case Var -> {

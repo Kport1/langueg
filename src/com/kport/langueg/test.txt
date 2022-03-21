@@ -1,5 +1,10 @@
-fn int x(float y, double z) {}
+//Tup[int, float] fnx = x;
 
-Fn[(float, double) -> int] fnx = x;
+//(int, String) y = x();
+var z = x;
+var m = z(1);
 
-//fn void x(float y) {}
+
+//fn int x(float i) {}
+//fn double x(float i, String z) {}
+fn String x(int a) {}

@@ -1,7 +1,10 @@
 package com.kport.langueg.parse.typeCheck;
 
+import com.kport.langueg.parse.typeCheck.types.Type;
+
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 public record FnIdentifier(Map.Entry<Integer, Integer> depthCount, String name, Type[] args) {
 
@@ -13,6 +16,11 @@ public record FnIdentifier(Map.Entry<Integer, Integer> depthCount, String name, 
                     Arrays.equals(other.args, args);
         }
         return false;
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hash(depthCount.getKey(), depthCount.getValue(), name, Arrays.hashCode(args));
     }
 
     public boolean equalsIgnoreArgs(Object o){

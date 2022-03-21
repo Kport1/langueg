@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.typeCheck;
+package com.kport.langueg.parse.typeCheck.types;
 
 import com.kport.langueg.lex.TokenType;
 
@@ -15,6 +15,9 @@ public class Type {
 
     protected Type[] overloadedFns = null;
     protected boolean isOverloaded;
+
+    protected Type[] tupleTypes = null;
+    protected boolean isTuple;
 
     public Type(TokenType primitive){
         primitiveType = primitive;
@@ -48,6 +51,10 @@ public class Type {
         return isOverloaded;
     }
 
+    public boolean isTuple(){
+        return isTuple;
+    }
+
     public TokenType primitive() {
         return primitiveType;
     }
@@ -68,13 +75,24 @@ public class Type {
         return overloadedFns;
     }
 
+    public boolean anyOverloadedFnMatches(Type t){
+        if(!isOverloaded){
+            return false;
+        }
+        return Arrays.asList(overloadedFns).contains(t);
+    }
+
+    public Type[] getTupleTypes(){
+        return tupleTypes;
+    }
+
     @Override
     public String toString(){
         if(isPrimitive()){
             return primitiveType.name();
         }
         if(isCustom()){
-            return typeName;
+            return "\"" + typeName + "\"";
         }
         if(isFn()){
             StringBuilder sb = new StringBuilder("Fn[(");
@@ -92,13 +110,26 @@ public class Type {
 
             return sb.toString();
         }
-        else if(isOverloaded()){
+        if(isOverloaded()){
             StringBuilder sb = new StringBuilder("Overload[ ");
 
             for (int i = 0; i < overloadedFns.length; i++) {
                 sb.append(overloadedFns[i]);
                 if(i != overloadedFns.length - 1){
                     sb.append("; ");
+                }
+            }
+
+            sb.append(" ]");
+            return sb.toString();
+        }
+        if(isTuple()){
+            StringBuilder sb = new StringBuilder("Tup[ ");
+
+            for (int i = 0; i < tupleTypes.length; i++) {
+                sb.append(tupleTypes[i]);
+                if(i != tupleTypes.length - 1){
+                    sb.append(", ");
                 }
             }
 
@@ -117,8 +148,15 @@ public class Type {
                     Objects.equals(t.fnReturn, fnReturn) &&
                     t.isFn == isFn &&
                     Arrays.equals(t.overloadedFns, overloadedFns) &&
-                    t.isOverloaded == isOverloaded;
+                    t.isOverloaded == isOverloaded &&
+                    Arrays.equals(t.tupleTypes, tupleTypes) &&
+                    t.isTuple == isTuple;
         }
         return false;
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hash(primitiveType, typeName, Arrays.hashCode(fnArgs), fnReturn, isFn, Arrays.hashCode(overloadedFns), isOverloaded, Arrays.hashCode(tupleTypes), isTuple);
     }
 }

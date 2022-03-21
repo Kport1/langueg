@@ -2,7 +2,7 @@ package com.kport.langueg.parse.ast.astVals;
 
 
 import com.kport.langueg.lex.TokenType;
-import com.kport.langueg.parse.typeCheck.Type;
+import com.kport.langueg.parse.typeCheck.types.Type;
 
 //String, Integer, Double
 public abstract class ASTValue {
