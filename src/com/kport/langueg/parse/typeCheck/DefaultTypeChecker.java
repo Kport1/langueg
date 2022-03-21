@@ -253,7 +253,9 @@ public class DefaultTypeChecker implements TypeChecker{
                     boolean fnExists = fnExists(called.val.getStr(), depth, count, args);
                     boolean varExists = varExists(called.val.getStr(), depth, count);
 
-
+                    if(!(varExists || fnExists)){
+                        throw new Error("Variable or function " + called.val.getStr() + " doesn't exist in current scope");
+                    }
                 }
 
             }

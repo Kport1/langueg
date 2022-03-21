@@ -188,9 +188,10 @@ public class DefaultParser implements Parser{
     private AST parseFn(){
         //Identifier(ASTStr), Type(ASTType)
         AST returnAST = parseAtom();
-        ASTType returnType = returnAST.type == Identifier?
+        /*ASTType returnType = returnAST.type == Identifier?
                 new ASTType(new Type(returnAST.val.getStr()))
-                : (ASTType) returnAST.val;
+                : (ASTType) returnAST.val;*/
+        ASTType returnType = new ASTType(typify(returnAST)[0]);
 
         String name = null;
         if(iterator.current().tok == TokenType.Identifier){
@@ -276,15 +277,17 @@ public class DefaultParser implements Parser{
                 }
             }
 
-            Type returnType = returnAST.val.isStr()? new Type(returnAST.val.getStr()) : returnAST.val.getType();
+            //Type returnType = returnAST.val.isStr()? new Type(returnAST.val.getStr()) : returnAST.val.getType();
+            Type returnType = typify(returnAST)[0];
 
             if(fnArgASTs.length > 0){
-                Type[] fnArgTypes = Arrays.stream(fnArgASTs).map((arg) -> {
+                /*Type[] fnArgTypes = Arrays.stream(fnArgASTs).map((arg) -> {
                     if (arg.val.isStr()) {
                         return new Type(arg.val.getStr());
                     }
                     return arg.val.getType();
-                }).toArray(Type[]::new);
+                }).toArray(Type[]::new);*/
+                Type[] fnArgTypes = typify(fnArgASTs);
                 overloadedFns.add(new Type(returnType, fnArgTypes));
             }
             else {
@@ -414,14 +417,19 @@ public class DefaultParser implements Parser{
                 AST tup = parseTuple();
 
                 if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
+                    if(tup.type != Tuple || tup.children.length == 0){
+                        throw new Error("Invalid tuple type for var at line " + iterator.current().lineNum);
+                    }
+
                     AST varAST = parseVar();
 
-                    Type[] tupleTypes = Arrays.stream(tup.children).map((type) -> {
+                    /*Type[] tupleTypes = Arrays.stream(tup.children).map((type) -> {
                         if (type.val.isStr()) {
                             return new Type(type.val.getStr());
                         }
                         return type.val.getType();
-                    }).toArray(Type[]::new);
+                    }).toArray(Type[]::new);*/
+                    Type[] tupleTypes = typify(tup.children);
 
                     varAST.val = new ASTType(new TupleType(tupleTypes));
                     return varAST;
@@ -563,6 +571,29 @@ public class DefaultParser implements Parser{
         iterator.inc();
 
         return exprs.toArray(new AST[0]);
+    }
+
+    private Type[] typify(AST... asts){
+        return
+                Arrays.stream(asts).map((type) -> {
+                    if(type.type == Tuple){
+                        return new TupleType(typify(type.children));
+                    }
+
+                    if (type.type == Identifier) {
+                        return new Type(type.val.getStr());
+                    }
+
+                    if(type.val == null){
+                        throw new Error("Invalid type: " + type);
+                    }
+
+                    if(type.val.isType()) {
+                        return type.val.getType();
+                    }
+
+                    throw new Error("Invalid type: " + type);
+                }).toArray(Type[]::new);
     }
 
     private boolean isBinOp(Token tok){

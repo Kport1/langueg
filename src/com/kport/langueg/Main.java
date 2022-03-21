@@ -37,19 +37,5 @@ public class Main {
             System.out.println("expr: " + expr + "   depth: " + depthCount.getKey() + "   count: " + depthCount.getValue());
         });*/
 
-
-        /*
-        Comments:
-        lex: 1.21s
-        parse: 0.34s
-
-        Intense syntax yea:
-        lex: 3.58s
-        parse:1.27s
-
-        Strings:
-        lex: 1.93s
-        parse: 0.61s
-         */
     }
 }
