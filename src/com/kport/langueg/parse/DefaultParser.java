@@ -4,10 +4,13 @@ import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.astVals.*;
-import com.kport.langueg.parse.typeCheck.types.OverloadedFnType;
-import com.kport.langueg.parse.typeCheck.types.TupleType;
-import com.kport.langueg.parse.typeCheck.types.Type;
+import com.kport.langueg.typeCheck.types.OverloadedFnType;
+import com.kport.langueg.typeCheck.types.TupleType;
+import com.kport.langueg.typeCheck.types.Type;
 import com.kport.langueg.util.Iterator;
+
+import javax.print.DocFlavor;
+
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
 import java.util.*;
@@ -27,7 +30,7 @@ public class DefaultParser implements Parser{
         opPrecedence.put(TokenType.NotEq, 1);
         opPrecedence.put(TokenType.And, 3);
         opPrecedence.put(TokenType.Or, 2);
-        opPrecedence.put(TokenType.XOR, 4);
+        opPrecedence.put(TokenType.XOr, 4);
 
         opPrecedence.put(TokenType.Plus, 5);
         opPrecedence.put(TokenType.Minus, 5);
@@ -188,9 +191,6 @@ public class DefaultParser implements Parser{
     private AST parseFn(){
         //Identifier(ASTStr), Type(ASTType)
         AST returnAST = parseAtom();
-        /*ASTType returnType = returnAST.type == Identifier?
-                new ASTType(new Type(returnAST.val.getStr()))
-                : (ASTType) returnAST.val;*/
         ASTType returnType = new ASTType(typify(returnAST)[0]);
 
         String name = null;
@@ -214,6 +214,10 @@ public class DefaultParser implements Parser{
         //don't require semicolon after block
         if(block.type == Block){
             exprIsBlock = true;
+        }
+        //Surround expression in block and return it
+        else {
+            block = new AST(Block, block.type == Return? block : new AST(Return, block));
         }
 
         //args, block, (name)
@@ -277,16 +281,9 @@ public class DefaultParser implements Parser{
                 }
             }
 
-            //Type returnType = returnAST.val.isStr()? new Type(returnAST.val.getStr()) : returnAST.val.getType();
             Type returnType = typify(returnAST)[0];
 
             if(fnArgASTs.length > 0){
-                /*Type[] fnArgTypes = Arrays.stream(fnArgASTs).map((arg) -> {
-                    if (arg.val.isStr()) {
-                        return new Type(arg.val.getStr());
-                    }
-                    return arg.val.getType();
-                }).toArray(Type[]::new);*/
                 Type[] fnArgTypes = typify(fnArgASTs);
                 overloadedFns.add(new Type(returnType, fnArgTypes));
             }
@@ -442,15 +439,17 @@ public class DefaultParser implements Parser{
             }
 
             case NumberL -> {
-                try{
-                    return new AST(Int, new ASTInt(Integer.parseInt(cur.val)));
-                }
-                catch (NumberFormatException e){
-                    try {
-                        return new AST(Double, new ASTDub(java.lang.Double.parseDouble(cur.val)));
-                    }
-                    catch (NumberFormatException e1){
-                        throw new Error("Invalid number " + cur.val + " on line " + cur.lineNum);
+                String numStr = cur.val;
+                char numLiteralEnding = numStr.charAt(numStr.length() - 1);
+                switch (numLiteralEnding){
+                    case 'l' -> {return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr.substring(0, numStr.length() - 1))));}
+                    case 'd' -> {return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)));}
+                    case 'f' -> {return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)));}
+                    default -> {
+                        try{return new AST(Int, new ASTInt(Integer.parseInt(numStr)));}
+                        catch (NumberFormatException e) {
+                            return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)));
+                        }
                     }
                 }
             }

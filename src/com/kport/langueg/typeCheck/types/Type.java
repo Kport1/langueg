@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.typeCheck.types;
+package com.kport.langueg.typeCheck.types;
 
 import com.kport.langueg.lex.TokenType;
 

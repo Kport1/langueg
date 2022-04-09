@@ -1,6 +1,5 @@
-package com.kport.langueg.parse.typeCheck;
+package com.kport.langueg.typeCheck;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 

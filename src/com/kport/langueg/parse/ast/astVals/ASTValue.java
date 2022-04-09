@@ -2,7 +2,7 @@ package com.kport.langueg.parse.ast.astVals;
 
 
 import com.kport.langueg.lex.TokenType;
-import com.kport.langueg.parse.typeCheck.types.Type;
+import com.kport.langueg.typeCheck.types.Type;
 
 //String, Integer, Double
 public abstract class ASTValue {
@@ -12,6 +12,14 @@ public abstract class ASTValue {
     }
 
     public boolean isInt() {
+        return false;
+    }
+
+    public boolean isLong() {
+        return false;
+    }
+
+    public boolean isFloat() {
         return false;
     }
 
@@ -37,6 +45,14 @@ public abstract class ASTValue {
 
     public int getInt() {
         return Integer.MIN_VALUE;
+    }
+
+    public long getLong() {
+        return Long.MIN_VALUE;
+    }
+
+    public float getFloat() {
+        return Float.NaN;
     }
 
     public double getDub() {

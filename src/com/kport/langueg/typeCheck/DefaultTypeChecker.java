@@ -1,12 +1,14 @@
-package com.kport.langueg.parse.typeCheck;
+package com.kport.langueg.typeCheck;
 
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.astVals.ASTType;
-import com.kport.langueg.parse.typeCheck.typedAST.TypedAST;
-import com.kport.langueg.parse.typeCheck.types.OverloadedFnType;
-import com.kport.langueg.parse.typeCheck.types.TupleType;
-import com.kport.langueg.parse.typeCheck.types.Type;
+import com.kport.langueg.typeCheck.op.BinOpTypeMap;
+import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
+import com.kport.langueg.typeCheck.op.DefaultBinOpTypeMappings;
+import com.kport.langueg.typeCheck.types.OverloadedFnType;
+import com.kport.langueg.typeCheck.types.TupleType;
+import com.kport.langueg.typeCheck.types.Type;
 
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
@@ -17,6 +19,16 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class DefaultTypeChecker implements TypeChecker{
+
+    //Interface for supplying mappings for binary operators
+    private final BinOpTypeMappingSupplier binOpTypeMappings = DefaultBinOpTypeMappings.PLUS;
+
+    private final BlockTree blockTree = new BlockTree(null, 0, 0);
+
+    private final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
+    private final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
+    private final HashMap<VarIdentifier, Type> fnParamTypes = new HashMap<>();
+
     @Override
     public void check(AST ast) {
         //construct block tree
@@ -29,7 +41,7 @@ public class DefaultTypeChecker implements TypeChecker{
             }
         });
         resetSearchBlocks();
-        //System.out.println(blockTree);
+        System.out.println(blockTree);
 
         //Find fn types
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
@@ -47,6 +59,15 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
 
                 fnTypes.put(identifier, returnType);
+            }
+
+            //Function params
+            if(expr.type == Fn){
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
+
+                for (AST arg : args) {
+                    fnParamTypes.put(new VarIdentifier(depthCount, arg.children[0].val.getStr()), arg.val.getType());
+                }
             }
         });
         resetSearchBlocks();
@@ -69,6 +90,9 @@ public class DefaultTypeChecker implements TypeChecker{
 
                 if (expr.children.length > 1) {
                     Type varType = getExprType(expr.children[1], depthCount.getKey(), depthCount.getValue());
+                    if(varType.primitive() == TokenType.Void){
+                        throw new Error("Cannot assign void to variable " + name);
+                    }
                     Type expectedType = null;
 
                     if(expr.val != null && expr.val.isType()){
@@ -97,13 +121,8 @@ public class DefaultTypeChecker implements TypeChecker{
         });
         System.out.println(varTypes);
 
-        TypedAST typedAST = new TypedAST(ast, new Type(TokenType.Void));
+        System.out.println("ast:\n" + ast);
     }
-
-    private final BlockTree blockTree = new BlockTree(null, 0, 0);
-
-    private final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
-    private final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
 
     //0,0 is global scope
     private final HashMap<Integer, Integer> depthCounter = new HashMap<>();
@@ -119,7 +138,7 @@ public class DefaultTypeChecker implements TypeChecker{
             int count = depthCounter.get(blockDepth + 1);
 
             for (AST expr : ast.children) {
-                if(insideBlock) {
+                if(insideBlock || expr.type == Block) {
                     consumer.accept(expr, Map.entry(blockDepth, depthCounter.get(blockDepth)));
                 }
 
@@ -161,6 +180,10 @@ public class DefaultTypeChecker implements TypeChecker{
         return getVarType(name, depth, count) != null;
     }
 
+    private boolean fnParamExists(String name, int depth, int count){
+        return getFnParamType(name, depth, count) != null;
+    }
+
     private Type getFnType(String name, int depth, int count, Type... args){
         Type inScope = fnTypes.get(new FnIdentifier(Map.entry(depth, count), name, args));
         if(inScope == null){
@@ -200,8 +223,20 @@ public class DefaultTypeChecker implements TypeChecker{
         return inScope;
     }
 
+    private Type getFnParamType(String name, int depth, int count){
+        Type inScope = fnParamTypes.get(new VarIdentifier(Map.entry(depth, count), name));
+        if(inScope == null){
+            BlockTree scope = blockTree.findInChildren(depth, count);
+            if(scope.parent == null){
+                return null;
+            }
+            return getFnParamType(name, scope.parent.depth, scope.parent.count);
+        }
+        return inScope;
+    }
+
     private void typeCheck(AST ast, int depth, int count){
-        switch(ast.type){
+        /*switch(ast.type){
             case BinOp -> {
                 TokenType op = ast.val.getTok();
                 AST left = ast.children[0];
@@ -250,16 +285,24 @@ public class DefaultTypeChecker implements TypeChecker{
                         .map((arg) -> getExprType(arg, depth, count)).toArray(Type[]::new);
 
                 if(called.type == Identifier){
-                    boolean fnExists = fnExists(called.val.getStr(), depth, count, args);
-                    boolean varExists = varExists(called.val.getStr(), depth, count);
+                    String name = called.val.getStr();
+                    boolean fnExists = fnExists(name, depth, count, args);
+                    boolean varExists = varExists(name, depth, count);
 
                     if(!(varExists || fnExists)){
-                        throw new Error("Variable or function " + called.val.getStr() + " doesn't exist in current scope");
+                        throw new Error("Function or variable " + name + " doesn't exist in current scope " +
+                                "or cannot be called with " + Arrays.toString(args));
+                    }
+
+                    if(varExists){
+                        getCalledVarReturn(getVarType(name, depth, count), name, args);
                     }
                 }
 
             }
-        }
+        }*/
+
+        ast.returnType = getExprType(ast, depth, count);
 
         if(ast.children == null)
             return;
@@ -309,11 +352,8 @@ public class DefaultTypeChecker implements TypeChecker{
 
                 return ifType;
             }
-            case Switch -> {
-            }
-            case While -> {
-            }
-            case For -> {
+            case Switch, While, For, Block, Return -> {
+                return new Type(TokenType.Void);
             }
             case Call -> {
                 AST called = expr.children[0];
@@ -321,26 +361,15 @@ public class DefaultTypeChecker implements TypeChecker{
                         .map((arg) -> getExprType(arg, depth, count)).toArray(Type[]::new);
 
                 if(called.type == Identifier){
-                    Type fnType = getFnType(called.val.getStr(), depth, count, args);
+                    String name = called.val.getStr();
+                    Type fnType = getFnType(name, depth, count, args);
                     if(fnType == null){
-                        Type varType = getVarType(called.val.getStr(), depth, count);
+                        Type varType = getVarType(name, depth, count);
                         if(varType == null){
-                            throw new Error("Function or variable " + called.val.getStr() + " doesn't exist or cannot be called with " + Arrays.toString(args));
+                            throw new Error("Function or variable " + name + " doesn't exist in current scope " +
+                                    "or cannot be called with " + Arrays.toString(args));
                         }
-                        if(varType.isOverloaded()){
-                            Type[] correctFnFromArgs = Arrays.stream(varType.getOverloadedFns()).filter((fn) -> Arrays.equals(fn.getFnArgs(), args)).toArray(Type[]::new);
-
-                            if(correctFnFromArgs.length > 1){
-                                throw new Error("oh no");
-                            }
-
-                            return correctFnFromArgs[0];
-                        }
-                        if(varType.isFn()) {
-                            //return varType.getFnReturn();
-                            return getReturnTypeAndVerifyArgs(varType, args);
-                        }
-                        throw new Error("Called variable " + called.val.getStr() + " has type " + varType);
+                        return getCalledVarReturn(varType, name, args);
                     }
                     return fnType;
                 }
@@ -348,15 +377,13 @@ public class DefaultTypeChecker implements TypeChecker{
                 Type calledExprType = getExprType(called, depth, count);
                 return getReturnTypeAndVerifyArgs(calledExprType, args);
             }
-            case Block -> {
-                return new Type(TokenType.Void);
-            }
-            //case Return -> {}
             //case Fn -> {}
             //case FnArg -> {}
 
-            //TODO: tuple types
             case Tuple -> {
+                if(expr.children == null || expr.children.length == 0){
+                    throw new Error("Empty tuple");
+                }
                 Type[] tupTypes = Arrays.stream(expr.children).map((type) -> getExprType(type, depth, count)).toArray(Type[]::new);
                 return new TupleType(tupTypes);
             }
@@ -368,41 +395,75 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
                 return getExprType(expr.children[1], depth, count);
             }
+            case Cast -> {
+                return expr.val.getType();
+            }
             case BinOp -> {
                 TokenType op = expr.val.getTok();
-                AST left = expr.children[0];
-                AST right = expr.children[1];
+                Type left = getExprType(expr.children[0], depth, count);
+                Type right = getExprType(expr.children[1], depth, count);
 
-                return getExprType(left, depth, count);
+                BinOpTypeMap map = binOpTypeMappings.getFromOp(op);
+                if(map == null){
+                    throw new Error("Cannot apply operator " + op + " to " + left + " and " + right);
+                }
+                return map.getType(left, right, expr);
             }
-            case UnaryOpBefore -> {
-            }
-            case UnaryOpAfter -> {
-            }
-            case Modifier -> {
-            }
+            case UnaryOpBefore -> {}
+            case UnaryOpAfter -> {}
+            case Modifier -> {}
             case Identifier -> {
-                String id = expr.val.getStr();
-                boolean varExists = varExists(id, depth, count);
-                boolean anyFnExists = anyFnExists(id, depth, count);
+                String name = expr.val.getStr();
+                boolean varExists = varExists(name, depth, count);
+                boolean anyFnExists = anyFnExists(name, depth, count);
+                boolean fnParamExists = fnParamExists(name, depth, count);
 
                 if(varExists && anyFnExists){
-                    throw new Error("There cannot be a variable and a function with the same name (" + id + ")");
+                    throw new Error("There cannot be a variable and a function with the same name (" + name + ")");
                 }
-                else if(varExists){
-                    return getVarType(id, depth, count);
+
+                if(fnParamExists){
+                    if(varTypes.get(new VarIdentifier(Map.entry(depth, count), name)) != null){
+                        throw new Error("Cannot have var and function parameter with the same name (" + name + ") in the same scope");
+                    }
+                    return getFnParamType(name, depth, count);
                 }
-                else if(anyFnExists){
-                    Type[] fns = getAllFnTypes(id, depth, count);
+
+                if(varExists){
+                    return getVarType(name, depth, count);
+                }
+
+                if(anyFnExists){
+                    Type[] fns = getAllFnTypes(name, depth, count);
                     if(fns.length == 1){
                         return fns[0];
                     }
                     return new OverloadedFnType(fns);
                 }
-                throw new Error("Variable " + id + " doesn't exist");
+                throw new Error("Variable " + name + " doesn't exist");
             }
         }
         return null;
+    }
+
+    private Type getCalledVarReturn(Type varType, String varName, Type... args){
+        if(varType.isOverloaded()){
+            Type[] correctFnFromArgs = Arrays.stream(varType.getOverloadedFns()).filter((fn) -> Arrays.equals(fn.getFnArgs(), args)).toArray(Type[]::new);
+
+            if(correctFnFromArgs.length > 1){
+                throw new Error("oh no");
+            }
+
+            if(correctFnFromArgs.length < 1){
+                throw new Error("Overloaded function " + varName + " doesn't contain function with args " + Arrays.toString(args));
+            }
+
+            return correctFnFromArgs[0].getFnReturn();
+        }
+        if(varType.isFn()) {
+            return getReturnTypeAndVerifyArgs(varType, args);
+        }
+        throw new Error("Called variable " + varName + " has type " + varType);
     }
 
     private Type getReturnTypeAndVerifyArgs(Type fnType, Type... args){

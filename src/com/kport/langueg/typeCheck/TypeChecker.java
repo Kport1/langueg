@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.typeCheck;
+package com.kport.langueg.typeCheck;
 
 import com.kport.langueg.parse.ast.AST;
 

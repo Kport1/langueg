@@ -1,10 +1,11 @@
-package com.kport.langueg.parse.typeCheck;
+package com.kport.langueg.typeCheck;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class BlockTree {
     public ArrayList<BlockTree> children;
+    //find direct children faster
+    private HashMap<Map.Entry<Integer, Integer>, BlockTree> fastChildren = new HashMap<>();
     public BlockTree parent;
 
     public int depth, count;
@@ -14,6 +15,10 @@ public class BlockTree {
         depth = depth_;
         count = count_;
         children = new ArrayList<>(List.of(children_));
+        
+        for (BlockTree blockTree : children_) {
+            fastChildren.put(Map.entry(blockTree.depth, blockTree.count), blockTree);
+        }
     }
 
     public BlockTree findInChildren(int depth_, int count_){
@@ -22,6 +27,10 @@ public class BlockTree {
         }
         if(children == null || children.size() == 0){
             return null;
+        }
+        BlockTree inFastChildren = fastChildren.get(Map.entry(depth_, count_));
+        if(inFastChildren != null){
+            return inFastChildren;
         }
 
         for (BlockTree child : children) {
@@ -43,6 +52,9 @@ public class BlockTree {
 
         for (BlockTree blockTree : children_) {
             blockTree.parent = this;
+        }
+        for (BlockTree blockTree : children_) {
+            fastChildren.put(Map.entry(blockTree.depth, blockTree.count), blockTree);
         }
     }
 
@@ -67,5 +79,20 @@ public class BlockTree {
         r.append(" }");
 
         return r.toString();
+    }
+    
+    @Override
+    public int hashCode(){
+        return 31 * (31 + depth) + count;
+        //return Objects.hash(depth, count);
+    }
+    
+    @Override
+    public boolean equals(Object o){
+        if(o instanceof BlockTree t){
+            return  t.depth == depth &&
+                    t.count == count;
+        }
+        return false;
     }
 }

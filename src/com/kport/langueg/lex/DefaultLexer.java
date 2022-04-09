@@ -11,6 +11,10 @@ public class DefaultLexer implements Lexer{
     private static final char str = '"';
     private static final char strEsc = '\\';
 
+    private static final char longLit = 'l';
+    private static final char dubLit = 'd';
+    private static final char floatLit = 'f';
+
     private boolean wasIdentifier = false;
     private boolean wasNumber = false;
     private boolean wasToken = false;
@@ -128,16 +132,27 @@ public class DefaultLexer implements Lexer{
         CharacterIterator iterator = new StringCharacterIterator(str);
 
         boolean dot = false;
+        boolean litEnd = false;
         for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
             if(!Character.isDigit(c)){
                 if(c == '.' && !dot){
                     dot = true;
                     continue;
                 }
+                else if(isNumberLiteralEnding(c) && iterator.next() == CharacterIterator.DONE && !litEnd && str.length() > 1){
+                    litEnd = true;
+                    continue;
+                }
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean isNumberLiteralEnding(char c){
+        return  c == longLit ||
+                c == dubLit ||
+                c == floatLit;
     }
 
     private static boolean isValidToken(String str){
@@ -175,7 +190,7 @@ public class DefaultLexer implements Lexer{
         tokens.put("&&", TokenType.AndAnd);
         tokens.put("|", TokenType.Or);
         tokens.put("||", TokenType.OrOr);
-        tokens.put("^", TokenType.XOR);
+        tokens.put("^", TokenType.XOr);
 
         tokens.put("++", TokenType.Inc);
         tokens.put("--", TokenType.Dec);

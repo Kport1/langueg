@@ -1,6 +1,6 @@
 package com.kport.langueg.parse.ast.astVals;
 
-public class ASTDub extends ASTValue {
+public class ASTDouble extends ASTValue {
     private final double val;
 
     @Override
@@ -9,7 +9,7 @@ public class ASTDub extends ASTValue {
     @Override
     public double getDub(){return val;}
 
-    public ASTDub(double val_){
+    public ASTDouble(double val_){
         val = val_;
     }
 

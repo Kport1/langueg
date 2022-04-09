@@ -6,13 +6,12 @@ import com.kport.langueg.lex.Token;
 import com.kport.langueg.parse.DefaultParser;
 import com.kport.langueg.parse.Parser;
 import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.typeCheck.DefaultTypeChecker;
+import com.kport.langueg.typeCheck.DefaultTypeChecker;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Map;
 
 public class Main {
 
@@ -31,11 +30,9 @@ public class Main {
         AST block = pars.parse(tokens);
         System.out.println("parse time: " + ((System.nanoTime() - t1) / 1_000_000_000f));
         System.out.println(block);
+
+        t1 = System.nanoTime();
         new DefaultTypeChecker().check(block);
-
-        /*new DefaultTypeChecker().searchBlocks(block, 0, (expr, depthCount) -> {
-            System.out.println("expr: " + expr + "   depth: " + depthCount.getKey() + "   count: " + depthCount.getValue());
-        });*/
-
+        System.out.println("type check time: " + ((System.nanoTime() - t1) / 1_000_000_000f));
     }
 }

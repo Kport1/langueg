@@ -1,6 +1,4 @@
-package com.kport.langueg.parse.typeCheck.types;
-
-import com.kport.langueg.parse.typeCheck.types.Type;
+package com.kport.langueg.typeCheck.types;
 
 public class OverloadedFnType extends Type {
 

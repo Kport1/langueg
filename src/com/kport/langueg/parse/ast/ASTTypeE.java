@@ -2,9 +2,16 @@ package com.kport.langueg.parse.ast;
 
 public enum ASTTypeE {
     Prog,
-    Type,
 
-    //Data literal
+    //Type
+    Type,
+    Cast,
+
+    Fn,
+    FnArg,
+    Tuple,
+    Class,
+
     Str,
     Double,
     Float,
@@ -21,12 +28,6 @@ public enum ASTTypeE {
     Call,
     Block,
     Return,
-
-    //Data type
-    Fn,
-    FnArg,
-    Tuple,
-    Class,
 
     //Op
     Var,

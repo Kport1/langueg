@@ -1,11 +1,14 @@
 package com.kport.langueg.parse.ast;
 
 import com.kport.langueg.parse.ast.astVals.ASTValue;
+import com.kport.langueg.typeCheck.types.Type;
 
 public class AST {
     public AST[] children;
     public ASTValue val;
     public ASTTypeE type;
+
+    public Type returnType = null;
 
     public AST(ASTTypeE type_){
         type = type_;
@@ -29,7 +32,9 @@ public class AST {
 
     @Override
     public String toString(){
-        StringBuilder str = new StringBuilder(type.name() + (val != null ? "( " + val + " )" : ""));
+        StringBuilder str = new StringBuilder(type.name());
+        str.append(returnType != null? "[" +  returnType + "]" : "");
+        str.append(val != null ? "( " + val + " )" : "");
         if(children == null){
             return str.toString();
         }

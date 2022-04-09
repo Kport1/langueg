@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.typeCheck.types;
+package com.kport.langueg.typeCheck.types;
 
 public class TupleType extends Type{
 

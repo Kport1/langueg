@@ -27,7 +27,7 @@ public enum TokenType {
         AndAnd,
         Or,
         OrOr,
-        XOR,
+        XOr,
     //--------------------
 
     //Unary Ops----------
