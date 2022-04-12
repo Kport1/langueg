@@ -25,9 +25,9 @@ public class DefaultTypeChecker implements TypeChecker{
 
     private final BlockTree blockTree = new BlockTree(null, 0, 0);
 
-    private final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
-    private final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
-    private final HashMap<VarIdentifier, Type> fnParamTypes = new HashMap<>();
+    public final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
+    public final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
+    public final HashMap<VarIdentifier, Type> fnParamTypes = new HashMap<>();
 
     @Override
     public void check(AST ast) {
@@ -63,7 +63,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
             //Function params
             if(expr.type == Fn){
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - (isNamedFn(expr)? 2 : 1));
 
                 for (AST arg : args) {
                     fnParamTypes.put(new VarIdentifier(depthCount, arg.children[0].val.getStr()), arg.val.getType());
@@ -304,7 +304,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
         ast.returnType = getExprType(ast, depth, count);
 
-        if(ast.children == null)
+        if(ast.children == null || ast.type == FnArg || ast.type == Block)
             return;
 
         for (AST child : ast.children) {
@@ -352,7 +352,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
                 return ifType;
             }
-            case Switch, While, For, Block, Return -> {
+            case Switch, While, For, Block, Return, FnArg -> {
                 return new Type(TokenType.Void);
             }
             case Call -> {
@@ -377,8 +377,19 @@ public class DefaultTypeChecker implements TypeChecker{
                 Type calledExprType = getExprType(called, depth, count);
                 return getReturnTypeAndVerifyArgs(calledExprType, args);
             }
-            //case Fn -> {}
-            //case FnArg -> {}
+            case Fn -> {
+                if(!isNamedFn(expr)){
+                    AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
+                    Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
+
+                    //Functions params
+                    for (AST arg : args) {
+                        fnParamTypes.put(new VarIdentifier(Map.entry(depth, count), arg.children[0].val.getStr()), arg.val.getType());
+                    }
+
+                    return new Type(expr.val.getType(), argTypes);
+                }
+            }
 
             case Tuple -> {
                 if(expr.children == null || expr.children.length == 0){
@@ -416,7 +427,8 @@ public class DefaultTypeChecker implements TypeChecker{
                 String name = expr.val.getStr();
                 boolean varExists = varExists(name, depth, count);
                 boolean anyFnExists = anyFnExists(name, depth, count);
-                boolean fnParamExists = fnParamExists(name, depth, count);
+                BlockTree parentScope = blockTree.findInChildren(depth, count).parent;
+                boolean fnParamExists = parentScope != null && fnParamExists(name, parentScope.depth, parentScope.count);
 
                 if(varExists && anyFnExists){
                     throw new Error("There cannot be a variable and a function with the same name (" + name + ")");
@@ -426,7 +438,7 @@ public class DefaultTypeChecker implements TypeChecker{
                     if(varTypes.get(new VarIdentifier(Map.entry(depth, count), name)) != null){
                         throw new Error("Cannot have var and function parameter with the same name (" + name + ") in the same scope");
                     }
-                    return getFnParamType(name, depth, count);
+                    return getFnParamType(name, parentScope.depth, parentScope.count);
                 }
 
                 if(varExists){
@@ -443,7 +455,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 throw new Error("Variable " + name + " doesn't exist");
             }
         }
-        return null;
+        return new Type(TokenType.Void);
     }
 
     private Type getCalledVarReturn(Type varType, String varName, Type... args){

@@ -57,11 +57,11 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     MOD((left, right, ast) -> {
         TokenType lTok = left.primitive();
         TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && lTok == rTok)){
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
             throw new Error("Cannot apply operator % to " + left + " and " + right);
         }
 
-        return new Type(lTok);
+        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
     }, Mod),
 
     POW((left, right, ast) -> {
@@ -77,21 +77,21 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     SHIFTR((left, right, ast) -> {
         TokenType lTok = left.primitive();
         TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && lTok == rTok)){
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
             throw new Error("Cannot apply operator >> to " + left + " and " + right);
         }
 
-        return new Type(lTok);
+        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
     }, ShiftR),
 
     SHIFTL((left, right, ast) -> {
         TokenType lTok = left.primitive();
         TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && lTok == rTok)){
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
             throw new Error("Cannot apply operator << to " + left + " and " + right);
         }
 
-        return new Type(lTok);
+        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
     }, ShiftL),
 
     GREATER((left, right, ast) -> {
@@ -212,6 +212,126 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
 
         return left;
     }, XOr),
+
+    PLUSASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+            throw new Error("Cannot apply operator += to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, PlusAssign),
+
+    MINUSASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+            throw new Error("Cannot apply operator -= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, MinusAssign),
+
+    MULASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+            throw new Error("Cannot apply operator *= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, MulAssign),
+
+    DIVASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+            throw new Error("Cannot apply operator /= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, DivAssign),
+
+    MODASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator %= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, ModAssign),
+
+    POWASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+            throw new Error("Cannot apply operator **= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, PowAssign),
+
+    SHIFTRASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator >>= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, ShiftRAssign),
+
+    SHIFTLASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator <<= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, ShiftLAssign),
 
     ASSIGN((left, right, ast) -> {
         if(!left.equals(right)){

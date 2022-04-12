@@ -16,6 +16,15 @@ public enum TokenType {
         ShiftR,
         ShiftL,
 
+        PlusAssign,
+        MinusAssign,
+        MulAssign,
+        DivAssign,
+        ModAssign,
+        PowAssign,
+        ShiftRAssign,
+        ShiftLAssign,
+
         //Bool
         Greater,
         Less,

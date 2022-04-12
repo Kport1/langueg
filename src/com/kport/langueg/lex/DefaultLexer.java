@@ -180,6 +180,15 @@ public class DefaultLexer implements Lexer{
         tokens.put(">>", TokenType.ShiftR);
         tokens.put("<<", TokenType.ShiftL);
 
+        tokens.put("+=", TokenType.PlusAssign);
+        tokens.put("-=", TokenType.MinusAssign);
+        tokens.put("*=", TokenType.MulAssign);
+        tokens.put("/=", TokenType.DivAssign);
+        tokens.put("%=", TokenType.ModAssign);
+        tokens.put("**=", TokenType.PowAssign);
+        tokens.put(">>=", TokenType.ShiftRAssign);
+        tokens.put("<<=", TokenType.ShiftLAssign);
+
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);
         tokens.put("<=", TokenType.GreaterEq);

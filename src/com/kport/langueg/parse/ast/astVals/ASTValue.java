@@ -11,6 +11,10 @@ public abstract class ASTValue {
         return false;
     }
 
+    public boolean isByte() {
+        return false;
+    }
+
     public boolean isInt() {
         return false;
     }
@@ -41,6 +45,10 @@ public abstract class ASTValue {
 
     public String getStr() {
         return "";
+    }
+
+    public byte getByte() {
+        return Byte.MIN_VALUE;
     }
 
     public int getInt() {

@@ -22,6 +22,15 @@ public class DefaultParser implements Parser{
     static {
         opPrecedence.put(TokenType.Assign, 0);
 
+        opPrecedence.put(TokenType.PlusAssign, 0);
+        opPrecedence.put(TokenType.MinusAssign, 0);
+        opPrecedence.put(TokenType.MulAssign, 0);
+        opPrecedence.put(TokenType.DivAssign, 0);
+        opPrecedence.put(TokenType.ModAssign, 0);
+        opPrecedence.put(TokenType.PowAssign, 0);
+        opPrecedence.put(TokenType.ShiftRAssign, 0);
+        opPrecedence.put(TokenType.ShiftLAssign, 0);
+
         opPrecedence.put(TokenType.Greater, 1);
         opPrecedence.put(TokenType.Less, 1);
         opPrecedence.put(TokenType.GreaterEq, 1);
@@ -213,10 +222,16 @@ public class DefaultParser implements Parser{
 
         //don't require semicolon after block
         if(block.type == Block){
-            exprIsBlock = true;
+            if(name != null) {
+                exprIsBlock = true;
+            }
+            else{
+                exprIsBlock = false;
+                iterator.inc();
+            }
         }
         //Surround expression in block and return it
-        else {
+        if(block.type != Block) {
             block = new AST(Block, block.type == Return? block : new AST(Return, block));
         }
 
@@ -315,9 +330,7 @@ public class DefaultParser implements Parser{
         }
 
         do {
-            if(exprIsBlock){
-                exprIsBlock = false;
-            }
+            exprIsBlock = false;
 
             exprs.add(parseExpr());
 
@@ -420,12 +433,6 @@ public class DefaultParser implements Parser{
 
                     AST varAST = parseVar();
 
-                    /*Type[] tupleTypes = Arrays.stream(tup.children).map((type) -> {
-                        if (type.val.isStr()) {
-                            return new Type(type.val.getStr());
-                        }
-                        return type.val.getType();
-                    }).toArray(Type[]::new);*/
                     Type[] tupleTypes = typify(tup.children);
 
                     varAST.val = new ASTType(new TupleType(tupleTypes));
@@ -442,6 +449,7 @@ public class DefaultParser implements Parser{
                 String numStr = cur.val;
                 char numLiteralEnding = numStr.charAt(numStr.length() - 1);
                 switch (numLiteralEnding){
+                    case 'b' -> {return new AST(Byte, new ASTByte(java.lang.Byte.parseByte(numStr)));}
                     case 'l' -> {return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr.substring(0, numStr.length() - 1))));}
                     case 'd' -> {return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)));}
                     case 'f' -> {return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)));}
