@@ -58,7 +58,8 @@ public class DefaultParser implements Parser{
     }
 
     @Override
-    public AST parse(ArrayList<Token> tokens) {
+    public AST process(Object tokens_) {
+        ArrayList<Token> tokens = (ArrayList<Token>) tokens_;
         iterator = new Iterator<>(tokens);
 
         AST prog = parseBlock(true);

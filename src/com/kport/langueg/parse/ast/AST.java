@@ -9,6 +9,8 @@ public class AST {
     public ASTTypeE type;
 
     public Type returnType = null;
+    public int depth;
+    public int count;
 
     public AST(ASTTypeE type_){
         type = type_;
@@ -33,7 +35,12 @@ public class AST {
     @Override
     public String toString(){
         StringBuilder str = new StringBuilder(type.name());
-        str.append(returnType != null? "[" +  returnType + "]" : "");
+        str.append("[")
+                .append(returnType != null ? returnType + ", " : "")
+                .append(depth)
+                .append(", ")
+                .append(count)
+                .append("]");
         str.append(val != null ? "( " + val + " )" : "");
         if(children == null){
             return str.toString();

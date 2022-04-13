@@ -1,23 +1,20 @@
 package com.kport.langueg;
 
-import com.kport.langueg.codeGen.mcDataCodeGen.MCDataCodeGenerator;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.lex.Lexer;
 import com.kport.langueg.lex.Token;
 import com.kport.langueg.parse.DefaultParser;
 import com.kport.langueg.parse.Parser;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.pipeline.LanguegPipelineBuilder;
 import com.kport.langueg.typeCheck.DefaultTypeChecker;
-import com.kport.langueg.typeCheck.TypeChecker;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
 
@@ -25,7 +22,16 @@ public class Main {
 
         String code = Files.readString(Path.of("src/com/kport/langueg/test.txt"));
 
-        Lexer lex = new DefaultLexer();
+        AtomicLong time = new AtomicLong();
+        LanguegPipelineBuilder<String, AST> pipelineBuilder = new LanguegPipelineBuilder<>();
+        pipelineBuilder.addComponent(new DefaultLexer(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));})
+                .addComponent(new DefaultParser(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));})
+                .addComponent(new DefaultTypeChecker(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));});
+
+        LanguegPipeline<String, AST> pipeline = pipelineBuilder.get();
+        pipeline.evaluate(code);
+
+        /*Lexer lex = new DefaultLexer();
         long t1 = System.nanoTime();
         ArrayList<Token> tokens = lex.lex(code);
         System.out.println("lex time: " + ((System.nanoTime() - t1) / 1_000_000_000f));
@@ -40,7 +46,7 @@ public class Main {
         t1 = System.nanoTime();
         DefaultTypeChecker c = new DefaultTypeChecker();
         c.check(block);
-        System.out.println("type check time: " + ((System.nanoTime() - t1) / 1_000_000_000f));
+        System.out.println("type check time: " + ((System.nanoTime() - t1) / 1_000_000_000f));*/
 
         //new MCDataCodeGenerator(c.fnTypes, c.varTypes, c.fnParamTypes, "outMcFn").generate(block);
     }

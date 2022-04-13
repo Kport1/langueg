@@ -1,9 +1,12 @@
 package com.kport.langueg.lex;
 
+import com.kport.langueg.pipeline.LanguegComponent;
+
 import java.util.ArrayList;
 
-public interface Lexer {
+public interface Lexer extends LanguegComponent {
 
-    ArrayList<Token> lex(String code);
+    @Override
+    ArrayList<Token> process(Object input);
 
 }

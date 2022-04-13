@@ -22,8 +22,16 @@ public class DefaultLexer implements Lexer{
     private String word = "";
     private int lineCounter = 1;
 
-    @Override
-    public ArrayList<Token> lex(String code) {
+    public ArrayList<Token> process(Object code_) {
+        String code = (String) code_;
+        if(code.length() < 1){
+            throw new Error("""
+                    
+                    Bruh write some code you lazy piece of shit. I'm not gonna do your work for you. Like seriously?
+                    Do you think I have time to write your code? I'm busy type checking and analyzing the complete and utter bullshit you throw at me constantly.
+                    I wouldn't have to spend so much time on that if you pea brained amoeba could fucking remember what types your variables are supposed to have.
+                    Go try and write some assembly, maybe you'll realize, that my only job is to catch your dumbass mistakes - and god do your two braincells produce a fuckton of those.""");
+        }
 
         ArrayList<Token> outTokens = new ArrayList<>();
 
