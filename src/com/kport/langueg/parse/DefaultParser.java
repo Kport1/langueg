@@ -4,6 +4,7 @@ import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.astVals.*;
+import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.types.OverloadedFnType;
 import com.kport.langueg.typeCheck.types.TupleType;
 import com.kport.langueg.typeCheck.types.Type;
@@ -30,6 +31,9 @@ public class DefaultParser implements Parser{
         opPrecedence.put(TokenType.PowAssign, 0);
         opPrecedence.put(TokenType.ShiftRAssign, 0);
         opPrecedence.put(TokenType.ShiftLAssign, 0);
+        opPrecedence.put(TokenType.AndAssign, 0);
+        opPrecedence.put(TokenType.OrAssign, 0);
+        opPrecedence.put(TokenType.XOrAssign, 0);
 
         opPrecedence.put(TokenType.Greater, 1);
         opPrecedence.put(TokenType.Less, 1);
@@ -58,7 +62,7 @@ public class DefaultParser implements Parser{
     }
 
     @Override
-    public AST process(Object tokens_) {
+    public AST process(Object tokens_, LanguegPipeline<?, ?> pipeline) {
         ArrayList<Token> tokens = (ArrayList<Token>) tokens_;
         iterator = new Iterator<>(tokens);
 

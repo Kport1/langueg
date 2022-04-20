@@ -3,6 +3,7 @@ package com.kport.langueg.typeCheck;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.astVals.ASTType;
+import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.op.BinOpTypeMap;
 import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
 import com.kport.langueg.typeCheck.op.DefaultBinOpTypeMappings;
@@ -30,7 +31,7 @@ public class DefaultTypeChecker implements TypeChecker{
     public final HashMap<VarIdentifier, Type> fnParamTypes = new HashMap<>();
 
     @Override
-    public AST process(Object ast_) {
+    public AST process(Object ast_, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) ast_;
         //construct block tree
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
@@ -123,6 +124,11 @@ public class DefaultTypeChecker implements TypeChecker{
         System.out.println(varTypes);
 
         System.out.println("ast:\n" + ast);
+
+        pipeline.putAdditionalData("BLOCK_TREE", blockTree);
+        pipeline.putAdditionalData("FUNCTION_TYPES", fnTypes);
+        pipeline.putAdditionalData("VARIABLE_TYPES", varTypes);
+        pipeline.putAdditionalData("FUNCTION_PARAMETER_TYPES", fnParamTypes);
 
         return ast;
     }
@@ -254,8 +260,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
     private Type getExprType(AST expr, int depth, int count){
         switch(expr.type){
-            //case Prog -> {}
-            //case Type -> {}
+            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return  new Type(TokenType.Void);}
             case Str -> {
                 return new Type("String");
             }
@@ -290,9 +295,6 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
 
                 return ifType;
-            }
-            case Switch, While, For, Block, Return, FnArg -> {
-                return new Type(TokenType.Void);
             }
             case Call -> {
                 AST called = expr.children[0];

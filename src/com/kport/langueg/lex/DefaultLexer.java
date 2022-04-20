@@ -1,5 +1,7 @@
 package com.kport.langueg.lex;
 
+import com.kport.langueg.pipeline.LanguegPipeline;
+
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
@@ -22,7 +24,7 @@ public class DefaultLexer implements Lexer{
     private String word = "";
     private int lineCounter = 1;
 
-    public ArrayList<Token> process(Object code_) {
+    public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
         String code = (String) code_;
         if(code.length() < 1){
             throw new Error("""
@@ -30,7 +32,8 @@ public class DefaultLexer implements Lexer{
                     Bruh write some code you lazy piece of shit. I'm not gonna do your work for you. Like seriously?
                     Do you think I have time to write your code? I'm busy type checking and analyzing the complete and utter bullshit you throw at me constantly.
                     I wouldn't have to spend so much time on that if you pea brained amoeba could fucking remember what types your variables are supposed to have.
-                    Go try and write some assembly, maybe you'll realize, that my only job is to catch your dumbass mistakes - and god do your two braincells produce a fuckton of those.""");
+                    Go try and write some assembly, maybe you'll realize, that my only job is to catch your dumbass mistakes - and god do your two braincells produce a fuckton of those.
+                    """);
         }
 
         ArrayList<Token> outTokens = new ArrayList<>();
@@ -175,7 +178,6 @@ public class DefaultLexer implements Lexer{
 
     private static final HashMap<String, TokenType> tokens = new HashMap<>();
     static {
-
         tokens.put("=", TokenType.Assign);
         tokens.put("var", TokenType.Var);
 
@@ -196,6 +198,9 @@ public class DefaultLexer implements Lexer{
         tokens.put("**=", TokenType.PowAssign);
         tokens.put(">>=", TokenType.ShiftRAssign);
         tokens.put("<<=", TokenType.ShiftLAssign);
+        tokens.put("&=", TokenType.AndAssign);
+        tokens.put("|=", TokenType.OrAssign);
+        tokens.put("^=", TokenType.XOrAssign);
 
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);

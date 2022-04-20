@@ -1,5 +1,6 @@
 package com.kport.langueg;
 
+import com.kport.langueg.codeGen.mcDataCodeGen.MCDataCodeGenerator;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.lex.Lexer;
 import com.kport.langueg.lex.Token;
@@ -15,18 +16,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         String code = Files.readString(Path.of("src/com/kport/langueg/test.txt"));
 
         AtomicLong time = new AtomicLong();
         LanguegPipelineBuilder<String, AST> pipelineBuilder = new LanguegPipelineBuilder<>();
-        pipelineBuilder.addComponent(new DefaultLexer(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));})
-                .addComponent(new DefaultParser(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));})
-                .addComponent(new DefaultTypeChecker(), (o1, o2) -> time.set(System.nanoTime()), (o1, o2) -> {System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));});
+        pipelineBuilder.addComponent(new DefaultLexer(),
+                        (o) -> time.set(System.nanoTime()),
+                        (o) ->  {
+                                    System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                })
+                .addComponent(new DefaultParser(),
+                        (o) -> time.set(System.nanoTime()),
+                        (o) ->  {
+                                    System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                })
+                .addComponent(new DefaultTypeChecker(),
+                        (o) -> time.set(System.nanoTime()),
+                        (o) ->  {
+                                    System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                });
 
         LanguegPipeline<String, AST> pipeline = pipelineBuilder.get();
         pipeline.evaluate(code);

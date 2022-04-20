@@ -7,6 +7,7 @@ import com.kport.langueg.parse.ast.astVals.ASTType;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -333,6 +334,51 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, ShiftLAssign),
 
+    ANDASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator &= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, AndAssign),
+
+    ORASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator |= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, AndAssign),
+
+    XORASSIGN((left, right, ast) -> {
+        TokenType lTok = left.primitive();
+        TokenType rTok = right.primitive();
+        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+            throw new Error("Cannot apply operator ^= to " + left + " and " + right);
+        }
+
+        if(!right.equals(left)){
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            ast.children[1] = cast;
+        }
+
+        return left;
+    }, AndAssign),
+
     ASSIGN((left, right, ast) -> {
         if(!left.equals(right)){
             throw new Error("Cannot assign value of type " + right + " to variable " + ast.children[0].val.getStr() + " of type " + left);
@@ -342,8 +388,6 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, Assign);
 
 
-
-
     private final BinOpTypeMap map;
     private final TokenType op;
     DefaultBinOpTypeMappings(BinOpTypeMap map_, TokenType op_){
@@ -351,9 +395,14 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         op = op_;
     }
 
+    private static final EnumMap<TokenType, DefaultBinOpTypeMappings> opToTypeMapping = new EnumMap<>(TokenType.class);
+    static {
+        Arrays.stream(values()).forEach((m) -> opToTypeMapping.put(m.op, m));
+    }
+
     @Override
     public BinOpTypeMap getFromOp(TokenType op){
-        DefaultBinOpTypeMappings mappingEnum = Arrays.stream(values()).filter((mapping) -> mapping.op == op).findFirst().orElse(null);
+        DefaultBinOpTypeMappings mappingEnum = opToTypeMapping.get(op);
         return mappingEnum == null? null : mappingEnum.map;
     }
 
@@ -361,7 +410,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return Arrays.stream(t).allMatch(Type::isPrimitive);
     }
 
-    private static final HashMap<TokenType, Integer> prec = new HashMap<>(Map.of(
+    private static final EnumMap<TokenType, Integer> prec = new EnumMap<>(Map.of(
             Byte, 0,
             Int, 1,
             Long, 2,

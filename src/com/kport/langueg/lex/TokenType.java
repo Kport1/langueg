@@ -24,6 +24,9 @@ public enum TokenType {
         PowAssign,
         ShiftRAssign,
         ShiftLAssign,
+        AndAssign,
+        OrAssign,
+        XOrAssign,
 
         //Bool
         Greater,
