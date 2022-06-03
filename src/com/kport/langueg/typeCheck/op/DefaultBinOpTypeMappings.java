@@ -395,15 +395,14 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         op = op_;
     }
 
-    private static final EnumMap<TokenType, DefaultBinOpTypeMappings> opToTypeMapping = new EnumMap<>(TokenType.class);
+    private static final EnumMap<TokenType, BinOpTypeMap> opToTypeMapping = new EnumMap<>(TokenType.class);
     static {
-        Arrays.stream(values()).forEach((m) -> opToTypeMapping.put(m.op, m));
+        Arrays.stream(values()).forEach((m) -> opToTypeMapping.put(m.op, m.map));
     }
 
     @Override
     public BinOpTypeMap getFromOp(TokenType op){
-        DefaultBinOpTypeMappings mappingEnum = opToTypeMapping.get(op);
-        return mappingEnum == null? null : mappingEnum.map;
+        return opToTypeMapping.get(op);
     }
 
     private static boolean arePrim(Type... t){

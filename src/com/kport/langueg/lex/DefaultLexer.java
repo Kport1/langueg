@@ -146,7 +146,10 @@ public class DefaultLexer implements Lexer{
         boolean litEnd = false;
         for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
             if(!Character.isDigit(c)){
-                if(c == '.' && !dot){
+                if(iterator.getIndex() == 0 && c == '-'){
+                    continue;
+                }
+                else if(c == '.' && !dot){
                     dot = true;
                     continue;
                 }
