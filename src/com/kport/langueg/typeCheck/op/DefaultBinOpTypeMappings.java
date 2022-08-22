@@ -4,6 +4,7 @@ import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTTypeE;
 import com.kport.langueg.parse.ast.astVals.ASTType;
+import com.kport.langueg.typeCheck.types.PrimitiveType;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
@@ -22,7 +23,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot add " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Plus),
 
     MINUS((left, right, ast) -> {
@@ -32,7 +33,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot subtract " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Minus),
 
     MUL((left, right, ast) -> {
@@ -42,7 +43,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot multiply " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Mul),
 
     DIV((left, right, ast) -> {
@@ -52,7 +53,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot divide " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Div),
 
     MOD((left, right, ast) -> {
@@ -62,7 +63,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator % to " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Mod),
 
     POW((left, right, ast) -> {
@@ -72,7 +73,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator ** to " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, Pow),
 
     SHIFTR((left, right, ast) -> {
@@ -82,7 +83,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator >> to " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, ShiftR),
 
     SHIFTL((left, right, ast) -> {
@@ -92,7 +93,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator << to " + left + " and " + right);
         }
 
-        return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
     }, ShiftL),
 
     GREATER((left, right, ast) -> {
@@ -103,7 +104,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         castNonDominantGetDominant(lTok, rTok, ast);
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, Greater),
 
     LESS((left, right, ast) -> {
@@ -114,7 +115,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         castNonDominantGetDominant(lTok, rTok, ast);
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, Less),
 
     GREATEREQ((left, right, ast) -> {
@@ -125,7 +126,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         castNonDominantGetDominant(lTok, rTok, ast);
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, GreaterEq),
 
     LESSEQ((left, right, ast) -> {
@@ -136,7 +137,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         castNonDominantGetDominant(lTok, rTok, ast);
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, LessEq),
 
     EQ((left, right, ast) -> {
@@ -144,7 +145,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator == to " + left + " and " + right);
         }
 
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, Eq),
 
     NOTEQ((left, right, ast) -> {
@@ -152,7 +153,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator != to " + left + " and " + right);
         }
 
-        return new Type(Boolean);
+        return new PrimitiveType(Boolean);
     }, NotEq),
 
     AND((left, right, ast) -> {
@@ -160,7 +161,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         TokenType rTok = right.primitive();
         if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
             if(isInteger(lTok) && isInteger(rTok)){
-                return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
             }
             throw new Error("Cannot apply operator & to " + left + " and " + right);
         }
@@ -183,7 +184,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         TokenType rTok = right.primitive();
         if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
             if(isInteger(lTok) && isInteger(rTok)){
-                return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -206,7 +207,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         TokenType rTok = right.primitive();
         if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
             if(isInteger(lTok) && isInteger(rTok)){
-                return new Type(castNonDominantGetDominant(lTok, rTok, ast));
+                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -222,7 +223,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -237,7 +238,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -252,7 +253,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -267,7 +268,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -282,7 +283,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -297,7 +298,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -312,7 +313,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -327,7 +328,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -342,7 +343,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -357,7 +358,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -372,7 +373,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -410,11 +411,12 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }
 
     private static final EnumMap<TokenType, Integer> prec = new EnumMap<>(Map.of(
-            Byte, 0,
-            Int, 1,
-            Long, 2,
-            Float, 3,
-            Double, 4
+            Byte,   0,
+            Short,  1,
+            Int,    2,
+            Long,   3,
+            Float,  4,
+            Double, 5
     ));
 
     private static boolean isNum(TokenType t){
@@ -426,9 +428,10 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }
 
     private static boolean isInteger(TokenType t){
-        return  t == Int ||
-                t == Long ||
-                t == Byte;
+        return  t == Byte   ||
+                t == Short  ||
+                t == Int    ||
+                t == Long;
     }
 
     private static boolean isFloat(TokenType t){
@@ -445,7 +448,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         TokenType dominant = leftDominant? left : right;
 
         AST unCast = ast.children[leftDominant? 1 : 0];
-        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(new Type(dominant)), unCast);
+        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(new PrimitiveType(dominant)), unCast.line, unCast);
         return dominant;
     }
 }

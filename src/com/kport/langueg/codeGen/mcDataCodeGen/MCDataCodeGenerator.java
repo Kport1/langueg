@@ -1,5 +1,6 @@
 package com.kport.langueg.codeGen.mcDataCodeGen;
 
+import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.codeGen.mcDataCodeGen.op.BinOpGeneratorSupplier;
 import com.kport.langueg.codeGen.mcDataCodeGen.op.MCDataDefaultBinOpGenerators;
 import com.kport.langueg.lex.TokenType;
@@ -7,7 +8,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.types.Type;
 
-public class MCDataCodeGenerator implements CodeGenerator{
+public class MCDataCodeGenerator implements CodeGenerator {
     private final StringBuilder output = new StringBuilder();
     public static final String stack = "languegmc:stack";
 

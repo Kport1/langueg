@@ -24,6 +24,94 @@ public class DefaultLexer implements Lexer{
     private String word = "";
     private int lineCounter = 1;
 
+    private static final HashMap<String, TokenType> tokens = new HashMap<>();
+    static {
+        tokens.put("=", TokenType.Assign);
+        tokens.put("var", TokenType.Var);
+
+        tokens.put("+", TokenType.Plus);
+        tokens.put("-", TokenType.Minus);
+        tokens.put("*", TokenType.Mul);
+        tokens.put("/", TokenType.Div);
+        tokens.put("%", TokenType.Mod);
+        tokens.put("**", TokenType.Pow);
+        tokens.put(">>", TokenType.ShiftR);
+        tokens.put("<<", TokenType.ShiftL);
+
+        tokens.put("+=", TokenType.PlusAssign);
+        tokens.put("-=", TokenType.MinusAssign);
+        tokens.put("*=", TokenType.MulAssign);
+        tokens.put("/=", TokenType.DivAssign);
+        tokens.put("%=", TokenType.ModAssign);
+        tokens.put("**=", TokenType.PowAssign);
+        tokens.put(">>=", TokenType.ShiftRAssign);
+        tokens.put("<<=", TokenType.ShiftLAssign);
+        tokens.put("&=", TokenType.AndAssign);
+        tokens.put("|=", TokenType.OrAssign);
+        tokens.put("^=", TokenType.XOrAssign);
+
+        tokens.put("<", TokenType.Greater);
+        tokens.put(">", TokenType.Less);
+        tokens.put("<=", TokenType.GreaterEq);
+        tokens.put(">=", TokenType.LessEq);
+        tokens.put("==", TokenType.Eq);
+        tokens.put("!=", TokenType.NotEq);
+        tokens.put("&", TokenType.And);
+        tokens.put("&&", TokenType.AndAnd);
+        tokens.put("|", TokenType.Or);
+        tokens.put("||", TokenType.OrOr);
+        tokens.put("^", TokenType.XOr);
+
+        tokens.put("++", TokenType.Inc);
+        tokens.put("--", TokenType.Dec);
+
+        tokens.put("!", TokenType.Not);
+
+        tokens.put("if", TokenType.If);
+        tokens.put("else", TokenType.Else);
+        tokens.put("return", TokenType.Return);
+        tokens.put("break", TokenType.Break);
+        tokens.put("continue", TokenType.Continue);
+        tokens.put("switch", TokenType.Switch);
+        tokens.put("while", TokenType.While);
+        tokens.put("for", TokenType.For);
+
+        tokens.put("fn", TokenType.Fn);
+        tokens.put("->", TokenType.SingleArrow);
+
+        tokens.put("class", TokenType.Class);
+        tokens.put("new", TokenType.New);
+        tokens.put(".", TokenType.Dot);
+
+        tokens.put("public", TokenType.Public);
+        tokens.put("private", TokenType.Private);
+        tokens.put("protected", TokenType.Protected);
+        tokens.put("static", TokenType.Static);
+
+        tokens.put("(", TokenType.LParen);
+        tokens.put(")", TokenType.RParen);
+        tokens.put("[", TokenType.LBrack);
+        tokens.put("]", TokenType.RBrack);
+        tokens.put("{", TokenType.LCurl);
+        tokens.put("}", TokenType.RCurl);
+        tokens.put(";", TokenType.Semicolon);
+        tokens.put(",", TokenType.Comma);
+
+        tokens.put("true", TokenType.True);
+        tokens.put("false", TokenType.False);
+
+        tokens.put("boolean", TokenType.Boolean);
+        tokens.put("byte", TokenType.Byte);
+        tokens.put("short", TokenType.Short);
+        tokens.put("int", TokenType.Int);
+        tokens.put("long", TokenType.Long);
+        tokens.put("float", TokenType.Float);
+        tokens.put("double", TokenType.Double);
+        tokens.put("Fn", TokenType.FnType);
+        tokens.put("void", TokenType.Void);
+        tokens.put("null", TokenType.Null);
+    }
+
     public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
         String code = (String) code_;
         if(code.length() < 1){
@@ -177,93 +265,6 @@ public class DefaultLexer implements Lexer{
         wasToken = false;
         wasNumber = false;
         wasIdentifier = false;
-    }
-
-    private static final HashMap<String, TokenType> tokens = new HashMap<>();
-    static {
-        tokens.put("=", TokenType.Assign);
-        tokens.put("var", TokenType.Var);
-
-        tokens.put("+", TokenType.Plus);
-        tokens.put("-", TokenType.Minus);
-        tokens.put("*", TokenType.Mul);
-        tokens.put("/", TokenType.Div);
-        tokens.put("%", TokenType.Mod);
-        tokens.put("**", TokenType.Pow);
-        tokens.put(">>", TokenType.ShiftR);
-        tokens.put("<<", TokenType.ShiftL);
-
-        tokens.put("+=", TokenType.PlusAssign);
-        tokens.put("-=", TokenType.MinusAssign);
-        tokens.put("*=", TokenType.MulAssign);
-        tokens.put("/=", TokenType.DivAssign);
-        tokens.put("%=", TokenType.ModAssign);
-        tokens.put("**=", TokenType.PowAssign);
-        tokens.put(">>=", TokenType.ShiftRAssign);
-        tokens.put("<<=", TokenType.ShiftLAssign);
-        tokens.put("&=", TokenType.AndAssign);
-        tokens.put("|=", TokenType.OrAssign);
-        tokens.put("^=", TokenType.XOrAssign);
-
-        tokens.put("<", TokenType.Greater);
-        tokens.put(">", TokenType.Less);
-        tokens.put("<=", TokenType.GreaterEq);
-        tokens.put(">=", TokenType.LessEq);
-        tokens.put("==", TokenType.Eq);
-        tokens.put("!=", TokenType.NotEq);
-        tokens.put("&", TokenType.And);
-        tokens.put("&&", TokenType.AndAnd);
-        tokens.put("|", TokenType.Or);
-        tokens.put("||", TokenType.OrOr);
-        tokens.put("^", TokenType.XOr);
-
-        tokens.put("++", TokenType.Inc);
-        tokens.put("--", TokenType.Dec);
-
-        tokens.put("!", TokenType.Not);
-
-        tokens.put("if", TokenType.If);
-        tokens.put("else", TokenType.Else);
-        tokens.put("return", TokenType.Return);
-        tokens.put("break", TokenType.Break);
-        tokens.put("continue", TokenType.Continue);
-        tokens.put("switch", TokenType.Switch);
-        tokens.put("while", TokenType.While);
-        tokens.put("for", TokenType.For);
-
-        tokens.put("fn", TokenType.Fn);
-        tokens.put("->", TokenType.SingleArrow);
-
-        tokens.put("class", TokenType.Class);
-        tokens.put("new", TokenType.New);
-        tokens.put(".", TokenType.Dot);
-
-        tokens.put("public", TokenType.Public);
-        tokens.put("private", TokenType.Private);
-        tokens.put("protected", TokenType.Protected);
-        tokens.put("static", TokenType.Static);
-
-        tokens.put("(", TokenType.LParen);
-        tokens.put(")", TokenType.RParen);
-        tokens.put("[", TokenType.LBrack);
-        tokens.put("]", TokenType.RBrack);
-        tokens.put("{", TokenType.LCurl);
-        tokens.put("}", TokenType.RCurl);
-        tokens.put(";", TokenType.Semicolon);
-        tokens.put(",", TokenType.Comma);
-
-        tokens.put("true", TokenType.True);
-        tokens.put("false", TokenType.False);
-
-        tokens.put("boolean", TokenType.Boolean);
-        tokens.put("byte", TokenType.Byte);
-        tokens.put("int", TokenType.Int);
-        tokens.put("long", TokenType.Long);
-        tokens.put("float", TokenType.Float);
-        tokens.put("double", TokenType.Double);
-        tokens.put("Fn", TokenType.FnType);
-        tokens.put("void", TokenType.Void);
-        tokens.put("null", TokenType.Null);
     }
 
     private static void skipToChar(char c, CharacterIterator iterator){

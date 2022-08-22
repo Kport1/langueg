@@ -13,10 +13,11 @@ public enum ASTTypeE {
     Class,
 
     Str,
-    Double,
     Float,
-    Int,
+    Double,
     Byte,
+    Short,
+    Int,
     Long,
     Bool,
 

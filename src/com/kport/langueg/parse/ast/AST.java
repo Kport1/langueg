@@ -8,6 +8,8 @@ public class AST {
     public ASTValue val;
     public ASTTypeE type;
 
+    public long line;
+
     public Type returnType = null;
     public int depth;
     public int count;
@@ -16,41 +18,58 @@ public class AST {
         type = type_;
     }
 
-    public AST(ASTTypeE type_, AST... children_){
-        children = children_;
+    public AST(ASTTypeE type_, long line_){
         type = type_;
+        line = line_;
     }
 
-    public AST(ASTTypeE type_, ASTValue val_){
-        val = val_;
+    public AST(ASTTypeE type_, long line_, AST... children_){
+        children = children_;
         type = type_;
+        line = line_;
     }
 
-    public AST(ASTTypeE type_, ASTValue val_, AST... children_){
+    public AST(ASTTypeE type_, ASTValue val_, long line_){
+        val = val_;
+        type = type_;
+        line = line_;
+    }
+
+    public AST(ASTTypeE type_, ASTValue val_, long line_, AST... children_){
         children = children_;
         val = val_;
         type = type_;
+        line = line_;
     }
 
     @Override
     public String toString(){
+        return toStringPretty(1);
+    }
+
+    private String toStringPretty(int indent){
         StringBuilder str = new StringBuilder(type.name());
-        str.append("[")
-                .append(returnType != null ? returnType + ", " : "")
-                .append(depth)
+        str.append(" [ ")
+                .append("l: ")
+                .append(line)
                 .append(", ")
+                .append(returnType != null ? "t: " + returnType + ", " : "")
+                .append("d: ")
+                .append(depth)
+                .append(", c: ")
                 .append(count)
-                .append("]");
-        str.append(val != null ? "( " + val + " )" : "");
+                .append(" ]");
+        str.append(val != null ? " ( " + val + " )" : "");
         if(children == null){
             return str.toString();
         }
-        str.append("{ ");
+        str.append(" {\n");
+        str.append("   ".repeat(indent));
 
         for (AST child : children) {
-            str.append(child.toString());
+            str.append(child.toStringPretty(indent + 1));
             str.append(", ");
         }
-        return str.substring(0, str.length() - 2) + " }";
+        return str.substring(0, str.length() - 2) + "\n}";
     }
 }

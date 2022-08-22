@@ -5,12 +5,8 @@ import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.astVals.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
-import com.kport.langueg.typeCheck.types.OverloadedFnType;
-import com.kport.langueg.typeCheck.types.TupleType;
-import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Iterator;
-
-import javax.print.DocFlavor;
 
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
@@ -76,64 +72,67 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseBinaryOp(AST left, int lastPrec) {
-        Token cur = iterator.current();
+        Token current = iterator.current();
 
-        if(isBinOp(cur)){
-            int currentPrec = opPrecedence.get(cur.tok);
+        if(isBinOp(current)){
+            int currentPrec = opPrecedence.get(current.tok);
             if(currentPrec > lastPrec){
                 iterator.inc();
                 AST right = parseBinaryOp(parseUnaryOp(call(parseAtom())), currentPrec);
-                return parseBinaryOp(new AST(BinOp, new ASTTok(cur.tok), left, right), lastPrec);
+                return parseBinaryOp(new AST(BinOp, new ASTTok(current.tok), current.lineNum, left, right), lastPrec);
             }
         }
         return left;
     }
 
     private AST parseUnaryOp(AST left) {
-        if(isUnaryOp(iterator.current())) {
-            TokenType op = iterator.current().tok;
+        Token current  = iterator.current();
+        if(isUnaryOp(current)) {
             if (left == null) {
                 iterator.inc();
-                return new AST(UnaryOpBefore, new ASTTok(op), parseExpr());
+                return new AST(UnaryOpBefore, new ASTTok(current.tok), current.lineNum, parseExpr());
             } else {
                 iterator.inc();
-                return new AST(UnaryOpAfter, new ASTTok(op), left);
+                return new AST(UnaryOpAfter, new ASTTok(current.tok), current.lineNum, left);
             }
         }
         return left;
     }
 
     private AST call(AST left){
-        if(iterator.current().tok == TokenType.LParen){
+        Token current = iterator.current();
+        if(current.tok == TokenType.LParen){
+            long line = current.lineNum;
             AST tup = parseTuple();
             if(tup.type == Tuple && tup.children == null) {
-                return call(new AST(Call, left));
+                return call(new AST(Call, line, left));
             }
             if(tup.type != Tuple){
-                return call(new AST(Call, left, tup));
+                return call(new AST(Call, line, left, tup));
             }
             AST[] callArgs = new AST[tup.children.length + 1];
             System.arraycopy(tup.children, 0, callArgs, 1, tup.children.length);
             callArgs[0] = left;
 
-            return call(new AST(Call, callArgs));
+            return call(new AST(Call, line, callArgs));
         }
         return left;
     }
 
     private AST parseTuple(){
+        long line = iterator.current().lineNum;
         AST[] exprs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
         if(exprs.length == 0) {
-            return new AST(Tuple);
+            return new AST(Tuple, line);
         }
         if(exprs.length == 1){
             return exprs[0];
         }
-        return new AST(Tuple, exprs);
+        return new AST(Tuple, line, exprs);
     }
 
     private AST parseIf(){
-        int conditionLine = iterator.current().lineNum;
+        long conditionLine = iterator.current().lineNum;
         AST condition = parseTuple();
 
         if(condition.type == Tuple){
@@ -154,19 +153,19 @@ public class DefaultParser implements Parser{
                 exprIsBlock = true;
             }
 
-            return new AST(If, condition, block, elseBlock);
+            return new AST(If, conditionLine, condition, block, elseBlock);
         }
 
         if(block.type == Block){
             exprIsBlock = true;
         }
 
-        return new AST(If, condition, block);
+        return new AST(If, conditionLine, condition, block);
     }
 
     private AST parseWhile(){
         AST condition = parseTuple();
-        int conditionLine = iterator.current().lineNum;
+        long conditionLine = iterator.current().lineNum;
 
         if(condition.type == Tuple){
             throw new Error("Condition of if statement cannot be a tuple. Line: " + conditionLine);
@@ -178,11 +177,11 @@ public class DefaultParser implements Parser{
             exprIsBlock = true;
         }
 
-        return new AST(While, condition, block);
+        return new AST(While, conditionLine, condition, block);
     }
 
     private AST parseFor(){
-        int initCondIncLine = iterator.current().lineNum;
+        long initCondIncLine = iterator.current().lineNum;
         AST[] initCondInc = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Semicolon);
 
         if(initCondInc.length != 3){
@@ -199,17 +198,20 @@ public class DefaultParser implements Parser{
         System.arraycopy(initCondInc, 0, asts, 0, initCondInc.length);
         asts[asts.length - 1] = block;
 
-        return new AST(For, asts);
+        return new AST(For, initCondIncLine, asts);
     }
 
     private AST parseFn(){
         //Identifier(ASTStr), Type(ASTType)
+        long fnLine = iterator.current().lineNum;
         AST returnAST = parseAtom();
         ASTType returnType = new ASTType(typify(returnAST)[0]);
 
         String name = null;
+        long nameLine = -1;
         if(iterator.current().tok == TokenType.Identifier){
             name = iterator.current().val;
+            nameLine = iterator.current().lineNum;
             iterator.inc();
         }
 
@@ -223,6 +225,7 @@ public class DefaultParser implements Parser{
             arg.type = FnArg;
         }
 
+        long blockLine = iterator.current().lineNum;
         AST block = parseExpr();
 
         //don't require semicolon after block
@@ -237,7 +240,7 @@ public class DefaultParser implements Parser{
         }
         //Surround expression in block and return it
         if(block.type != Block) {
-            block = new AST(Block, block.type == Return? block : new AST(Return, block));
+            block = new AST(Block, blockLine, block.type == Return? block : new AST(Return, blockLine, block));
         }
 
         //args, block, (name)
@@ -246,20 +249,42 @@ public class DefaultParser implements Parser{
         asts[args.length] = block;
 
         if(name != null){
-            asts[asts.length - 1] = new AST(Identifier, new ASTStr(name));
+            asts[asts.length - 1] = new AST(Identifier, new ASTStr(name), nameLine);
         }
 
-        return new AST(Fn, returnType, asts);
+        return new AST(Fn, returnType, fnLine, asts);
     }
 
     private Type parseFnType(){
-        if(iterator.current().tok != TokenType.LBrack){
+        if(iterator.current().tok != TokenType.LBrack)
             throw new Error("Expected LBrack at line " + iterator.current().lineNum);
+
+
+        AST[] params;
+        if(iterator.next().tok == TokenType.LParen){
+            params = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
+        }
+        else{
+            params = new AST[]{parseAtom()};
         }
 
-        ArrayList<Type> overloadedFns = new ArrayList<>();
+        Type[] paramTypes = typify(params);
 
-        do {
+        if(iterator.current().tok != TokenType.SingleArrow)
+            throw new Error("Expected SingleArrow");
+        iterator.inc();
+
+        Type returnType = typify(parseAtom())[0];
+
+        if(iterator.current().tok != TokenType.RBrack)
+            throw new Error("Expected RBrack at line " + iterator.current().lineNum);
+        iterator.inc();
+
+
+        return new FnType(returnType, paramTypes);
+
+
+        /*do {
             AST[] fnArgASTs;
             if (iterator.peek().tok == TokenType.LParen) {
                 iterator.inc();
@@ -322,16 +347,22 @@ public class DefaultParser implements Parser{
             return overloadedFns.get(0);
         }
 
-        return new OverloadedFnType(overloadedFns.toArray(new Type[0]));
+        return new OverloadedFnType(overloadedFns.toArray(new Type[0]));*/
     }
 
     private boolean exprIsBlock = false;
     private AST parseBlock(boolean isProg){
         ArrayList<AST> exprs = new ArrayList<>();
 
+        long blockLine = iterator.current().lineNum;
+        if(!isProg){
+            blockLine = iterator.previous().lineNum;
+            iterator.inc();
+        }
+
         if(iterator.current().tok == TokenType.RCurl){
             exprIsBlock = true;
-            return new AST(Block);
+            return new AST(Block, blockLine);
         }
 
         do {
@@ -345,75 +376,103 @@ public class DefaultParser implements Parser{
             iterator.inc();
             if(iterator.current().tok == TokenType.RCurl && !iterator.isEOF() && !isProg){
                 exprIsBlock = true;
-                return new AST(Block, exprs.toArray(new AST[0]));
+                return new AST(Block, blockLine, exprs.toArray(new AST[0]));
             }
 
         } while(!iterator.isEOF());
 
         if(isProg){
-            return new AST(Block, exprs.toArray(new AST[0]));
+            return new AST(Block, blockLine, exprs.toArray(new AST[0]));
         }
         throw new Error("Reached EOF before block was closed");
     }
 
-    //TODO
-    private AST parseClass(){
-        Token name = iterator.current();
-        iterator.inc();
-        iterator.inc();
-        AST block = parseBlock(false);
-
-        ArrayList<AST> fields = new ArrayList<>();
-        ArrayList<AST> methods = new ArrayList<>();
-        ArrayList<AST> blocks = new ArrayList<>();
-
-        for (AST expr : block.children) {
-            if(isVarDecl(expr)){
-                fields.add(expr);
-            }
-            if(expr.type == Fn){
-                methods.add(expr);
-            }
-            if(expr.type == Block){
-                blocks.add(expr);
-            }
-        }
-
-        int size = fields.size() + methods.size() + blocks.size();
-        AST[] asts = new AST[size];
-        AST[] fieldsArr = fields.toArray(new AST[0]);
-        AST[] methodsArr = methods.toArray(new AST[0]);
-        AST[] blocksArr = blocks.toArray(new AST[0]);
-
-        System.arraycopy(fieldsArr, 0, asts, 0, fields.size());
-        System.arraycopy(methodsArr, 0, asts, fields.size(), methods.size());
-        System.arraycopy(blocksArr, 0, asts, fields.size() + methods.size(), blocks.size());
-
-        return new AST(Class, new ASTStr(name.val), asts);
-    }
-
     private static final HashMap<TokenType, ASTValue> ASTTokTypeValues = new HashMap<>();
     static{
-        ASTTokTypeValues.put(TokenType.Boolean, new ASTType(new Type(TokenType.Boolean)));
-        ASTTokTypeValues.put(TokenType.Byte, new ASTType(new Type(TokenType.Byte)));
-        ASTTokTypeValues.put(TokenType.Int, new ASTType(new Type(TokenType.Int)));
-        ASTTokTypeValues.put(TokenType.Long, new ASTType(new Type(TokenType.Long)));
-        ASTTokTypeValues.put(TokenType.Float, new ASTType(new Type(TokenType.Float)));
-        ASTTokTypeValues.put(TokenType.Double, new ASTType(new Type(TokenType.Double)));
-        ASTTokTypeValues.put(TokenType.Void, new ASTType(new Type(TokenType.Void)));
-        ASTTokTypeValues.put(TokenType.FnType, new ASTType(new Type(TokenType.FnType)));
+        ASTTokTypeValues.put(TokenType.Boolean, new ASTType(new PrimitiveType(TokenType.Boolean)));
+        ASTTokTypeValues.put(TokenType.Byte, new ASTType(new PrimitiveType(TokenType.Byte)));
+        ASTTokTypeValues.put(TokenType.Int, new ASTType(new PrimitiveType(TokenType.Int)));
+        ASTTokTypeValues.put(TokenType.Long, new ASTType(new PrimitiveType(TokenType.Long)));
+        ASTTokTypeValues.put(TokenType.Float, new ASTType(new PrimitiveType(TokenType.Float)));
+        ASTTokTypeValues.put(TokenType.Double, new ASTType(new PrimitiveType(TokenType.Double)));
+        ASTTokTypeValues.put(TokenType.Void, new ASTType(new PrimitiveType(TokenType.Void)));
+        ASTTokTypeValues.put(TokenType.FnType, new ASTType(new PrimitiveType(TokenType.FnType)));
     }
     private AST parseVar(){
+        long varLine = iterator.previous().lineNum;
+        iterator.inc();
         Token identifier = iterator.current();
         if(identifier.tok != TokenType.Identifier){
             throw new Error("Expected an Identifier after var at line " + iterator.current().lineNum);
         }
         if(iterator.next().tok == TokenType.Assign){
             iterator.inc();
-            return new AST(Var, new AST(Identifier, new ASTStr(identifier.val)), parseExpr());
+            return new AST(Var, varLine, new AST(Identifier, new ASTStr(identifier.val), identifier.lineNum), parseExpr());
         }
 
-        return new AST(Var, new AST(Identifier, new ASTStr(identifier.val)));
+        return new AST(Var, varLine, new AST(Identifier, new ASTStr(identifier.val), identifier.lineNum));
+    }
+
+    private AST parseNum(){
+        Token current = iterator.previous();
+        iterator.inc();
+
+        String numStr = current.val;
+        String prefix = numStr.length() > 1? numStr.substring(0, 2) : "";
+        String suffix = numStr.length() > 0? numStr.substring(numStr.length() - 1) : "";
+
+        boolean isHex = prefix.equals("0x");
+        boolean typeSpecified = "lLsSbBdDfF".contains(suffix);
+        numStr = isHex? numStr.substring(2) : numStr;
+        numStr = typeSpecified? numStr.substring(0, numStr.length() - 1) : numStr;
+
+        if(!typeSpecified){
+            try{ return new AST(Int, new ASTInt(Integer.parseInt(numStr, isHex? 16 : 10)), current.lineNum); }
+            catch (NumberFormatException a) {
+                try{ return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr, isHex? 16 : 10)), current.lineNum); }
+                catch (NumberFormatException b) {
+                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    try{ return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)), current.lineNum); }
+                    catch (NumberFormatException c) {
+                        try{ return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)), current.lineNum); }
+                        catch (NumberFormatException d) {
+                            throw new Error(numStr + " is not a valid number");
+                        }
+                    }
+                }
+            }
+        }
+
+        try {
+            switch (suffix) {
+                case "l", "L" -> {
+                    return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr, isHex? 16 : 10)), current.lineNum);
+                }
+
+                case "s", "S" -> {
+                    return new AST(Short, new ASTShort(java.lang.Short.parseShort(numStr, isHex? 16 : 10)), current.lineNum);
+                }
+
+                case "b", "B" -> {
+                    short val = java.lang.Short.parseShort(numStr, isHex? 16 : 10);
+                    if(val > 255) throw new NumberFormatException();
+                    return new AST(Byte, new ASTByte((byte)val), current.lineNum);
+                }
+
+                case "d", "D" -> {
+                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)), current.lineNum);
+                }
+
+                case "f", "F" -> {
+                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)), current.lineNum);
+                }
+
+            }
+        } catch (NumberFormatException ignored){}
+
+        throw new Error(numStr + " is not a valid number");
     }
 
     private AST parseAtom(){
@@ -447,34 +506,21 @@ public class DefaultParser implements Parser{
             }
 
             case StringL -> {
-                return new AST(Str, new ASTStr(cur.val));
+                return new AST(Str, new ASTStr(cur.val), cur.lineNum);
             }
 
             case NumberL -> {
-                String numStr = cur.val;
-                char numLiteralEnding = numStr.charAt(numStr.length() - 1);
-                switch (numLiteralEnding){
-                    case 'b' -> {return new AST(Byte, new ASTByte(java.lang.Byte.parseByte(numStr)));}
-                    case 'l' -> {return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr.substring(0, numStr.length() - 1))));}
-                    case 'd' -> {return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)));}
-                    case 'f' -> {return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)));}
-                    default -> {
-                        try{return new AST(Int, new ASTInt(Integer.parseInt(numStr)));}
-                        catch (NumberFormatException e) {
-                            return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)));
-                        }
-                    }
-                }
+                return parseNum();
             }
 
             case Identifier -> {
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen){
                     String type = cur.val;
                     AST varAST = parseVar();
-                    varAST.val = new ASTType(new Type(type));
+                    varAST.val = new ASTType(new CustomType(type));
                     return varAST;
                 }
-                return new AST(Identifier, new ASTStr(cur.val));
+                return new AST(Identifier, new ASTStr(cur.val), cur.lineNum);
             }
 
             case Var -> {
@@ -482,7 +528,7 @@ public class DefaultParser implements Parser{
             }
 
             //Primitives
-            case Boolean, Byte, Int, Long, Float, Double -> {
+            case Boolean, Byte, Short, Int, Long, Float, Double -> {
                 TokenType type = cur.tok;
 
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
@@ -491,11 +537,11 @@ public class DefaultParser implements Parser{
                     return varAST;
                 }
 
-                return new AST(Type, ASTTokTypeValues.get(type));
+                return new AST(Type, ASTTokTypeValues.get(type), cur.lineNum);
             }
 
             case Void -> {
-                return new AST(Type, ASTTokTypeValues.get(TokenType.Void));
+                return new AST(Type, ASTTokTypeValues.get(TokenType.Void), cur.lineNum);
             }
 
             case FnType -> {
@@ -507,7 +553,7 @@ public class DefaultParser implements Parser{
                     return varAST;
                 }
 
-                return new AST(Type, new ASTType(fnType));
+                return new AST(Type, new ASTType(fnType), cur.lineNum);
             }
 
             case If -> {
@@ -527,11 +573,11 @@ public class DefaultParser implements Parser{
             }
 
             case True -> {
-                return new AST(Bool, new ASTBool(true));
+                return new AST(Bool, new ASTBool(true), cur.lineNum);
             }
 
             case False -> {
-                return new AST(Bool, new ASTBool(false));
+                return new AST(Bool, new ASTBool(false), cur.lineNum);
             }
 
             case Fn -> {
@@ -539,15 +585,15 @@ public class DefaultParser implements Parser{
             }
 
             case Class -> {
-                return parseClass();
+                //return parseClass();
             }
 
             case Public, Private, Protected, Static -> {
-                return new AST(Modifier, new ASTTok(cur.tok), parseExpr());
+                return new AST(Modifier, new ASTTok(cur.tok), cur.lineNum, parseExpr());
             }
 
             case Return -> {
-                return new AST(Return, parseExpr());
+                return new AST(Return, cur.lineNum, parseExpr());
             }
 
         }
@@ -593,7 +639,7 @@ public class DefaultParser implements Parser{
                     }
 
                     if (type.type == Identifier) {
-                        return new Type(type.val.getStr());
+                        return new CustomType(type.val.getStr());
                     }
 
                     if(type.val == null){
@@ -614,10 +660,6 @@ public class DefaultParser implements Parser{
 
     private boolean isUnaryOp(Token tok){
         return unaryOps.contains(tok.tok);
-    }
-
-    private boolean isVarDecl(AST ast){
-        return ast.type == Var || (ast.children != null && ast.children.length == 2 && ast.children[0].type == Var);
     }
 
 }

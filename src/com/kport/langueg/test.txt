@@ -1,1 +1,1 @@
-float x = 9.5f + 1.5f;
+Fn[(String) -> (float, int)] x;

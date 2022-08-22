@@ -7,9 +7,7 @@ import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.op.BinOpTypeMap;
 import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
 import com.kport.langueg.typeCheck.op.DefaultBinOpTypeMappings;
-import com.kport.langueg.typeCheck.types.OverloadedFnType;
-import com.kport.langueg.typeCheck.types.TupleType;
-import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.typeCheck.types.*;
 
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
@@ -99,7 +97,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
                     if(expr.val != null && expr.val.isType()){
                         expectedType = expr.val.getType();
-                        if(!Objects.equals(varType, expectedType) && !varType.anyOverloadedFnMatches(expectedType)){
+                        if(!Objects.equals(varType, expectedType)){
                             throw new Error("Cannot assign value of type " + varType + " to variable of type " + expectedType);
                         }
                     }
@@ -208,7 +206,7 @@ public class DefaultTypeChecker implements TypeChecker{
     private Type[] getAllFnTypes(String name, int depth, int count){
         FnIdentifier idNoArgs = new FnIdentifier(Map.entry(depth, count), name, new Type[0]);
         Type[] inScope = fnTypes.keySet().stream().filter(idNoArgs::equalsIgnoreArgs)
-                .map((id) -> new Type(fnTypes.get(id), id.args())).toArray(Type[]::new);
+                .map((id) -> new FnType(fnTypes.get(id), id.args())).toArray(Type[]::new);
 
         BlockTree scope = blockTree.getNode(depth, count);
         if(scope.parent == null){
@@ -260,31 +258,31 @@ public class DefaultTypeChecker implements TypeChecker{
 
     private Type getExprType(AST expr, int depth, int count){
         switch(expr.type){
-            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return  new Type(TokenType.Void);}
+            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return  new PrimitiveType(TokenType.Void);}
             case Str -> {
-                return new Type("String");
+                return new CustomType("String");
             }
             case Double -> {
-                return new Type(TokenType.Double);
+                return new PrimitiveType(TokenType.Double);
             }
             case Float -> {
-                return new Type(TokenType.Float);
+                return new PrimitiveType(TokenType.Float);
             }
             case Int -> {
-                return new Type(TokenType.Int);
+                return new PrimitiveType(TokenType.Int);
             }
             case Byte -> {
-                return new Type(TokenType.Byte);
+                return new PrimitiveType(TokenType.Byte);
             }
             case Long -> {
-                return new Type(TokenType.Long);
+                return new PrimitiveType(TokenType.Long);
             }
             case Bool -> {
-                return new Type(TokenType.Boolean);
+                return new PrimitiveType(TokenType.Boolean);
             }
             case If -> {
                 if(expr.children.length < 3){
-                    return new Type(TokenType.Void);
+                    return new PrimitiveType(TokenType.Void);
                 }
 
                 Type ifType = getExprType(expr.children[1], depth, count);
@@ -328,7 +326,7 @@ public class DefaultTypeChecker implements TypeChecker{
                         fnParamTypes.put(new VarIdentifier(Map.entry(depth, count), arg.children[0].val.getStr()), arg.val.getType());
                     }
 
-                    return new Type(expr.val.getType(), argTypes);
+                    return new FnType(expr.val.getType(), argTypes);
                 }
             }
 
@@ -343,7 +341,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
             case Var -> {
                 if(expr.children.length < 2){
-                    return new Type(TokenType.Void);
+                    return new PrimitiveType(TokenType.Void);
                 }
                 return getExprType(expr.children[1], depth, count);
             }
@@ -391,28 +389,15 @@ public class DefaultTypeChecker implements TypeChecker{
                     if(fns.length == 1){
                         return fns[0];
                     }
-                    return new OverloadedFnType(fns);
+                    //TODO: Array of all matching functions
                 }
                 throw new Error("Variable " + name + " doesn't exist");
             }
         }
-        return new Type(TokenType.Void);
+        return new PrimitiveType(TokenType.Void);
     }
 
     private Type getCalledVarReturn(Type varType, String varName, Type... args){
-        if(varType.isOverloaded()){
-            Type[] correctFnFromArgs = Arrays.stream(varType.getOverloadedFns()).filter((fn) -> Arrays.equals(fn.getFnArgs(), args)).toArray(Type[]::new);
-
-            if(correctFnFromArgs.length > 1){
-                throw new Error("oh no");
-            }
-
-            if(correctFnFromArgs.length < 1){
-                throw new Error("Overloaded function " + varName + " doesn't contain function with args " + Arrays.toString(args));
-            }
-
-            return correctFnFromArgs[0].getFnReturn();
-        }
         if(varType.isFn()) {
             return getReturnTypeAndVerifyArgs(varType, args);
         }

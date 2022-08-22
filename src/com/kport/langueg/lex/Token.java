@@ -4,7 +4,7 @@ public class Token {
     public TokenType tok;
     public String val;
 
-    public int lineNum;
+    public long lineNum;
 
     public Token(TokenType tok_){
         tok = tok_;

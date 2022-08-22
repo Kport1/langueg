@@ -7,9 +7,10 @@
 Code blocks are written using curly braces (`{ }`). This also applies to code blocks in loops and functions.
 
 ###Primitive types
-- byte
-- int
-- long
+- unsigned byte
+- signed short
+- signed int
+- signed long
 - float
 - double
 

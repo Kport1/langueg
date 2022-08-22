@@ -15,6 +15,10 @@ public abstract class ASTValue {
         return false;
     }
 
+    public boolean isShort(){
+        return false;
+    }
+
     public boolean isInt() {
         return false;
     }
@@ -49,6 +53,10 @@ public abstract class ASTValue {
 
     public byte getByte() {
         return Byte.MIN_VALUE;
+    }
+
+    public short getShort(){
+        return Short.MIN_VALUE;
     }
 
     public int getInt() {

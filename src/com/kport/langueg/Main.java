@@ -1,5 +1,6 @@
 package com.kport.langueg;
 
+import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmCodeGenerator;
 import com.kport.langueg.codeGen.mcDataCodeGen.MCDataCodeGenerator;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.parse.DefaultParser;
@@ -36,7 +37,7 @@ public class Main {
                         (o) ->  {
                                     System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
                                 })
-                .addComponent(new MCDataCodeGenerator(),
+                .addComponent(new LanguegVmCodeGenerator("./test.lala"),
                         (o) -> {},
                         (o) -> {});
 

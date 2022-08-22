@@ -105,6 +105,7 @@ public enum TokenType {
         //Primitive
         Boolean,
         Byte,
+        Short,
         Int,
         Long,
         Float,

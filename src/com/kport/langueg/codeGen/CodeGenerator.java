@@ -1,4 +1,4 @@
-package com.kport.langueg.codeGen.mcDataCodeGen;
+package com.kport.langueg.codeGen;
 
 import com.kport.langueg.pipeline.LanguegComponent;
 import com.kport.langueg.pipeline.LanguegPipeline;
