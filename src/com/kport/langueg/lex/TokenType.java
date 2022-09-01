@@ -1,5 +1,7 @@
 package com.kport.langueg.lex;
 
+import java.util.EnumMap;
+
 public enum TokenType {
 
     Assign,
@@ -117,5 +119,103 @@ public enum TokenType {
     //---------------
 
 
-    Undefined
+    Undefined;
+
+
+    private static final EnumMap<TokenType, String> expandedNames = new EnumMap<>(TokenType.class);
+    static {
+        expandedNames.put(Assign, "assign");
+        expandedNames.put(Var, "var");
+        expandedNames.put(Plus, "plus");
+        expandedNames.put(Minus, "minus");
+        expandedNames.put(Mul, "multiply");
+        expandedNames.put(Div, "divide");
+        expandedNames.put(Mod, "modulo");
+        expandedNames.put(Pow, "power");
+        expandedNames.put(ShiftR, "right shift");
+        expandedNames.put(ShiftL, "left shift");
+
+        expandedNames.put(PlusAssign, "plus assign");
+        expandedNames.put(MinusAssign, "minus assign");
+        expandedNames.put(MulAssign, "multiply assign");
+        expandedNames.put(DivAssign, "divide assign");
+        expandedNames.put(ModAssign, "modulo assign");
+        expandedNames.put(PowAssign, "power assign");
+        expandedNames.put(ShiftRAssign, "right shift assign");
+        expandedNames.put(ShiftLAssign, "left shift assign");
+        expandedNames.put(AndAssign, "and assign");
+        expandedNames.put(OrAssign, "or assign");
+        expandedNames.put(XOrAssign, "xor assign");
+
+        expandedNames.put(Greater, "greater than");
+        expandedNames.put(Less, "less than");
+        expandedNames.put(GreaterEq, "greater than or equals");
+        expandedNames.put(LessEq, "less than or equals");
+        expandedNames.put(Eq, "equals");
+        expandedNames.put(NotEq, "not equals");
+        expandedNames.put(And, "and");
+        expandedNames.put(AndAnd, "double and");
+        expandedNames.put(Or, "or");
+        expandedNames.put(OrOr, "double or");
+        expandedNames.put(XOr, "xor");
+
+        expandedNames.put(Inc, "increment");
+        expandedNames.put(Dec, "decrement");
+
+        expandedNames.put(Not, "not");
+
+        expandedNames.put(If, "if");
+        expandedNames.put(Else, "else");
+        expandedNames.put(Return, "return");
+        expandedNames.put(Break, "break");
+        expandedNames.put(Continue, "continue");
+        expandedNames.put(Switch, "switch");
+        expandedNames.put(While, "while");
+        expandedNames.put(For, "for");
+
+        expandedNames.put(Fn, "function");
+        expandedNames.put(SingleArrow, "single arrow");
+
+        expandedNames.put(Class, "class");
+        expandedNames.put(New, "new");
+        expandedNames.put(Dot, "dot");
+
+        expandedNames.put(Public, "public");
+        expandedNames.put(Private, "private");
+        expandedNames.put(Protected, "protected");
+        expandedNames.put(Static, "static");
+
+        expandedNames.put(LParen, "left parenthesis");
+        expandedNames.put(RParen, "right parenthesis");
+        expandedNames.put(LBrack, "left bracket");
+        expandedNames.put(RBrack, "right bracket");
+        expandedNames.put(LCurl, "left curly brace");
+        expandedNames.put(RCurl, "right curly brace");
+        expandedNames.put(Semicolon, "semicolon");
+        expandedNames.put(Comma, "comma");
+
+        expandedNames.put(StringL, "string");
+        expandedNames.put(NumberL, "number");
+        expandedNames.put(Identifier, "identifier");
+        expandedNames.put(True, "true");
+        expandedNames.put(False, "false");
+
+        expandedNames.put(Boolean, "boolean");
+        expandedNames.put(Byte, "byte");
+        expandedNames.put(Short, "short");
+        expandedNames.put(Int, "int");
+        expandedNames.put(Long, "long");
+        expandedNames.put(Float, "float");
+        expandedNames.put(Double, "double");
+
+        expandedNames.put(FnType, "function type");
+        expandedNames.put(Void, "void");
+        expandedNames.put(Null, "null");
+
+        expandedNames.put(Undefined, "undefined");
+    }
+
+    public String expandedName(){
+        return expandedNames.get(this);
+    }
 }

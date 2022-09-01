@@ -1,5 +1,8 @@
 package com.kport.langueg.pipeline;
 
+import com.kport.langueg.error.DefaultErrorHandler;
+import com.kport.langueg.error.ErrorHandler;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,13 +13,15 @@ public class LanguegPipelineBuilder<I, O> {
     private final ArrayList<Consumer<Object>> beforeProcess_ = new ArrayList<>();
     private final ArrayList<Consumer<Object>> afterProcess_ = new ArrayList<>();
 
-    private LanguegPipeline<I, O> pipeline = new LanguegPipeline<>() {
+    private final LanguegPipeline<I, O> pipeline = new LanguegPipeline<>() {
         private final ArrayList<LanguegComponent> components = new ArrayList<>();
 
         private final ArrayList<Consumer<Object>> beforeProcess = beforeProcess_;
         private final ArrayList<Consumer<Object>> afterProcess = afterProcess_;
 
         private final HashMap<String, Object> additionalData = new HashMap<>();
+
+        private final ErrorHandler errorHandler = new DefaultErrorHandler();
 
         @Override
         public void addStep(LanguegComponent component) {
@@ -45,6 +50,11 @@ public class LanguegPipelineBuilder<I, O> {
         @Override
         public void putAdditionalData(String key, Object val){
             additionalData.put(key, val);
+        }
+
+        @Override
+        public ErrorHandler getErrorHandler(){
+            return errorHandler;
         }
     };
 

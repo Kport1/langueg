@@ -68,8 +68,11 @@ public class AST {
 
         for (AST child : children) {
             str.append(child.toStringPretty(indent + 1));
-            str.append(", ");
+            str.append(",\n");
+            str.append("   ".repeat(indent));
         }
-        return str.substring(0, str.length() - 2) + "\n}";
+        str.delete(str.length() - 3 * indent - 2, str.length());
+        str.append("\n");
+        return str + "   ".repeat(indent - 1) + "}";
     }
 }

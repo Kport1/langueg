@@ -1,5 +1,8 @@
 package com.kport.langueg.parse;
 
+import com.kport.langueg.error.ErrorHandler;
+import com.kport.langueg.error.ErrorIntercept;
+import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
@@ -57,10 +60,14 @@ public class DefaultParser implements Parser{
         unaryOps.add(TokenType.Dec);
     }
 
+    private ErrorHandler errorHandler;
+
     @Override
     public AST process(Object tokens_, LanguegPipeline<?, ?> pipeline) {
         ArrayList<Token> tokens = (ArrayList<Token>) tokens_;
         iterator = new Iterator<>(tokens);
+
+        errorHandler = pipeline.getErrorHandler();
 
         AST prog = parseBlock(true);
         prog.type = Prog;
@@ -133,13 +140,14 @@ public class DefaultParser implements Parser{
 
     private AST parseIf(){
         long conditionLine = iterator.current().lineNum;
+
         AST condition = parseTuple();
 
         if(condition.type == Tuple){
             if(condition.children == null || condition.children.length < 1){
-                throw new Error("Condition of if statement cannot be empty. Line: " + conditionLine);
+                errorHandler.error(Errors.PARSE_IF_CONDITION_EMPTY, conditionLine);
             }
-            throw new Error("Condition of if statement cannot be a tuple. Line: " + conditionLine);
+            errorHandler.error(Errors.PARSE_IF_CONDITION_TUPLE, conditionLine);
         }
 
         AST block = parseExpr();
@@ -168,7 +176,10 @@ public class DefaultParser implements Parser{
         long conditionLine = iterator.current().lineNum;
 
         if(condition.type == Tuple){
-            throw new Error("Condition of if statement cannot be a tuple. Line: " + conditionLine);
+            if(condition.children == null || condition.children.length < 1){
+                errorHandler.error(Errors.PARSE_WHILE_CONDITION_EMPTY, conditionLine);
+            }
+            errorHandler.error(Errors.PARSE_WHILE_CONDITION_TUPLE, conditionLine);
         }
 
         AST block = parseExpr();
@@ -185,7 +196,10 @@ public class DefaultParser implements Parser{
         AST[] initCondInc = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Semicolon);
 
         if(initCondInc.length != 3){
-            throw new Error("For cannot contain more or less than 3 expressions. Line: " + initCondIncLine);
+            if(initCondInc.length == 0)
+                errorHandler.error(Errors.PARSE_FOR_HEAD_EMPTY, initCondIncLine);
+
+            errorHandler.error(Errors.PARSE_FOR_HEAD_MALFORMED, initCondIncLine);
         }
 
         AST block = parseExpr();
@@ -219,9 +233,17 @@ public class DefaultParser implements Parser{
 
         //verify, that args follow: type argName
         for (AST arg : args) {
-            if (arg.type != Var || arg.val == null) {
-                throw new Error("Invalid function arguments at line " + iterator.current().lineNum);
+            if(name != null) {
+                if (arg.type != Var)
+                    errorHandler.error(Errors.PARSE_FN_PARAMETER_MALFORMED, arg.line, name);
+                if (arg.val == null)
+                    errorHandler.error(Errors.PARSE_FN_PARAMETER_VAR, arg.line, name, arg.children[0].val);
             }
+            if (arg.type != Var)
+                errorHandler.error(Errors.PARSE_ANON_FN_PARAMETER_MALFORMED, arg.line);
+            if (arg.val == null)
+                errorHandler.error(Errors.PARSE_ANON_FN_PARAMETER_VAR, arg.line, arg.children[0].val);
+
             arg.type = FnArg;
         }
 
@@ -257,7 +279,7 @@ public class DefaultParser implements Parser{
 
     private Type parseFnType(){
         if(iterator.current().tok != TokenType.LBrack)
-            throw new Error("Expected LBrack at line " + iterator.current().lineNum);
+            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_LBRACK, iterator.current().lineNum);
 
 
         AST[] params;
@@ -271,83 +293,17 @@ public class DefaultParser implements Parser{
         Type[] paramTypes = typify(params);
 
         if(iterator.current().tok != TokenType.SingleArrow)
-            throw new Error("Expected SingleArrow");
+            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_ARROW, iterator.current().lineNum);
         iterator.inc();
 
         Type returnType = typify(parseAtom())[0];
 
         if(iterator.current().tok != TokenType.RBrack)
-            throw new Error("Expected RBrack at line " + iterator.current().lineNum);
+            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_RBRACK, iterator.current().lineNum);
         iterator.inc();
 
 
         return new FnType(returnType, paramTypes);
-
-
-        /*do {
-            AST[] fnArgASTs;
-            if (iterator.peek().tok == TokenType.LParen) {
-                iterator.inc();
-                fnArgASTs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-                if (fnArgASTs.length > 0) {
-                    for (AST argType : fnArgASTs) {
-                        if (argType.type != Type) {
-                            if (argType.type == Identifier) {
-                                argType.type = Type;
-                            } else {
-                                throw new Error("Invalid argument type " + argType + " for function type on line " + iterator.current().lineNum);
-                            }
-                        }
-                    }
-                }
-            } else {
-                iterator.inc();
-                fnArgASTs = new AST[]{parseAtom()};
-                if (fnArgASTs[0].type != Type) {
-                    if (fnArgASTs[0].type == Identifier) {
-                        fnArgASTs[0].type = Type;
-                    } else {
-                        throw new Error("Invalid argument type " + fnArgASTs[0] + " for function type on line " + iterator.current().lineNum);
-                    }
-                }
-            }
-
-            if (iterator.current().tok != TokenType.SingleArrow) {
-                throw new Error("Expected -> at line" + iterator.current().lineNum);
-            }
-            iterator.inc();
-
-            AST returnAST = parseAtom();
-            if (returnAST.type != Type) {
-                if (returnAST.type == Identifier) {
-                    returnAST.type = Type;
-                } else {
-                    throw new Error("Expected function return type after -> at line " + iterator.current().lineNum);
-                }
-            }
-
-            Type returnType = typify(returnAST)[0];
-
-            if(fnArgASTs.length > 0){
-                Type[] fnArgTypes = typify(fnArgASTs);
-                overloadedFns.add(new Type(returnType, fnArgTypes));
-            }
-            else {
-                overloadedFns.add(returnType);
-            }
-
-        } while(iterator.current().tok == TokenType.Comma);
-
-        if(iterator.current().tok != TokenType.RBrack){
-            throw new Error("Expected RBrack at line " + iterator.current().lineNum);
-        }
-        iterator.inc();
-
-        if(overloadedFns.size() == 1){
-            return overloadedFns.get(0);
-        }
-
-        return new OverloadedFnType(overloadedFns.toArray(new Type[0]));*/
     }
 
     private boolean exprIsBlock = false;
@@ -370,9 +326,9 @@ public class DefaultParser implements Parser{
 
             exprs.add(parseExpr());
 
-            if (!exprIsBlock && iterator.current().tok != TokenType.Semicolon) {
-                throw new Error("Expected semicolon at line " + iterator.current().lineNum + ". Got: " + iterator.current());
-            }
+            if (!exprIsBlock && iterator.current().tok != TokenType.Semicolon)
+                errorHandler.error(Errors.PARSE_BLOCK_EXPECTED_SEMICOLON, iterator.current().lineNum, iterator.current());
+
             iterator.inc();
             if(iterator.current().tok == TokenType.RCurl && !iterator.isEOF() && !isProg){
                 exprIsBlock = true;
@@ -381,16 +337,19 @@ public class DefaultParser implements Parser{
 
         } while(!iterator.isEOF());
 
-        if(isProg){
+        if(isProg)
             return new AST(Block, blockLine, exprs.toArray(new AST[0]));
-        }
-        throw new Error("Reached EOF before block was closed");
+
+
+        errorHandler.error(Errors.PARSE_BLOCK_NOT_CLOSED, blockLine);
+        return null;
     }
 
     private static final HashMap<TokenType, ASTValue> ASTTokTypeValues = new HashMap<>();
     static{
         ASTTokTypeValues.put(TokenType.Boolean, new ASTType(new PrimitiveType(TokenType.Boolean)));
         ASTTokTypeValues.put(TokenType.Byte, new ASTType(new PrimitiveType(TokenType.Byte)));
+        ASTTokTypeValues.put(TokenType.Short, new ASTType(new PrimitiveType(TokenType.Short)));
         ASTTokTypeValues.put(TokenType.Int, new ASTType(new PrimitiveType(TokenType.Int)));
         ASTTokTypeValues.put(TokenType.Long, new ASTType(new PrimitiveType(TokenType.Long)));
         ASTTokTypeValues.put(TokenType.Float, new ASTType(new PrimitiveType(TokenType.Float)));
@@ -402,9 +361,9 @@ public class DefaultParser implements Parser{
         long varLine = iterator.previous().lineNum;
         iterator.inc();
         Token identifier = iterator.current();
-        if(identifier.tok != TokenType.Identifier){
-            throw new Error("Expected an Identifier after var at line " + iterator.current().lineNum);
-        }
+        if(identifier.tok != TokenType.Identifier)
+            errorHandler.error(Errors.PARSE_VAR_EXPECTED_IDENTIFIER, identifier.lineNum);
+
         if(iterator.next().tok == TokenType.Assign){
             iterator.inc();
             return new AST(Var, varLine, new AST(Identifier, new ASTStr(identifier.val), identifier.lineNum), parseExpr());
@@ -431,12 +390,12 @@ public class DefaultParser implements Parser{
             catch (NumberFormatException a) {
                 try{ return new AST(Long, new ASTLong(java.lang.Long.parseLong(numStr, isHex? 16 : 10)), current.lineNum); }
                 catch (NumberFormatException b) {
-                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
                     try{ return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)), current.lineNum); }
                     catch (NumberFormatException c) {
                         try{ return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)), current.lineNum); }
                         catch (NumberFormatException d) {
-                            throw new Error(numStr + " is not a valid number");
+                            errorHandler.error(Errors.PARSE_NUM_INVALID, current.lineNum, numStr);
                         }
                     }
                 }
@@ -460,26 +419,27 @@ public class DefaultParser implements Parser{
                 }
 
                 case "d", "D" -> {
-                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
                     return new AST(Double, new ASTDouble(java.lang.Double.parseDouble(numStr)), current.lineNum);
                 }
 
                 case "f", "F" -> {
-                    if(isHex) throw new Error(numStr + " cannot be parsed as hexadecimal value");
+                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
                     return new AST(Float, new ASTFloat(java.lang.Float.parseFloat(numStr)), current.lineNum);
                 }
 
             }
         } catch (NumberFormatException ignored){}
 
-        throw new Error(numStr + " is not a valid number");
+        errorHandler.error(Errors.PARSE_NUM_INVALID, current.lineNum, numStr);
+        return null;
     }
 
     private AST parseAtom(){
 
-        if(iterator.isEOF()){
-            throw new Error("Reached EOF while parsing atom " + iterator.current().tok.name());
-        }
+        if(iterator.isEOF())
+            errorHandler.error(Errors.PARSE_ATOM_REACHED_EOF);
+
 
         Token cur = iterator.current();
         iterator.inc();
@@ -491,13 +451,9 @@ public class DefaultParser implements Parser{
                 AST tup = parseTuple();
 
                 if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
-                    if(tup.type != Tuple || tup.children.length == 0){
-                        throw new Error("Invalid tuple type for var at line " + iterator.current().lineNum);
-                    }
-
                     AST varAST = parseVar();
 
-                    Type[] tupleTypes = typify(tup.children);
+                    Type[] tupleTypes = tup.type == Tuple? typify(tup.children) : typify(tup);
 
                     varAST.val = new ASTType(new TupleType(tupleTypes));
                     return varAST;
@@ -598,13 +554,14 @@ public class DefaultParser implements Parser{
 
         }
 
-        throw new Error("Unexpected Token " + cur.tok.name() + " at line " + cur.lineNum);
+        errorHandler.error(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.lineNum, cur.tok.expandedName());
+        return null;
     }
 
     private AST[] parseDelim(TokenType start, TokenType end, TokenType separator){
-        if(iterator.current().tok != start) {
-            throw new Error("Expected " + start.name() + " at line " + iterator.current().lineNum + " got " + iterator.current());
-        }
+        if(iterator.current().tok != start)
+            errorHandler.error(Errors.PARSE_DELIM_EXPECTED_START, iterator.current().lineNum, start.expandedName());
+
         ArrayList<AST> exprs = new ArrayList<>();
 
         if(iterator.next().tok == end){
@@ -619,19 +576,18 @@ public class DefaultParser implements Parser{
                 break;
             }
 
-            if(iterator.current().tok != separator){
-                throw new Error("Expected " + separator.name() + " at line " + iterator.current().lineNum);
-            }
+            if(iterator.current().tok != separator)
+                errorHandler.error(Errors.PARSE_DELIM_EXPECTED_SEPARATOR, iterator.current().lineNum, separator.expandedName());
 
             iterator.inc();
         }
-
         iterator.inc();
 
         return exprs.toArray(new AST[0]);
     }
 
     private Type[] typify(AST... asts){
+        if(asts == null) return null;
         return
                 Arrays.stream(asts).map((type) -> {
                     if(type.type == Tuple){
@@ -643,14 +599,15 @@ public class DefaultParser implements Parser{
                     }
 
                     if(type.val == null){
-                        throw new Error("Invalid type: " + type);
+                        errorHandler.error(Errors.PARSE_TYPE_INVALID, type.line, type.type.expandedName());
                     }
 
                     if(type.val.isType()) {
                         return type.val.getType();
                     }
 
-                    throw new Error("Invalid type: " + type);
+                    errorHandler.error(Errors.PARSE_TYPE_INVALID, type.line, type.type.expandedName());
+                    return null;
                 }).toArray(Type[]::new);
     }
 

@@ -35,7 +35,9 @@ public class FnType extends Type{
             builder.append(", ");
         }
 
-        builder.deleteCharAt(builder.length() - 2);
+        if(fnArgs.length > 0) {
+            builder.deleteCharAt(builder.length() - 2);
+        }
         builder.append(") -> ");
         builder.append(fnReturn);
 

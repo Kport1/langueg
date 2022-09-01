@@ -329,10 +329,9 @@ public class DefaultTypeChecker implements TypeChecker{
                     return new FnType(expr.val.getType(), argTypes);
                 }
             }
-
             case Tuple -> {
                 if(expr.children == null || expr.children.length == 0){
-                    throw new Error("Empty tuple");
+                    return new TupleType();
                 }
                 Type[] tupTypes = Arrays.stream(expr.children).map((type) -> getExprType(type, depth, count)).toArray(Type[]::new);
                 return new TupleType(tupTypes);

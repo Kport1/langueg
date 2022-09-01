@@ -1,1 +1,3 @@
-Fn[(String) -> (float, int)] x;
+
+
+fn public a(int c){}

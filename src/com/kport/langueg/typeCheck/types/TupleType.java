@@ -21,6 +21,7 @@ public class TupleType extends Type{
 
     @Override
     public String toString(){
+        if(tupleTypes == null || tupleTypes.length == 0) return "( )";
         StringBuilder builder = new StringBuilder("( ");
 
         for (Type type : tupleTypes) {
@@ -37,7 +38,9 @@ public class TupleType extends Type{
     @Override
     public boolean equals(Object o){
         if(o instanceof TupleType t){
-            return Arrays.equals(t.tupleTypes, tupleTypes);
+            return  Arrays.equals(t.tupleTypes, tupleTypes)
+                    || (t.tupleTypes == null && Arrays.equals(tupleTypes, new Type[0]))
+                    || (tupleTypes == null && Arrays.equals(t.tupleTypes, new Type[0]));
         }
         return false;
     }

@@ -28,6 +28,6 @@ public class Token {
 
     @Override
     public String toString(){
-        return tok.name() + (val == null ? "" : "('" + val + "')");
+        return tok.name() + "( " + (val == null ? "" : val + ", ") + lineNum + " )";
     }
 }

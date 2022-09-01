@@ -1,8 +1,10 @@
 package com.kport.langueg.error;
 
-import com.kport.langueg.parse.ast.AST;
-
 public interface ErrorHandler {
 
-    void error(ErrorType type, int line, Object... additional);
+    void error(Errors error, Object... additional);
+    void warning(Warnings warning, Object... additional);
+
+    void addErrorIntercept(ErrorIntercept intercept);
+    void removeErrorIntercept(ErrorIntercept intercept);
 }
