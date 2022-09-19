@@ -2,46 +2,65 @@ package com.kport.langueg;
 
 import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmCodeGenerator;
 import com.kport.langueg.codeGen.mcDataCodeGen.MCDataCodeGenerator;
+import com.kport.langueg.fileWrite.DefaultFileWriter;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.parse.DefaultParser;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.pipeline.LanguegPipelineBuilder;
 import com.kport.langueg.typeCheck.DefaultTypeChecker;
+import com.kport.langueg.util.ScopeTree;
+import com.sun.jdi.InvalidTypeException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         String code = Files.readString(Path.of("src/com/kport/langueg/test.txt"));
 
         AtomicLong time = new AtomicLong();
-        LanguegPipelineBuilder<String, AST> pipelineBuilder = new LanguegPipelineBuilder<>();
+        LanguegPipelineBuilder<String, Void> pipelineBuilder = new LanguegPipelineBuilder<>();
         pipelineBuilder.addComponent(new DefaultLexer(),
-                        (o) -> time.set(System.nanoTime()),
-                        (o) ->  {
+                        (o, p) -> time.set(System.nanoTime()),
+                        (o, p) ->  {
                                     System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
                                 })
                 .addComponent(new DefaultParser(),
-                        (o) -> time.set(System.nanoTime()),
-                        (o) ->  {
+                        (o, p) -> time.set(System.nanoTime()),
+                        (o, p) ->  {
                                     System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                    //System.out.println("AST: " + o);
                                 })
                 .addComponent(new DefaultTypeChecker(),
-                        (o) -> time.set(System.nanoTime()),
-                        (o) ->  {
+                        (o, p) -> time.set(System.nanoTime()),
+                        (o, p) ->  {
                                     System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                    System.out.println("AST: " + o);
+                                    try {
+                                        System.out.println("Scope Tree: " + p.getAdditionalData("ScopeTree", ScopeTree.class));
+                                    } catch (InvalidTypeException e) {
+                                        e.printStackTrace();
+                                    }
                                 })
-                .addComponent(new LanguegVmCodeGenerator("./test.lala"),
-                        (o) -> {},
-                        (o) -> {});
+                .addComponent(new LanguegVmCodeGenerator(),
+                        (o, p) -> time.set(System.nanoTime()),
+                        (o, p) ->  {
+                                    System.out.println("code gen time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                })
+                .addComponent(new DefaultFileWriter("./test.lala"),
+                        (o, p) -> time.set(System.nanoTime()),
+                        (o, p) ->  {
+                                    System.out.println("file write time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                });
 
-        LanguegPipeline<String, AST> pipeline = pipelineBuilder.get();
-        System.out.println(pipeline.evaluate(code));
+        LanguegPipeline<String, Void> pipeline = pipelineBuilder.get();
+        pipeline.evaluate(code);
+
     }
 }

@@ -109,7 +109,7 @@ public class DefaultParser implements Parser{
     private AST call(AST left){
         Token current = iterator.current();
         if(current.tok == TokenType.LParen){
-            long line = current.lineNum;
+            int line = current.lineNum;
             AST tup = parseTuple();
             if(tup.type == Tuple && tup.children == null) {
                 return call(new AST(Call, line, left));
@@ -127,7 +127,7 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseTuple(){
-        long line = iterator.current().lineNum;
+        int line = iterator.current().lineNum;
         AST[] exprs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
         if(exprs.length == 0) {
             return new AST(Tuple, line);
@@ -139,7 +139,7 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseIf(){
-        long conditionLine = iterator.current().lineNum;
+        int conditionLine = iterator.current().lineNum;
 
         AST condition = parseTuple();
 
@@ -173,7 +173,7 @@ public class DefaultParser implements Parser{
 
     private AST parseWhile(){
         AST condition = parseTuple();
-        long conditionLine = iterator.current().lineNum;
+        int conditionLine = iterator.current().lineNum;
 
         if(condition.type == Tuple){
             if(condition.children == null || condition.children.length < 1){
@@ -192,7 +192,7 @@ public class DefaultParser implements Parser{
     }
 
     private AST parseFor(){
-        long initCondIncLine = iterator.current().lineNum;
+        int initCondIncLine = iterator.current().lineNum;
         AST[] initCondInc = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Semicolon);
 
         if(initCondInc.length != 3){
@@ -217,12 +217,12 @@ public class DefaultParser implements Parser{
 
     private AST parseFn(){
         //Identifier(ASTStr), Type(ASTType)
-        long fnLine = iterator.current().lineNum;
+        int fnLine = iterator.current().lineNum;
         AST returnAST = parseAtom();
         ASTType returnType = new ASTType(typify(returnAST)[0]);
 
         String name = null;
-        long nameLine = -1;
+        int nameLine = -1;
         if(iterator.current().tok == TokenType.Identifier){
             name = iterator.current().val;
             nameLine = iterator.current().lineNum;
@@ -247,7 +247,7 @@ public class DefaultParser implements Parser{
             arg.type = FnArg;
         }
 
-        long blockLine = iterator.current().lineNum;
+        int blockLine = iterator.current().lineNum;
         AST block = parseExpr();
 
         //don't require semicolon after block
@@ -310,7 +310,7 @@ public class DefaultParser implements Parser{
     private AST parseBlock(boolean isProg){
         ArrayList<AST> exprs = new ArrayList<>();
 
-        long blockLine = iterator.current().lineNum;
+        int blockLine = iterator.current().lineNum;
         if(!isProg){
             blockLine = iterator.previous().lineNum;
             iterator.inc();
@@ -349,6 +349,7 @@ public class DefaultParser implements Parser{
     static{
         ASTTokTypeValues.put(TokenType.Boolean, new ASTType(new PrimitiveType(TokenType.Boolean)));
         ASTTokTypeValues.put(TokenType.Byte, new ASTType(new PrimitiveType(TokenType.Byte)));
+        ASTTokTypeValues.put(TokenType.Char, new ASTType(new PrimitiveType(TokenType.Char)));
         ASTTokTypeValues.put(TokenType.Short, new ASTType(new PrimitiveType(TokenType.Short)));
         ASTTokTypeValues.put(TokenType.Int, new ASTType(new PrimitiveType(TokenType.Int)));
         ASTTokTypeValues.put(TokenType.Long, new ASTType(new PrimitiveType(TokenType.Long)));
@@ -358,7 +359,7 @@ public class DefaultParser implements Parser{
         ASTTokTypeValues.put(TokenType.FnType, new ASTType(new PrimitiveType(TokenType.FnType)));
     }
     private AST parseVar(){
-        long varLine = iterator.previous().lineNum;
+        int varLine = iterator.previous().lineNum;
         iterator.inc();
         Token identifier = iterator.current();
         if(identifier.tok != TokenType.Identifier)
@@ -469,6 +470,15 @@ public class DefaultParser implements Parser{
                 return parseNum();
             }
 
+            case LBrack -> {
+                iterator.dec();
+                int line = iterator.current().lineNum;
+                AST[] elements = parseDelim(TokenType.LBrack, TokenType.RBrack, TokenType.Comma);
+                if(elements.length == 1 && isType(elements[0])){
+                    return new AST(Cast, new ASTType(typify(elements[0])[0]), line, parseExpr());
+                }
+            }
+
             case Identifier -> {
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen){
                     String type = cur.val;
@@ -484,7 +494,7 @@ public class DefaultParser implements Parser{
             }
 
             //Primitives
-            case Boolean, Byte, Short, Int, Long, Float, Double -> {
+            case Boolean, Byte, Char, Short, Int, Long, Float, Double -> {
                 TokenType type = cur.tok;
 
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
@@ -593,22 +603,26 @@ public class DefaultParser implements Parser{
                     if(type.type == Tuple){
                         return new TupleType(typify(type.children));
                     }
-
                     if (type.type == Identifier) {
                         return new CustomType(type.val.getStr());
                     }
-
-                    if(type.val == null){
-                        errorHandler.error(Errors.PARSE_TYPE_INVALID, type.line, type.type.expandedName());
-                    }
-
                     if(type.val.isType()) {
                         return type.val.getType();
+                    }
+                    if(type.val == null){
+                        errorHandler.error(Errors.PARSE_TYPE_INVALID, type.line, type.type.expandedName());
                     }
 
                     errorHandler.error(Errors.PARSE_TYPE_INVALID, type.line, type.type.expandedName());
                     return null;
                 }).toArray(Type[]::new);
+    }
+
+    private static boolean isType(AST ast){
+        if(ast == null) return false;
+        if(ast.type == Tuple) return Arrays.stream(ast.children).allMatch(DefaultParser::isType);
+        if(ast.type == Identifier) return true;
+        return ast.val.isType();
     }
 
     private boolean isBinOp(Token tok){

@@ -8,12 +8,14 @@ import com.kport.langueg.typeCheck.op.BinOpTypeMap;
 import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
 import com.kport.langueg.typeCheck.op.DefaultBinOpTypeMappings;
 import com.kport.langueg.typeCheck.types.*;
+import com.kport.langueg.util.ScopeTree;
+import com.kport.langueg.util.FnIdentifier;
+import com.kport.langueg.util.VarIdentifier;
 
 import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
@@ -22,7 +24,7 @@ public class DefaultTypeChecker implements TypeChecker{
     //Interface for supplying mappings for binary operators
     private final BinOpTypeMappingSupplier binOpTypeMappings = DefaultBinOpTypeMappings.PLUS;
 
-    private final BlockTree blockTree = new BlockTree(null, 0, 0);
+    private final ScopeTree scopeTree = new ScopeTree();
 
     public final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
     public final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
@@ -31,17 +33,14 @@ public class DefaultTypeChecker implements TypeChecker{
     @Override
     public AST process(Object ast_, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) ast_;
-        //construct block tree
+        //construct scope tree
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
             if(expr.type == Block){
-                BlockTree containingBlock = blockTree.getNode(depthCount.getKey(), depthCount.getValue());
-                int newBlockDepth = depthCount.getKey() + 1;
-                int newBlockCount = depthCounter.get(newBlockDepth);
-                containingBlock.addChildren(new BlockTree(null, newBlockDepth, newBlockCount));
+                ScopeTree.Node containingBlock = scopeTree.getNode(depthCount[0], depthCount[1]);
+                containingBlock.addChildren(1);
             }
         });
         resetSearchBlocks();
-        System.out.println(blockTree);
 
         //Find fn types
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
@@ -50,11 +49,11 @@ public class DefaultTypeChecker implements TypeChecker{
                 Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
                 String name = expr.children[expr.children.length - 1].val.getStr();
-                FnIdentifier identifier = new FnIdentifier(depthCount, name, argTypes);
+                FnIdentifier identifier = new FnIdentifier(depthCount[0], depthCount[1], name, argTypes);
                 Type returnType = expr.val.getType();
 
                 //Fn already exists
-                if(fnExists(name, depthCount.getKey(), depthCount.getValue(), argTypes)){
+                if(fnExists(name, depthCount[0], depthCount[1], argTypes)){
                     throw new Error("Duplicate function definition " + identifier + " in current scope");
                 }
 
@@ -66,12 +65,11 @@ public class DefaultTypeChecker implements TypeChecker{
                 AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - (isNamedFn(expr)? 2 : 1));
 
                 for (AST arg : args) {
-                    fnParamTypes.put(new VarIdentifier(depthCount, arg.children[0].val.getStr()), arg.val.getType());
+                    fnParamTypes.put(new VarIdentifier(depthCount[0], depthCount[1], arg.children[0].val.getStr()), arg.val.getType());
                 }
             }
         });
         resetSearchBlocks();
-        System.out.println(fnTypes);
 
         //Find var types
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
@@ -79,17 +77,17 @@ public class DefaultTypeChecker implements TypeChecker{
                 String name = expr.children[0].val.getStr();
 
                 //Duplicate var
-                if(varExists(name, depthCount.getKey(), depthCount.getValue())){
+                if(varExists(name, depthCount[0], depthCount[1])){
                     throw new Error("Duplicate var " + name + " in current scope");
                 }
 
                 //Duplicate fn
-                if(anyFnExists(name, depthCount.getKey(), depthCount.getValue())){
+                if(anyFnExists(name, depthCount[0], depthCount[1])){
                     throw new Error("Var and fn cannot have the same name (" + name + ")");
                 }
 
                 if (expr.children.length > 1) {
-                    Type varType = getExprType(expr.children[1], depthCount.getKey(), depthCount.getValue());
+                    Type varType = getExprType(expr.children[1], depthCount[0], depthCount[1]);
                     if(varType.primitive() == TokenType.Void){
                         throw new Error("Cannot assign void to variable " + name);
                     }
@@ -102,14 +100,14 @@ public class DefaultTypeChecker implements TypeChecker{
                         }
                     }
 
-                    varTypes.put(new VarIdentifier(depthCount, name), expectedType == null? varType : expectedType);
+                    varTypes.put(new VarIdentifier(depthCount[0], depthCount[1], name), expectedType == null? varType : expectedType);
                     expr.val = new ASTType(varType);
                 }
                 else if(expr.val == null || !expr.val.isType()){
                     throw new Error("Can't infer type of variable " + name + ", because it is not initialized");
                 }
                 else {
-                    varTypes.put(new VarIdentifier(depthCount, name), expr.val.getType());
+                    varTypes.put(new VarIdentifier(depthCount[0], depthCount[1], name), expr.val.getType());
                 }
             }
         });
@@ -117,16 +115,15 @@ public class DefaultTypeChecker implements TypeChecker{
 
         //type check
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            typeCheck(expr, depthCount.getKey(), depthCount.getValue());
+            typeCheck(expr, depthCount[0], depthCount[1]);
         });
-        System.out.println(varTypes);
 
-        System.out.println("ast:\n" + ast);
+        //System.out.println("ast:\n" + ast);
 
-        pipeline.putAdditionalData("BLOCK_TREE", blockTree);
-        pipeline.putAdditionalData("FUNCTION_TYPES", fnTypes);
-        pipeline.putAdditionalData("VARIABLE_TYPES", varTypes);
-        pipeline.putAdditionalData("FUNCTION_PARAMETER_TYPES", fnParamTypes);
+        pipeline.putAdditionalData("ScopeTree", scopeTree);
+        pipeline.putAdditionalData("FunctionTypes", fnTypes);
+        pipeline.putAdditionalData("VariableTypes", varTypes);
+        pipeline.putAdditionalData("FunctionParameterTypes", fnParamTypes);
 
         return ast;
     }
@@ -136,7 +133,7 @@ public class DefaultTypeChecker implements TypeChecker{
     {
         resetSearchBlocks();
     }
-    private void searchBlocks(AST ast, int blockDepth, boolean insideBlock, BiConsumer<AST, Map.Entry<Integer, Integer>> consumer){
+    private void searchBlocks(AST ast, int blockDepth, boolean insideBlock, BiConsumer<AST, int[]> consumer){
         if(hasChildren(ast)){
 
             if(!depthCounter.containsKey(blockDepth + 1)){
@@ -146,7 +143,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
             for (AST expr : ast.children) {
                 if(insideBlock || expr.type == Block) {
-                    consumer.accept(expr, Map.entry(blockDepth, depthCounter.get(blockDepth)));
+                    consumer.accept(expr, new int[] {blockDepth, depthCounter.get(blockDepth)} );
                 }
 
                 if(expr.type == Block){
@@ -171,14 +168,14 @@ public class DefaultTypeChecker implements TypeChecker{
     }
 
     private boolean anyFnExists(String name, int depth, int count){
-        FnIdentifier idNoArgs = new FnIdentifier(Map.entry(depth, count), name, new Type[0]);
+        FnIdentifier idNoArgs = new FnIdentifier(depth, count, name, new Type[0]);
         boolean inScope = fnTypes.keySet().stream().anyMatch((id) -> id.equalsIgnoreArgs(idNoArgs));
         if(!inScope){
-            BlockTree scope = blockTree.getNode(depth, count);
-            if(scope.parent == null){
+            ScopeTree.Node scope = scopeTree.getNode(depth, count);
+            if(scope.isRoot()){
                 return false;
             }
-            return anyFnExists(name, scope.parent.depth, scope.parent.count);
+            return anyFnExists(name, scope.getParent().depth, scope.getParent().count);
         }
         return true;
     }
@@ -192,52 +189,52 @@ public class DefaultTypeChecker implements TypeChecker{
     }
 
     private Type getFnType(String name, int depth, int count, Type... args){
-        Type inScope = fnTypes.get(new FnIdentifier(Map.entry(depth, count), name, args));
+        Type inScope = fnTypes.get(new FnIdentifier(depth, count, name, args));
         if(inScope == null){
-            BlockTree scope = blockTree.getNode(depth, count);
-            if(scope.parent == null){
+            ScopeTree.Node scope = scopeTree.getNode(depth, count);
+            if(scope.isRoot()){
                 return null;
             }
-            return getFnType(name, scope.parent.depth, scope.parent.count, args);
+            return getFnType(name, scope.getParent().depth, scope.getParent().count, args);
         }
         return inScope;
     }
 
     private Type[] getAllFnTypes(String name, int depth, int count){
-        FnIdentifier idNoArgs = new FnIdentifier(Map.entry(depth, count), name, new Type[0]);
+        FnIdentifier idNoArgs = new FnIdentifier(depth, count, name, new Type[0]);
         Type[] inScope = fnTypes.keySet().stream().filter(idNoArgs::equalsIgnoreArgs)
                 .map((id) -> new FnType(fnTypes.get(id), id.args())).toArray(Type[]::new);
 
-        BlockTree scope = blockTree.getNode(depth, count);
-        if(scope.parent == null){
+        ScopeTree.Node scope = scopeTree.getNode(depth, count);
+        if(scope.isRoot()){
             return inScope;
         }
-        Type[] parentScopes = getAllFnTypes(name, scope.parent.depth, scope.parent.count);
+        Type[] parentScopes = getAllFnTypes(name, scope.getParent().depth, scope.getParent().count);
         Type[] out = Arrays.copyOfRange(inScope, 0, inScope.length + parentScopes.length);
         System.arraycopy(parentScopes, 0, out, inScope.length, parentScopes.length);
         return out;
     }
 
     private Type getVarType(String name, int depth, int count){
-        Type inScope = varTypes.get(new VarIdentifier(Map.entry(depth, count), name));
+        Type inScope = varTypes.get(new VarIdentifier(depth, count, name));
         if(inScope == null){
-            BlockTree scope = blockTree.getNode(depth, count);
-            if(scope.parent == null){
+            ScopeTree.Node scope = scopeTree.getNode(depth, count);
+            if(scope.isRoot()){
                 return null;
             }
-            return getVarType(name, scope.parent.depth, scope.parent.count);
+            return getVarType(name, scope.getParent().depth, scope.getParent().count);
         }
         return inScope;
     }
 
     private Type getFnParamType(String name, int depth, int count){
-        Type inScope = fnParamTypes.get(new VarIdentifier(Map.entry(depth, count), name));
+        Type inScope = fnParamTypes.get(new VarIdentifier(depth, count, name));
         if(inScope == null){
-            BlockTree scope = blockTree.getNode(depth, count);
-            if(scope.parent == null){
+            ScopeTree.Node scope = scopeTree.getNode(depth, count);
+            if(scope.isRoot()){
                 return null;
             }
-            return getFnParamType(name, scope.parent.depth, scope.parent.count);
+            return getFnParamType(name, scope.getParent().depth, scope.getParent().count);
         }
         return inScope;
     }
@@ -262,17 +259,23 @@ public class DefaultTypeChecker implements TypeChecker{
             case Str -> {
                 return new CustomType("String");
             }
-            case Double -> {
-                return new PrimitiveType(TokenType.Double);
-            }
             case Float -> {
                 return new PrimitiveType(TokenType.Float);
             }
-            case Int -> {
-                return new PrimitiveType(TokenType.Int);
+            case Double -> {
+                return new PrimitiveType(TokenType.Double);
             }
             case Byte -> {
                 return new PrimitiveType(TokenType.Byte);
+            }
+            case Char -> {
+                return new PrimitiveType(TokenType.Char);
+            }
+            case Short -> {
+                return new PrimitiveType(TokenType.Short);
+            }
+            case Int -> {
+                return new PrimitiveType(TokenType.Int);
             }
             case Long -> {
                 return new PrimitiveType(TokenType.Long);
@@ -323,7 +326,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
                     //Functions params
                     for (AST arg : args) {
-                        fnParamTypes.put(new VarIdentifier(Map.entry(depth, count), arg.children[0].val.getStr()), arg.val.getType());
+                        fnParamTypes.put(new VarIdentifier(depth, count, arg.children[0].val.getStr()), arg.val.getType());
                     }
 
                     return new FnType(expr.val.getType(), argTypes);
@@ -365,7 +368,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 String name = expr.val.getStr();
                 boolean varExists = varExists(name, depth, count);
                 boolean anyFnExists = anyFnExists(name, depth, count);
-                BlockTree parentScope = blockTree.getNode(depth, count).parent;
+                ScopeTree.Node parentScope = scopeTree.getNode(depth, count).getParent();
                 boolean fnParamExists = parentScope != null && fnParamExists(name, parentScope.depth, parentScope.count);
 
                 if(varExists && anyFnExists){
@@ -373,7 +376,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
 
                 if(fnParamExists){
-                    if(varTypes.get(new VarIdentifier(Map.entry(depth, count), name)) != null){
+                    if(varTypes.get(new VarIdentifier(depth, count, name)) != null){
                         throw new Error("Cannot have var and function parameter with the same name (" + name + ") in the same scope");
                     }
                     return getFnParamType(name, parentScope.depth, parentScope.count);

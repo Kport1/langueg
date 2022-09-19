@@ -18,6 +18,7 @@ public enum ASTTypeE {
     Float,
     Double,
     Byte,
+    Char,
     Short,
     Int,
     Long,

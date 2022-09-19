@@ -33,14 +33,15 @@ public class MCDataCodeGenerator implements CodeGenerator {
 
 
     @Override
-    public Object process(Object ast_, LanguegPipeline<?, ?> pipeline) {
+    public byte[] process(Object ast_, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) ast_;
 
         //gen libs
 
         gen(ast, 0, 0, output);
 
-        return output.toString();
+        //return output.toString();
+        return null;
     }
 
 

@@ -1,51 +1,82 @@
 package com.kport.langueg.codeGen.languegVmCodeGen;
 
 import com.kport.langueg.codeGen.CodeGenerator;
+import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.ScopeTree;
+import com.kport.langueg.util.FnIdentifier;
+import com.kport.langueg.util.VarIdentifier;
+import com.sun.jdi.InvalidTypeException;
 
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class LanguegVmCodeGenerator implements CodeGenerator {
-    private static final byte[] MAGIC = {'l', 'a', 'l', 'a'};
+    private final ByteArrayOutputStream output;
 
-    private BufferedOutputStream output;
-    private final HashMap<Integer, Integer> intConstIndices = new HashMap<>();
-    private final HashMap<Long, Integer> longConstIndices = new HashMap<>();
-    private final HashMap<Float, Integer> floatConstIndices = new HashMap<>();
-    private final HashMap<Double, Integer> doubleConstIndices = new HashMap<>();
+    //Constants
+    private final LinkedHashMap<Integer, Integer> intConstIndices = new LinkedHashMap<>();
+    private final LinkedHashMap<Long, Integer> longConstIndices = new LinkedHashMap<>();
+    private final LinkedHashMap<Float, Integer> floatConstIndices = new LinkedHashMap<>();
+    private final LinkedHashMap<Double, Integer> doubleConstIndices = new LinkedHashMap<>();
 
-    public LanguegVmCodeGenerator(String outputPath){
-        try {
-            output = new BufferedOutputStream(new FileOutputStream(outputPath));
-        } catch (FileNotFoundException e) {
-            throw new Error("Failed to open output stream for file " + outputPath);
-        }
+    //Type check data
+    private ScopeTree scopeTree;
+    private HashMap<FnIdentifier, Type> fnTypes;
+    private HashMap<VarIdentifier, Type> varTypes;
+    private HashMap<VarIdentifier, Type> fnParamTypes;
+
+
+    private final ByteArrayOutputStream progIndexLineInfo = new ByteArrayOutputStream(256);
+    private final ByteArrayOutputStream newLineLineInfo = new ByteArrayOutputStream(256);
+
+
+
+    public LanguegVmCodeGenerator() {
+        output = new ByteArrayOutputStream(1024);
     }
 
 
     @Override
-    public Object process(Object input, LanguegPipeline<?, ?> pipeline) {
+    @SuppressWarnings("unchecked")
+    public byte[] process(Object input, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) input;
+
         extractConstIndices(ast);
         try {
-            gen(ast);
-        } catch (IOException e) {
-            throw new Error("Failed to write to file");
+            scopeTree = pipeline.getAdditionalData("ScopeTree", ScopeTree.class);
+            fnTypes = pipeline.getAdditionalData("FunctionTypes", HashMap.class);
+            varTypes = pipeline.getAdditionalData("VariableTypes", HashMap.class);
+            fnParamTypes = pipeline.getAdditionalData("FunctionParameterTypes", HashMap.class);
+        }
+        catch (InvalidTypeException e){
+            throw new Error(e.getMessage());
         }
 
-        return null;
+
+        try {
+            gen(ast);
+        }
+        catch (IOException e) {
+            throw new Error();
+        }
+
+        pipeline.putAdditionalData("LineInfo", lineInfoAsByteArray());
+        pipeline.putAdditionalData("ConstIndices", constIndicesAsByteArray());
+        return output.toByteArray();
     }
 
     private void gen(AST ast) throws IOException {
         switch (ast.type){
             case Prog -> {
-                output.write(MAGIC);
-                writeHeaderConstants();
+                for (AST child : ast.children) {
+                    gen(child);
+                }
             }
             case Type -> {
             }
@@ -66,6 +97,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case Float -> {
             }
             case Int -> {
+                writeOp(Ops.PUSH_INTC, ast.line, (short)intConstIndices.get(ast.val.getInt()).intValue());
             }
             case Byte -> {
             }
@@ -90,6 +122,13 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case Var -> {
             }
             case BinOp -> {
+                if(ast.val.getTok() == TokenType.Assign){
+
+                }
+
+                gen(ast.children[0]);
+                gen(ast.children[1]);
+                writeOp(Ops.ofBinOp(ast), ast.line);
             }
             case UnaryOpBefore -> {
             }
@@ -102,52 +141,92 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
         }
     }
 
-    private void writeHeaderConstants() throws IOException {
-        output.write(intConstIndices.size());
-        output.write(intConstIndices.size() >> 8);
-        for(int i : intConstIndices.keySet()){
-            output.write(i);
-            output.write(i >>> 8);
-            output.write(i >>> 16);
-            output.write(i >>> 24);
-        }
+    private void writeToStream(short s, OutputStream stream) throws IOException {
+        stream.write(s);
+        stream.write((s >>> 8));
+    }
 
-        output.write(longConstIndices.size());
-        output.write(longConstIndices.size() >> 8);
-        for(long l : longConstIndices.keySet()){
-            output.write((int) l);
-            output.write((int) (l >>> 8));
-            output.write((int) (l >>> 16));
-            output.write((int) (l >>> 24));
-            output.write((int) (l >>> 32));
-            output.write((int) (l >>> 40));
-            output.write((int) (l >>> 48));
-            output.write((int) (l >>> 56));
-        }
+    private void writeToStream(int i, OutputStream stream) throws IOException {
+        stream.write(i);
+        stream.write(i >>> 8);
+        stream.write(i >>> 16);
+        stream.write(i >>> 24);
+    }
 
-        output.write(floatConstIndices.size());
-        output.write(floatConstIndices.size() >> 8);
-        for(float f : floatConstIndices.keySet()){
-            int fb = Float.floatToRawIntBits(f);
-            output.write(fb);
-            output.write(fb >>> 8);
-            output.write(fb >>> 16);
-            output.write(fb >>> 24);
-        }
+    private void writeToStream(long l, OutputStream stream) throws IOException {
+        stream.write((int) l         & 0xFF);
+        stream.write((int)(l >>> 8)  & 0xFF);
+        stream.write((int)(l >>> 16) & 0xFF);
+        stream.write((int)(l >>> 24) & 0xFF);
+        stream.write((int)(l >>> 32) & 0xFF);
+        stream.write((int)(l >>> 40) & 0xFF);
+        stream.write((int)(l >>> 48) & 0xFF);
+        stream.write((int)(l >>> 56) & 0xFF);
+    }
 
-        output.write(doubleConstIndices.size());
-        output.write(doubleConstIndices.size() >> 8);
-        for(double d : doubleConstIndices.keySet()){
-            long db = Double.doubleToRawLongBits(d);
-            output.write((int) db);
-            output.write((int) (db >>> 8));
-            output.write((int) (db >>> 16));
-            output.write((int) (db >>> 24));
-            output.write((int) (db >>> 32));
-            output.write((int) (db >>> 40));
-            output.write((int) (db >>> 48));
-            output.write((int) (db >>> 56));
+
+    private void writeOp(Ops op, int line, byte... operands) throws IOException {
+        addLine(line);
+        output.write(op.code);
+        output.write(operands);
+    }
+
+    private void writeOp(Ops op, int line, short... operands) throws IOException {
+        addLine(line);
+        output.write(op.code);
+        for (short operand : operands) {
+            writeToStream(operand, output);
         }
+    }
+
+    private void writeOp(Ops op, int line, int... operands) throws IOException {
+        addLine(line);
+        output.write(op.code);
+        for (int operand : operands) {
+            writeToStream(operand, output);
+        }
+    }
+
+    private void writeOp(Ops op, int line, long... operands) throws IOException {
+        addLine(line);
+        output.write(op.code);
+        for (long operand : operands) {
+            writeToStream(operand, output);
+        }
+    }
+
+    int prevLine = 0;
+    private void addLine(int line) throws IOException {
+        if(prevLine == line) return;
+        writeToStream((long)output.size(), progIndexLineInfo);
+        writeToStream(line, newLineLineInfo);
+        prevLine = line;
+    }
+
+    private byte[] lineInfoAsByteArray(){
+        ByteBuffer buffer = ByteBuffer.allocate(8 + progIndexLineInfo.size() + newLineLineInfo.size());
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        buffer.putLong(progIndexLineInfo.size() >>> 3);
+        buffer.put(progIndexLineInfo.toByteArray());
+        buffer.put(newLineLineInfo.toByteArray());
+        return buffer.array();
+    }
+
+    private byte[] constIndicesAsByteArray(){
+        ByteBuffer buffer = ByteBuffer.allocate(2 + intIndexCount*4 + 2 + longIndexCount*8 + 2 + floatIndexCount*4 + 2 + doubleIndexCount*8);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        buffer.putShort((short) intIndexCount);
+        intConstIndices.forEach((k, v) -> buffer.putInt(k));
+        buffer.putShort((short) longIndexCount);
+        longConstIndices.forEach((k, v) -> buffer.putLong(k));
+        buffer.putShort((short) floatIndexCount);
+        floatConstIndices.forEach((k, v) -> buffer.putFloat(k));
+        buffer.putShort((short) doubleIndexCount);
+        doubleConstIndices.forEach((k, v) -> buffer.putDouble(k));
+
+        return buffer.array();
     }
 
     private int intIndexCount = 0;

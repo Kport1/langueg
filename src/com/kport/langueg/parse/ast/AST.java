@@ -8,7 +8,7 @@ public class AST {
     public ASTValue val;
     public ASTTypeE type;
 
-    public long line;
+    public int line;
 
     public Type returnType = null;
     public int depth;
@@ -18,24 +18,24 @@ public class AST {
         type = type_;
     }
 
-    public AST(ASTTypeE type_, long line_){
+    public AST(ASTTypeE type_, int line_){
         type = type_;
         line = line_;
     }
 
-    public AST(ASTTypeE type_, long line_, AST... children_){
+    public AST(ASTTypeE type_, int line_, AST... children_){
         children = children_;
         type = type_;
         line = line_;
     }
 
-    public AST(ASTTypeE type_, ASTValue val_, long line_){
+    public AST(ASTTypeE type_, ASTValue val_, int line_){
         val = val_;
         type = type_;
         line = line_;
     }
 
-    public AST(ASTTypeE type_, ASTValue val_, long line_, AST... children_){
+    public AST(ASTTypeE type_, ASTValue val_, int line_, AST... children_){
         children = children_;
         val = val_;
         type = type_;

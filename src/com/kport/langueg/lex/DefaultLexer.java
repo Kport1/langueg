@@ -11,6 +11,7 @@ public class DefaultLexer implements Lexer{
 
     private static final String comment = "//";
     private static final char str = '"';
+    private static final char chr = '\'';
     private static final char strEsc = '\\';
 
     private static final char longLit = 'l';
@@ -102,6 +103,7 @@ public class DefaultLexer implements Lexer{
 
         tokens.put("boolean", TokenType.Boolean);
         tokens.put("byte", TokenType.Byte);
+        tokens.put("char", TokenType.Char);
         tokens.put("short", TokenType.Short);
         tokens.put("int", TokenType.Int);
         tokens.put("long", TokenType.Long);
@@ -114,7 +116,7 @@ public class DefaultLexer implements Lexer{
 
     public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
         String code = (String) code_;
-        if(code.length() < 1){
+        if(code.length() == 0){
             throw new Error("""
                     
                     Bruh write some code you lazy piece of shit. I'm not gonna do your work for you. Like seriously?
@@ -157,9 +159,6 @@ public class DefaultLexer implements Lexer{
                 outTokens.add(new Token(TokenType.StringL, collectStr(iterator)));
                 continue;
             }
-            /*if(c == '\n'){
-                lineCounter++;
-            }*/
             if(isValidToken(word)){
                 resetWas();
                 wasToken = true;

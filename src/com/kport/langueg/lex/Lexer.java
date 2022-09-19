@@ -6,8 +6,6 @@ import com.kport.langueg.pipeline.LanguegPipeline;
 import java.util.ArrayList;
 
 public interface Lexer extends LanguegComponent {
-
     @Override
     ArrayList<Token> process(Object input, LanguegPipeline<?, ?> pipeline);
-
 }

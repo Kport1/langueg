@@ -5,5 +5,5 @@ import com.kport.langueg.pipeline.LanguegPipeline;
 
 public interface CodeGenerator extends LanguegComponent {
     @Override
-    Object process(Object input, LanguegPipeline<?, ?> pipeline);
+    byte[] process(Object input, LanguegPipeline<?, ?> pipeline);
 }

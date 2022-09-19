@@ -2,6 +2,7 @@ package com.kport.langueg.pipeline;
 
 import com.kport.langueg.error.DefaultErrorHandler;
 import com.kport.langueg.error.ErrorHandler;
+import com.sun.jdi.InvalidTypeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,14 +11,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class LanguegPipelineBuilder<I, O> {
-    private final ArrayList<Consumer<Object>> beforeProcess_ = new ArrayList<>();
-    private final ArrayList<Consumer<Object>> afterProcess_ = new ArrayList<>();
+    private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> beforeProcess_ = new ArrayList<>();
+    private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> afterProcess_ = new ArrayList<>();
 
     private final LanguegPipeline<I, O> pipeline = new LanguegPipeline<>() {
         private final ArrayList<LanguegComponent> components = new ArrayList<>();
 
-        private final ArrayList<Consumer<Object>> beforeProcess = beforeProcess_;
-        private final ArrayList<Consumer<Object>> afterProcess = afterProcess_;
+        private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> beforeProcess = beforeProcess_;
+        private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> afterProcess = afterProcess_;
 
         private final HashMap<String, Object> additionalData = new HashMap<>();
 
@@ -33,18 +34,23 @@ public class LanguegPipelineBuilder<I, O> {
 
             Object previousRepresentation = input;
             for (int i = 0; i < components.size(); i++) {
-                beforeProcess.get(i).accept(previousRepresentation);
+                beforeProcess.get(i).accept(previousRepresentation, this);
+
                 previousRepresentation = components.get(i).process(previousRepresentation, this);
-                additionalData.clear();
-                afterProcess.get(i).accept(previousRepresentation);
+
+                afterProcess.get(i).accept(previousRepresentation, this);
             }
 
             return (O) previousRepresentation;
         }
 
         @Override
-        public Object getAdditionalData(String key){
-            return additionalData.get(key);
+        public <T> T getAdditionalData(String key, Class<T> valType) throws InvalidTypeException {
+            Object data = additionalData.get(key);
+            if(!valType.isInstance(data)){
+                throw new InvalidTypeException("Data \"" + key + "\" does not have the type " + valType.getTypeName());
+            }
+            return valType.cast(data);
         }
 
         @Override
@@ -58,7 +64,7 @@ public class LanguegPipelineBuilder<I, O> {
         }
     };
 
-    public LanguegPipelineBuilder<I, O> addComponent(LanguegComponent component, Consumer<Object> before, Consumer<Object> after){
+    public LanguegPipelineBuilder<I, O> addComponent(LanguegComponent component, BiConsumer<Object, LanguegPipeline<I, O>> before, BiConsumer<Object, LanguegPipeline<I, O>> after){
         pipeline.addStep(component);
         beforeProcess_.add(before);
         afterProcess_.add(after);
