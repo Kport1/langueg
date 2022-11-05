@@ -1,7 +1,6 @@
 package com.kport.langueg.parse;
 
 import com.kport.langueg.error.ErrorHandler;
-import com.kport.langueg.error.ErrorIntercept;
 import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
@@ -327,7 +326,7 @@ public class DefaultParser implements Parser{
             exprs.add(parseExpr());
 
             if (!exprIsBlock && iterator.current().tok != TokenType.Semicolon)
-                errorHandler.error(Errors.PARSE_BLOCK_EXPECTED_SEMICOLON, iterator.current().lineNum, iterator.current());
+                errorHandler.error(Errors.PARSE_BLOCK_EXPECTED_SEMICOLON, iterator.previous().lineNum, iterator.current());
 
             iterator.inc();
             if(iterator.current().tok == TokenType.RCurl && !iterator.isEOF() && !isProg){
@@ -345,18 +344,17 @@ public class DefaultParser implements Parser{
         return null;
     }
 
-    private static final HashMap<TokenType, ASTValue> ASTTokTypeValues = new HashMap<>();
+    private static final EnumMap<TokenType, ASTValue> tokenToPrimitiveTypeMap = new EnumMap<>(TokenType.class);
     static{
-        ASTTokTypeValues.put(TokenType.Boolean, new ASTType(new PrimitiveType(TokenType.Boolean)));
-        ASTTokTypeValues.put(TokenType.Byte, new ASTType(new PrimitiveType(TokenType.Byte)));
-        ASTTokTypeValues.put(TokenType.Char, new ASTType(new PrimitiveType(TokenType.Char)));
-        ASTTokTypeValues.put(TokenType.Short, new ASTType(new PrimitiveType(TokenType.Short)));
-        ASTTokTypeValues.put(TokenType.Int, new ASTType(new PrimitiveType(TokenType.Int)));
-        ASTTokTypeValues.put(TokenType.Long, new ASTType(new PrimitiveType(TokenType.Long)));
-        ASTTokTypeValues.put(TokenType.Float, new ASTType(new PrimitiveType(TokenType.Float)));
-        ASTTokTypeValues.put(TokenType.Double, new ASTType(new PrimitiveType(TokenType.Double)));
-        ASTTokTypeValues.put(TokenType.Void, new ASTType(new PrimitiveType(TokenType.Void)));
-        ASTTokTypeValues.put(TokenType.FnType, new ASTType(new PrimitiveType(TokenType.FnType)));
+        tokenToPrimitiveTypeMap.put(TokenType.Boolean, new ASTType(PrimitiveType.Boolean));
+        tokenToPrimitiveTypeMap.put(TokenType.Byte, new ASTType(PrimitiveType.Byte));
+        tokenToPrimitiveTypeMap.put(TokenType.Char, new ASTType(PrimitiveType.Char));
+        tokenToPrimitiveTypeMap.put(TokenType.Short, new ASTType(PrimitiveType.Short));
+        tokenToPrimitiveTypeMap.put(TokenType.Int, new ASTType(PrimitiveType.Int));
+        tokenToPrimitiveTypeMap.put(TokenType.Long, new ASTType(PrimitiveType.Long));
+        tokenToPrimitiveTypeMap.put(TokenType.Float, new ASTType(PrimitiveType.Float));
+        tokenToPrimitiveTypeMap.put(TokenType.Double, new ASTType(PrimitiveType.Double));
+        tokenToPrimitiveTypeMap.put(TokenType.Void, new ASTType(PrimitiveType.Void));
     }
     private AST parseVar(){
         int varLine = iterator.previous().lineNum;
@@ -415,7 +413,7 @@ public class DefaultParser implements Parser{
 
                 case "b", "B" -> {
                     short val = java.lang.Short.parseShort(numStr, isHex? 16 : 10);
-                    if(val > 255) throw new NumberFormatException();
+                    if(val > 255 || val < 0) throw new NumberFormatException();
                     return new AST(Byte, new ASTByte((byte)val), current.lineNum);
                 }
 
@@ -499,15 +497,15 @@ public class DefaultParser implements Parser{
 
                 if(iterator.current().tok == TokenType.Identifier && iterator.peek().tok != TokenType.LParen) {
                     AST varAST = parseVar();
-                    varAST.val = ASTTokTypeValues.get(type);
+                    varAST.val = tokenToPrimitiveTypeMap.get(type);
                     return varAST;
                 }
 
-                return new AST(Type, ASTTokTypeValues.get(type), cur.lineNum);
+                return new AST(Type, tokenToPrimitiveTypeMap.get(type), cur.lineNum);
             }
 
             case Void -> {
-                return new AST(Type, ASTTokTypeValues.get(TokenType.Void), cur.lineNum);
+                return new AST(Type, tokenToPrimitiveTypeMap.get(TokenType.Void), cur.lineNum);
             }
 
             case FnType -> {

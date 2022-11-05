@@ -4,26 +4,19 @@ import com.kport.langueg.pipeline.LanguegPipeline;
 
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 public class DefaultLexer implements Lexer{
 
-    private static final String comment = "//";
+    private static final char[] comment = "//".toCharArray();
+    private static final char[] blockCommentStart = "/*".toCharArray();
+    private static final char[] blockCommentEnd = "*/".toCharArray();
     private static final char str = '"';
     private static final char chr = '\'';
     private static final char strEsc = '\\';
 
-    private static final char longLit = 'l';
-    private static final char dubLit = 'd';
-    private static final char floatLit = 'f';
-
-    private boolean wasIdentifier = false;
-    private boolean wasNumber = false;
-    private boolean wasToken = false;
-
-    private String word = "";
-    private int lineCounter = 1;
+    private static final String numLiteralSuffixes = "lLsSbBdDfF";
+    private static final String numLiteralBases = "bxBX";
 
     private static final HashMap<String, TokenType> tokens = new HashMap<>();
     static {
@@ -113,10 +106,48 @@ public class DefaultLexer implements Lexer{
         tokens.put("void", TokenType.Void);
         tokens.put("null", TokenType.Null);
     }
+    private static final List<LexemeMatcher> lexemes = new ArrayList<>();
+    static {
+        lexemes.add(new LexemeMatcher() {
+            @Override
+            public boolean isLexeme(char[] s) {
+                return tokens.containsKey(new String(s));
+            }
+
+            @Override
+            public Token getToken(char[] s) {
+                return new Token(tokens.get(new String(s)));
+            }
+        });
+
+        lexemes.add(new LexemeMatcher() {
+            @Override
+            public boolean isLexeme(char[] s) {
+                return isNumber(s);
+            }
+
+            @Override
+            public Token getToken(char[] s) {
+                return new Token(TokenType.NumberL, new String(s));
+            }
+        });
+
+        lexemes.add(new LexemeMatcher() {
+            @Override
+            public boolean isLexeme(char[] s) {
+                return isIdentifier(s);
+            }
+
+            @Override
+            public Token getToken(char[] s) {
+                return new Token(TokenType.Identifier, new String(s));
+            }
+        });
+    }
 
     public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
-        String code = (String) code_;
-        if(code.length() == 0){
+        char[] code = ((String) code_).toCharArray();
+        if(code.length == 0){
             throw new Error("""
                     
                     Bruh write some code you lazy piece of shit. I'm not gonna do your work for you. Like seriously?
@@ -126,179 +157,162 @@ public class DefaultLexer implements Lexer{
                     """);
         }
 
-        ArrayList<Token> outTokens = new ArrayList<>();
+        ArrayList<Token> tokens = new ArrayList<>();
 
-        CharacterIterator iterator = new StringCharacterIterator(code);
+        int line = 1, prevLine;
+        int column = 0, prevColumn;
 
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
+        char[] word = new char[0];
+        char[] prevWord;
 
-            if(Character.isWhitespace(c) && word.length() == 0){
-                if(c == '\n'){
-                    lineCounter++;
+        OUTER:
+        for(int i = 0; i < code.length; i++, column++){
+            prevLine = line;
+            prevColumn = column;
+            if(code[i] == '\r') i++;
+            if(code[i] == '\n'){
+                line++;
+                column = -1;
+            }
+            if(Character.isWhitespace(code[i]) && word.length == 0)
+                continue;
+
+            if(Arrays.equals(Arrays.copyOfRange(code, i, i + comment.length), comment) && word.length == 0){
+                while(i + 1 < code.length && code[i + 1] != '\n') i++;
+                continue;
+            }
+
+            if(Arrays.equals(Arrays.copyOfRange(code, i, i + blockCommentStart.length), blockCommentStart) && word.length == 0){
+                for(; i <= code.length - blockCommentEnd.length; i++, column++){
+                    if(Arrays.equals(Arrays.copyOfRange(code, i, i + blockCommentEnd.length), blockCommentEnd)){
+                        i++;
+                        column++;
+                        continue OUTER;
+                    }
+                    if(code[i] == '\r') i++;
+                    if(code[i] == '\n'){
+                        line++;
+                        column = -1;
+                    }
                 }
+                throw new Error("Block comment not closed");
+            }
+
+            if(code[i] == str){
+                String str = collectString(code, i);
+                i += str.length() + 1;
+                tokens.add(new Token(TokenType.StringL, str, prevLine, prevColumn));
                 continue;
             }
 
-            word += c;
+            //append current char to word and remember previous
+            prevWord = word;
+            word = Arrays.copyOf(word, word.length + 1);
+            word[word.length - 1] = code[i];
 
-            if(word.equals(comment)){
-                skipToChar('\n', iterator);
-
-                resetWas();
-
-                word = "";
-                lineCounter++;
-                continue;
+            //Check if current word is valid
+            boolean wordCurrentlyValid = false;
+            for (LexemeMatcher lexemeMatcher : lexemes) {
+                wordCurrentlyValid |= lexemeMatcher.isLexeme(word);
             }
-            if(word.charAt(word.length() - 1) == str){
-                if(word.length() == 1){
-                    word = "";
-                    iterator.previous();
+
+            //Try adding previous word, if current one isn't valid
+            if(!wordCurrentlyValid){
+                for (LexemeMatcher lexemeMatcher : lexemes) {
+                    if (lexemeMatcher.isLexeme(prevWord)) {
+                        Token tok = lexemeMatcher.getToken(prevWord);
+                        tok.lineNum = prevLine;
+                        tok.columnNum = prevColumn - prevWord.length;
+                        tokens.add(tok);
+                        word = new char[0];
+                        i--;
+                        line = prevLine;
+                        column--;
+                        continue OUTER;
+                    }
                 }
-                addTok(outTokens, iterator, true);
-                outTokens.add(new Token(TokenType.StringL, collectStr(iterator)));
-                continue;
-            }
-            if(isValidToken(word)){
-                resetWas();
-                wasToken = true;
-            }
-            else if(isValidNum(word)){
-                resetWas();
-                wasNumber = true;
-            }
-            else if(isValidIdentifier(word)){
-                resetWas();
-                wasIdentifier = true;
-            }
-            else{
-                addTok(outTokens, iterator, false);
+
+                throw new Error("Invalid token: " + new String(word));
             }
 
-            if(iterator.getIndex() == code.length() - 1){
-                word += "a";
-                addTok(outTokens, iterator, true);
-                break;
+            //Try adding word, if EOF has been reached
+            if(i == code.length - 1){
+                for (LexemeMatcher lexemeMatcher : lexemes) {
+                    if (lexemeMatcher.isLexeme(word)) {
+                        Token tok = lexemeMatcher.getToken(word);
+                        tok.lineNum = prevLine;
+                        tok.columnNum = prevColumn - word.length + 1;
+                        tokens.add(tok);
+                        continue OUTER;
+                    }
+                }
+
+                throw new Error("Invalid token: " + new String(word));
             }
         }
-
-        resetWas();
-        word = "";
-        lineCounter++;
-
-        return outTokens;
+        return tokens;
     }
 
-    private void addTok(ArrayList<Token> outTokens, CharacterIterator iterator, boolean reqValid){
-        if(wasToken){
-            outTokens.add(new Token(tokens.get(word.substring(0, word.length() - 1)), lineCounter));
-            iterator.previous();
-            word = "";
-            resetWas();
+    private static String collectString(char[] chars, int off){
+        StringBuilder s = new StringBuilder();
+        for(int i = off + 1; i < chars.length; i++){
+            if(chars[i] == str) break;
+            if(i == chars.length - 1) throw new Error("String doesn't close");
+            s.append(chars[i]);
         }
-        else if(wasNumber){
-            outTokens.add(new Token(TokenType.NumberL, word.substring(0, word.length() - 1), lineCounter));
-            iterator.previous();
-            word = "";
-            resetWas();
-        }
-        else if(wasIdentifier){
-            outTokens.add(new Token(TokenType.Identifier, word.substring(0, word.length() - 1), lineCounter));
-            iterator.previous();
-            word = "";
-            resetWas();
-        }
-        else if(reqValid && word.length() != 0){
-            throw new Error("Invalid Token: " + word.substring(0, word.length() - 1) + " on line " + lineCounter);
-        }
+        return s.toString();
     }
 
-    private static boolean isValidIdentifier(String str) {
-        CharacterIterator iterator = new StringCharacterIterator(str);
-        if(!Character.isJavaIdentifierStart(iterator.first())){
-            return false;
+    private static boolean isNumber(char[] chars){
+        if(chars.length == 0) return false;
+        int startI = 0;
+        if(chars.length >= 2 && chars[0] == '0'){
+            if(numLiteralBases.indexOf(chars[1]) != -1) startI = 2;
         }
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
-            if(!Character.isJavaIdentifierPart(c)){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isValidNum(String str){
-        CharacterIterator iterator = new StringCharacterIterator(str);
 
         boolean dot = false;
-        boolean litEnd = false;
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
-            if(!Character.isDigit(c)){
-                if(iterator.getIndex() == 0 && c == '-'){
-                    continue;
-                }
-                else if(c == '.' && !dot){
-                    dot = true;
-                    continue;
-                }
-                else if(isNumberLiteralEnding(c) && iterator.next() == CharacterIterator.DONE && !litEnd && str.length() > 1){
-                    litEnd = true;
-                    continue;
-                }
-                return false;
+        for(int i = startI; i < chars.length; i++){
+            char c = chars[i];
+            if(c == '.'){
+                if(dot) return false;
+                dot = true;
+                continue;
             }
+
+            if( '0' <= c && c <= '9' ||
+                'A' <= c && c <= 'F' ||
+                'a' <= c && c <= 'f' )
+            continue;
+
+            if(i == chars.length - 1 && chars.length > 1){
+                return numLiteralSuffixes.indexOf(c) != -1;
+            }
+            return false;
         }
         return true;
     }
 
-    private static boolean isNumberLiteralEnding(char c){
-        return  c == longLit ||
-                c == dubLit ||
-                c == floatLit;
-    }
+    private static boolean isIdentifier(char[] chars){
+        if(chars.length == 0) return false;
+        int startCharT = Character.getType(chars[0]);
+        if( startCharT != Character.UPPERCASE_LETTER &&
+            startCharT != Character.LOWERCASE_LETTER &&
+            startCharT != Character.CONNECTOR_PUNCTUATION)
+        return false;
 
-    private static boolean isValidToken(String str){
-        return tokens.containsKey(str);
-    }
-
-    private void resetWas(){
-        wasToken = false;
-        wasNumber = false;
-        wasIdentifier = false;
-    }
-
-    private static void skipToChar(char c, CharacterIterator iterator){
-        //StringBuilder builder = new StringBuilder();
-        while(iterator.next() != c && iterator.current() != CharacterIterator.DONE){
-            //builder.append(iterator.current());
+        for(int i = 1; i < chars.length; i++){
+            int charT = Character.getType(chars[i]);
+            if( charT != Character.UPPERCASE_LETTER &&
+                charT != Character.LOWERCASE_LETTER &&
+                charT != Character.CONNECTOR_PUNCTUATION &&
+                charT != Character.DECIMAL_DIGIT_NUMBER)
+            return false;
         }
-        //return builder.toString();
+        return true;
     }
 
-    private String collectStr(CharacterIterator iterator){
-        StringBuilder builder = new StringBuilder();
-
-        iterator.next();
-        while(iterator.next() != str && iterator.current() != CharacterIterator.DONE){
-            if(iterator.current() == strEsc){
-                builder.append(switch (iterator.next()){
-                    case '\\': yield '\\';
-                    case 'n': yield '\n';
-                    case 't': yield '\t';
-                    case 'r': yield '\r';
-                    case 'f': yield '\f';
-                    case 'b': yield '\b';
-                    default: throw new Error("Invalid escape character: \\" + iterator.current() + " on line " + lineCounter);
-                });
-            }
-            else {
-                builder.append(iterator.current());
-            }
-        }
-
-        return builder.toString();
-    }
-
-    public int getLineCounter(){
-        return lineCounter;
+    private interface LexemeMatcher{
+        boolean isLexeme(char[] s);
+        Token getToken(char[] s);
     }
 }

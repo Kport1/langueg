@@ -2,10 +2,24 @@ package com.kport.langueg.typeCheck.types;
 
 import com.kport.langueg.lex.TokenType;
 
-public class PrimitiveType extends Type{
+public enum PrimitiveType implements Type{
+    Void(TokenType.Void),
+
+    Boolean(TokenType.Boolean),
+    Char(TokenType.Char),
+
+    Byte(TokenType.Byte),
+    Short(TokenType.Short),
+    Int(TokenType.Int),
+    Long(TokenType.Long),
+
+    Float(TokenType.Float),
+    Double(TokenType.Double);
+
+
     private final TokenType type;
 
-    public PrimitiveType(TokenType type_){
+    PrimitiveType(TokenType type_){
         type = type_;
     }
 
@@ -22,18 +36,5 @@ public class PrimitiveType extends Type{
     @Override
     public String toString(){
         return type.name();
-    }
-
-    @Override
-    public boolean equals(Object o){
-        if(o instanceof PrimitiveType t){
-            return t.type == type;
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode(){
-        return type.hashCode();
     }
 }

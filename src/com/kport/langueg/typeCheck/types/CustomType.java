@@ -1,6 +1,6 @@
 package com.kport.langueg.typeCheck.types;
 
-public class CustomType extends Type{
+public class CustomType implements Type{
     private final String typeName;
 
     public CustomType(String typeName_){

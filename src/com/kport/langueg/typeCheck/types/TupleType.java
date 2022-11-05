@@ -2,7 +2,7 @@ package com.kport.langueg.typeCheck.types;
 
 import java.util.Arrays;
 
-public class TupleType extends Type{
+public class TupleType implements Type{
     private final Type[] tupleTypes;
 
     public TupleType(Type... types){

@@ -17,7 +17,7 @@ public class DefaultErrorHandler implements ErrorHandler{
         if(!error.suggestion.isEmpty())
             System.err.println(error.suggestion);
 
-        Thread.dumpStack();
+        //Thread.dumpStack();
 
         System.exit(1);
     }

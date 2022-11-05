@@ -4,7 +4,9 @@ import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.typeCheck.types.PrimitiveType;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.CodeOutputStream;
 import com.kport.langueg.util.ScopeTree;
 import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.VarIdentifier;
@@ -13,11 +15,14 @@ import com.sun.jdi.InvalidTypeException;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Stack;
 
 public class LanguegVmCodeGenerator implements CodeGenerator {
-    private final ByteArrayOutputStream output;
+    private final CodeOutputStream output;
 
     //Constants
     private final LinkedHashMap<Integer, Integer> intConstIndices = new LinkedHashMap<>();
@@ -32,13 +37,17 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     private HashMap<VarIdentifier, Type> fnParamTypes;
 
 
-    private final ByteArrayOutputStream progIndexLineInfo = new ByteArrayOutputStream(256);
-    private final ByteArrayOutputStream newLineLineInfo = new ByteArrayOutputStream(256);
+    //line info
+    private final CodeOutputStream progIndexLineInfo = new CodeOutputStream(256);
+    private final CodeOutputStream newLineLineInfo = new CodeOutputStream(256);
+
+    //Variable information
+    private final HashMap<VarIdentifier, Integer> localVariableIndices = new HashMap<>();
 
 
 
     public LanguegVmCodeGenerator() {
-        output = new ByteArrayOutputStream(1024);
+        output = new CodeOutputStream(1024);
     }
 
 
@@ -58,13 +67,18 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             throw new Error(e.getMessage());
         }
 
-
         try {
             gen(ast);
         }
         catch (IOException e) {
             throw new Error();
         }
+
+        //System.out.println("outBytes:");
+        //for (byte b : output.toByteArray()) {
+        //    System.out.print(Integer.toHexString(b) + "  ");
+        //}
+        //System.out.println();
 
         pipeline.putAdditionalData("LineInfo", lineInfoAsByteArray());
         pipeline.putAdditionalData("ConstIndices", constIndicesAsByteArray());
@@ -100,12 +114,28 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 writeOp(Ops.PUSH_INTC, ast.line, (short)intConstIndices.get(ast.val.getInt()).intValue());
             }
             case Byte -> {
+                writeOp(Ops.PUSH_BYTE, ast.line, ast.val.getByte());
             }
             case Long -> {
             }
             case Bool -> {
+                writeOp(Ops.PUSH_BYTE, ast.line, (byte)(ast.val.getBool()? 1 : 0));
             }
             case If -> {
+                gen(ast.children[0]);
+                writeOp(Ops.JMP_IF_FALSE, ast.line, (short)0);
+                int jmpOffsetIndex = output.size() - 2;
+                gen(ast.children[1]);
+                if(ast.children.length == 3){
+                    writeOp(Ops.JMP, ast.children[1].line, (short)0);
+                    int jmpOffsetIndexElse = output.size() - 2;
+                    output.writeShort((short)(output.size() - jmpOffsetIndex - 2), jmpOffsetIndex);
+                    gen(ast.children[2]);
+                    output.writeShort((short)(output.size() - jmpOffsetIndexElse - 2), jmpOffsetIndexElse);
+                }
+                else {
+                    output.writeShort((short)(output.size() - jmpOffsetIndex - 2), jmpOffsetIndex);
+                }
             }
             case Switch -> {
             }
@@ -116,14 +146,32 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case Call -> {
             }
             case Block -> {
+                enterScope();
+                for (AST child : ast.children) {
+                    gen(child);
+                }
+                exitScope();
             }
             case Return -> {
             }
             case Var -> {
+                VarIdentifier identifier = new VarIdentifier(ast.depth, ast.count, ast.children[0].val.getStr());
+
+                if(ast.val.getType().isPrimitive()) {
+                    PrimitiveType primType = (PrimitiveType) ast.val.getType();
+                    localVariableIndices.put(identifier, getNextLocalVarIndex(primType));
+                    if (ast.children.length == 2) {
+                        gen(ast.children[1]);
+                        writeOp(Ops.ofGeneric(Ops.Generic.STORE, primType), ast.line, (short)localVariableIndices.get(identifier).intValue());
+                    }
+                }
             }
             case BinOp -> {
                 if(ast.val.getTok() == TokenType.Assign){
-
+                    PrimitiveType primType = (PrimitiveType) ast.children[0].returnType;
+                    gen(ast.children[1]);
+                    writeOp(Ops.ofGeneric(Ops.Generic.STORE, primType), ast.line, (short)localVariableIndices.get(new VarIdentifier(ast.depth, ast.count, ast.children[0].val.getStr())).intValue());
+                    return;
                 }
 
                 gen(ast.children[0]);
@@ -137,31 +185,40 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case Modifier -> {
             }
             case Identifier -> {
+                if(ast.returnType.isPrimitive()) {
+                    PrimitiveType primType = (PrimitiveType) ast.returnType;
+                    writeOp(Ops.ofGeneric(Ops.Generic.LOAD, primType), ast.line, (short)localVariableIndices.get(new VarIdentifier(ast.depth, ast.count, ast.val.getStr())).intValue());
+                }
             }
         }
     }
 
-    private void writeToStream(short s, OutputStream stream) throws IOException {
-        stream.write(s);
-        stream.write((s >>> 8));
+    private final EnumMap<PrimitiveType, Stack<Integer>> localVarScopedIndices = new EnumMap<>(PrimitiveType.class);
+    {
+        for (PrimitiveType t : PrimitiveType.values()) {
+            Stack<Integer> stack = new Stack<>();
+            stack.push(-1);
+            localVarScopedIndices.put(t, stack);
+        }
+    }
+    private int getNextLocalVarIndex(PrimitiveType type){
+        Stack<Integer> stack = localVarScopedIndices.get(type);
+        int i = stack.pop() + 1;
+        stack.push(i);
+        return i;
     }
 
-    private void writeToStream(int i, OutputStream stream) throws IOException {
-        stream.write(i);
-        stream.write(i >>> 8);
-        stream.write(i >>> 16);
-        stream.write(i >>> 24);
+    private void enterScope(){
+        for (PrimitiveType t : PrimitiveType.values()) {
+            Stack<Integer> stack = localVarScopedIndices.get(t);
+            stack.push(stack.peek());
+        }
     }
 
-    private void writeToStream(long l, OutputStream stream) throws IOException {
-        stream.write((int) l         & 0xFF);
-        stream.write((int)(l >>> 8)  & 0xFF);
-        stream.write((int)(l >>> 16) & 0xFF);
-        stream.write((int)(l >>> 24) & 0xFF);
-        stream.write((int)(l >>> 32) & 0xFF);
-        stream.write((int)(l >>> 40) & 0xFF);
-        stream.write((int)(l >>> 48) & 0xFF);
-        stream.write((int)(l >>> 56) & 0xFF);
+    private void exitScope(){
+        for (PrimitiveType t : PrimitiveType.values()) {
+            localVarScopedIndices.get(t).pop();
+        }
     }
 
 
@@ -171,35 +228,35 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
         output.write(operands);
     }
 
-    private void writeOp(Ops op, int line, short... operands) throws IOException {
+    private void writeOp(Ops op, int line, short... operands) {
         addLine(line);
         output.write(op.code);
         for (short operand : operands) {
-            writeToStream(operand, output);
+            output.writeShort(operand);
         }
     }
 
-    private void writeOp(Ops op, int line, int... operands) throws IOException {
+    private void writeOp(Ops op, int line, int... operands) {
         addLine(line);
         output.write(op.code);
         for (int operand : operands) {
-            writeToStream(operand, output);
+            output.writeInt(operand);
         }
     }
 
-    private void writeOp(Ops op, int line, long... operands) throws IOException {
+    private void writeOp(Ops op, int line, long... operands) {
         addLine(line);
         output.write(op.code);
         for (long operand : operands) {
-            writeToStream(operand, output);
+            output.writeLong(operand);
         }
     }
 
     int prevLine = 0;
-    private void addLine(int line) throws IOException {
+    private void addLine(int line) {
         if(prevLine == line) return;
-        writeToStream((long)output.size(), progIndexLineInfo);
-        writeToStream(line, newLineLineInfo);
+        progIndexLineInfo.writeLong(output.size());
+        newLineLineInfo.writeInt(line);
         prevLine = line;
     }
 

@@ -77,7 +77,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 String name = expr.children[0].val.getStr();
 
                 //Duplicate var
-                if(varExists(name, depthCount[0], depthCount[1])){
+                if(varExistsInScope(name, depthCount[0], depthCount[1])){
                     throw new Error("Duplicate var " + name + " in current scope");
                 }
 
@@ -113,9 +113,10 @@ public class DefaultTypeChecker implements TypeChecker{
         });
         resetSearchBlocks();
 
-        //type check
+        //give expressions return type
         searchBlocks(ast, 0, true, (expr, depthCount) -> {
             typeCheck(expr, depthCount[0], depthCount[1]);
+            expr.returnType = PrimitiveType.Void;
         });
 
         //System.out.println("ast:\n" + ast);
@@ -182,6 +183,10 @@ public class DefaultTypeChecker implements TypeChecker{
 
     private boolean varExists(String name, int depth, int count){
         return getVarType(name, depth, count) != null;
+    }
+
+    private boolean varExistsInScope(String name, int depth, int count){
+        return varTypes.containsKey(new VarIdentifier(depth, count, name));
     }
 
     private boolean fnParamExists(String name, int depth, int count){
@@ -255,37 +260,37 @@ public class DefaultTypeChecker implements TypeChecker{
 
     private Type getExprType(AST expr, int depth, int count){
         switch(expr.type){
-            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return  new PrimitiveType(TokenType.Void);}
+            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return PrimitiveType.Void;}
             case Str -> {
                 return new CustomType("String");
             }
             case Float -> {
-                return new PrimitiveType(TokenType.Float);
+                return PrimitiveType.Float;
             }
             case Double -> {
-                return new PrimitiveType(TokenType.Double);
+                return PrimitiveType.Double;
             }
             case Byte -> {
-                return new PrimitiveType(TokenType.Byte);
+                return PrimitiveType.Byte;
             }
             case Char -> {
-                return new PrimitiveType(TokenType.Char);
+                return PrimitiveType.Char;
             }
             case Short -> {
-                return new PrimitiveType(TokenType.Short);
+                return PrimitiveType.Short;
             }
             case Int -> {
-                return new PrimitiveType(TokenType.Int);
+                return PrimitiveType.Int;
             }
             case Long -> {
-                return new PrimitiveType(TokenType.Long);
+                return PrimitiveType.Long;
             }
             case Bool -> {
-                return new PrimitiveType(TokenType.Boolean);
+                return PrimitiveType.Boolean;
             }
             case If -> {
                 if(expr.children.length < 3){
-                    return new PrimitiveType(TokenType.Void);
+                    return PrimitiveType.Void;
                 }
 
                 Type ifType = getExprType(expr.children[1], depth, count);
@@ -343,7 +348,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
             case Var -> {
                 if(expr.children.length < 2){
-                    return new PrimitiveType(TokenType.Void);
+                    return PrimitiveType.Void;
                 }
                 return getExprType(expr.children[1], depth, count);
             }
@@ -396,7 +401,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 throw new Error("Variable " + name + " doesn't exist");
             }
         }
-        return new PrimitiveType(TokenType.Void);
+        return PrimitiveType.Void;
     }
 
     private Type getCalledVarReturn(Type varType, String varName, Type... args){

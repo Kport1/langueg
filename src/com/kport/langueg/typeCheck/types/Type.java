@@ -5,41 +5,41 @@ import com.kport.langueg.lex.TokenType;
 import java.util.Arrays;
 import java.util.Objects;
 
-public abstract class Type {
+public interface Type {
 
-    public boolean isPrimitive(){
+    default boolean isPrimitive(){
         return false;
     }
 
-    public boolean isCustom(){
+    default boolean isCustom(){
         return false;
     }
 
-    public boolean isFn(){
+    default boolean isFn(){
         return false;
     }
 
-    public boolean isTuple(){
+    default boolean isTuple(){
         return false;
     }
 
-    public TokenType primitive() {
+    default TokenType primitive() {
         return null;
     }
 
-    public String name(){
+    default String name(){
         return null;
     }
 
-    public Type getFnReturn(){
+    default Type getFnReturn(){
         return null;
     }
 
-    public Type[] getFnArgs() {
+    default Type[] getFnArgs() {
         return null;
     }
 
-    public Type[] getTupleTypes(){
+    default Type[] getTupleTypes(){
         return null;
     }
 }

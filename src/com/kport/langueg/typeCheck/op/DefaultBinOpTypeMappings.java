@@ -17,127 +17,103 @@ import static com.kport.langueg.lex.TokenType.*;
 public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
 
     PLUS((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot add " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Plus),
 
     MINUS((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot subtract " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Minus),
 
     MUL((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot multiply " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Mul),
 
     DIV((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot divide " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Div),
 
     MOD((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator % to " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Mod),
 
     POW((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator ** to " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, Pow),
 
     SHIFTR((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator >> to " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, ShiftR),
 
     SHIFTL((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator << to " + left + " and " + right);
         }
 
-        return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
     }, ShiftL),
 
     GREATER((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator < to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant(lTok, rTok, ast);
-        return new PrimitiveType(Boolean);
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return PrimitiveType.Boolean;
     }, Greater),
 
     LESS((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator > to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant(lTok, rTok, ast);
-        return new PrimitiveType(Boolean);
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return PrimitiveType.Boolean;
     }, Less),
 
     GREATEREQ((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator <= to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant(lTok, rTok, ast);
-        return new PrimitiveType(Boolean);
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return PrimitiveType.Boolean;
     }, GreaterEq),
 
     LESSEQ((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator >= to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant(lTok, rTok, ast);
-        return new PrimitiveType(Boolean);
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return PrimitiveType.Boolean;
     }, LessEq),
 
     EQ((left, right, ast) -> {
@@ -145,7 +121,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator == to " + left + " and " + right);
         }
 
-        return new PrimitiveType(Boolean);
+        return PrimitiveType.Boolean;
     }, Eq),
 
     NOTEQ((left, right, ast) -> {
@@ -153,15 +129,13 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             throw new Error("Cannot apply operator != to " + left + " and " + right);
         }
 
-        return new PrimitiveType(Boolean);
+        return PrimitiveType.Boolean;
     }, NotEq),
 
     AND((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
-            if(isInteger(lTok) && isInteger(rTok)){
-                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
+            if(isInteger(left) && isInteger(right)){
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
             }
             throw new Error("Cannot apply operator & to " + left + " and " + right);
         }
@@ -170,9 +144,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, And),
 
     ANDAND((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
+        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             throw new Error("Cannot apply operator && to " + left + " and " + right);
         }
 
@@ -180,11 +152,9 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, AndAnd),
 
     OR((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
-            if(isInteger(lTok) && isInteger(rTok)){
-                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
+            if(isInteger(left) && isInteger(right)){
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -193,9 +163,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, Or),
 
     OROR((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
+        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             throw new Error("Cannot apply operator & to " + left + " and " + right);
         }
 
@@ -203,11 +171,9 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, OrOr),
 
     XOR((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isBool(lTok) && isBool(rTok))){
-            if(isInteger(lTok) && isInteger(rTok)){
-                return new PrimitiveType(castNonDominantGetDominant(lTok, rTok, ast));
+        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
+            if(isInteger(left) && isInteger(right)){
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -216,9 +182,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, XOr),
 
     PLUSASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator += to " + left + " and " + right);
         }
 
@@ -231,9 +195,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, PlusAssign),
 
     MINUSASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator -= to " + left + " and " + right);
         }
 
@@ -246,9 +208,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, MinusAssign),
 
     MULASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator *= to " + left + " and " + right);
         }
 
@@ -261,9 +221,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, MulAssign),
 
     DIVASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator /= to " + left + " and " + right);
         }
 
@@ -276,9 +234,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, DivAssign),
 
     MODASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator %= to " + left + " and " + right);
         }
 
@@ -291,9 +247,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, ModAssign),
 
     POWASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isNum(lTok) && isNum(rTok))){
+        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator **= to " + left + " and " + right);
         }
 
@@ -306,9 +260,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, PowAssign),
 
     SHIFTRASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator >>= to " + left + " and " + right);
         }
 
@@ -321,9 +273,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, ShiftRAssign),
 
     SHIFTLASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator <<= to " + left + " and " + right);
         }
 
@@ -336,9 +286,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, ShiftLAssign),
 
     ANDASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator &= to " + left + " and " + right);
         }
 
@@ -351,9 +299,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, AndAssign),
 
     ORASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator |= to " + left + " and " + right);
         }
 
@@ -366,9 +312,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }, AndAssign),
 
     XORASSIGN((left, right, ast) -> {
-        TokenType lTok = left.primitive();
-        TokenType rTok = right.primitive();
-        if(!(arePrim(left, right) && isInteger(lTok) && isInteger(rTok))){
+        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator ^= to " + left + " and " + right);
         }
 
@@ -410,45 +354,57 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return Arrays.stream(t).allMatch(Type::isPrimitive);
     }
 
-    private static final EnumMap<TokenType, Integer> prec = new EnumMap<>(Map.of(
-            Byte,   0,
-            Short,  1,
-            Int,    2,
-            Long,   3,
-            Float,  4,
-            Double, 5
+    private static final EnumMap<PrimitiveType, Integer> prec = new EnumMap<>(Map.of(
+            PrimitiveType.Byte,   0,
+            PrimitiveType.Short,  1,
+            PrimitiveType.Int,    2,
+            PrimitiveType.Long,   3,
+            PrimitiveType.Float,  4,
+            PrimitiveType.Double, 5
     ));
 
-    private static boolean isNum(TokenType t){
-        return prec.containsKey(t);
+    private static boolean isNum(Type t){
+        if(t instanceof PrimitiveType) {
+            return prec.containsKey(t);
+        }
+        return false;
     }
 
-    private static boolean isBool(TokenType t){
-        return t == Boolean;
+    private static boolean isBool(Type t){
+        if(t instanceof PrimitiveType) {
+            return t == PrimitiveType.Boolean;
+        }
+        return false;
     }
 
-    private static boolean isInteger(TokenType t){
-        return  t == Byte   ||
-                t == Short  ||
-                t == Int    ||
-                t == Long;
+    private static boolean isInteger(Type t){
+        if(t instanceof PrimitiveType) {
+            return t == PrimitiveType.Byte ||
+                    t == PrimitiveType.Short ||
+                    t == PrimitiveType.Int ||
+                    t == PrimitiveType.Long;
+        }
+        return false;
     }
 
-    private static boolean isFloat(TokenType t){
-        return  t == Float ||
-                t == Double;
+    private static boolean isFloat(Type t){
+        if(t instanceof PrimitiveType) {
+            return t == PrimitiveType.Float ||
+                    t == PrimitiveType.Double;
+        }
+        return false;
     }
 
-    private static TokenType castNonDominantGetDominant(TokenType left, TokenType right, AST ast){
+    private static PrimitiveType castNonDominantGetDominant(PrimitiveType left, PrimitiveType right, AST ast){
         if(left == right){
             return left;
         }
 
         boolean leftDominant = prec.get(left) > prec.get(right);
-        TokenType dominant = leftDominant? left : right;
+        PrimitiveType dominant = leftDominant? left : right;
 
         AST unCast = ast.children[leftDominant? 1 : 0];
-        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(new PrimitiveType(dominant)), unCast.line, unCast);
+        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(dominant), unCast.line, unCast);
         return dominant;
     }
 }

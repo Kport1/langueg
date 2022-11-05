@@ -3,7 +3,7 @@ package com.kport.langueg.typeCheck.types;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class FnType extends Type{
+public class FnType implements Type{
     private final Type[] fnArgs;
     private final Type fnReturn;
 

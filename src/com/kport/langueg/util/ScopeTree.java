@@ -7,7 +7,7 @@ public class ScopeTree {
     private final Node rootNode;
 
     public class Node{
-        public int depth, count;
+        public final int depth, count;
         private final Node parent;
 
         private Node(Node parent_, int depth_, int count_){
