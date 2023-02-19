@@ -27,7 +27,7 @@ public class Main {
         String code = Files.readString(Path.of("src/com/kport/langueg/test.gueg"));
 
         AtomicLong time = new AtomicLong();
-        LanguegPipelineBuilder<String, Void> pipelineBuilder = new LanguegPipelineBuilder<>();
+        LanguegPipelineBuilder<String, Void> pipelineBuilder = new LanguegPipelineBuilder<>(code);
         pipelineBuilder.addComponent(new DefaultLexer(),
                         (o, p) -> time.set(System.nanoTime()),
                         (o, p) ->  {
@@ -38,6 +38,7 @@ public class Main {
                         (o, p) -> time.set(System.nanoTime()),
                         (o, p) ->  {
                                     System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                                    //System.out.println("AST: " + o);
                                 })
                 .addComponent(new DefaultTypeChecker(),
                         (o, p) -> time.set(System.nanoTime()),
@@ -54,7 +55,7 @@ public class Main {
                         (o, p) -> time.set(System.nanoTime()),
                         (o, p) ->  {
                                     System.out.println("code gen time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                    System.out.println("Bytes: " + Arrays.toString((byte[]) o));
+
                                 })
                 .addComponent(new DefaultFileWriter("./test.lala"),
                         (o, p) -> time.set(System.nanoTime()),

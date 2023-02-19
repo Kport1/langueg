@@ -49,8 +49,8 @@ public class CodeOutputStream extends ByteArrayOutputStream {
         write((int)(l >>> 56));
     }
 
-    public synchronized void writeLong(long l, int index){
-        if(index + 7 >= count) throw new IndexOutOfBoundsException();
+    public synchronized void writeLong(long l, int index) {
+        if (index + 7 >= count) throw new IndexOutOfBoundsException();
         buf[index] = (byte) l;
         buf[index + 1] = (byte) (l >>> 8);
         buf[index + 2] = (byte) (l >>> 16);

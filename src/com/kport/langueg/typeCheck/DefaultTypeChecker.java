@@ -1,7 +1,10 @@
 package com.kport.langueg.typeCheck;
 
+import com.kport.langueg.error.ErrorHandler;
+import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.astVals.ASTType;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.op.BinOpTypeMap;
@@ -16,6 +19,7 @@ import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
@@ -30,30 +34,35 @@ public class DefaultTypeChecker implements TypeChecker{
     public final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
     public final HashMap<VarIdentifier, Type> fnParamTypes = new HashMap<>();
 
+    private ErrorHandler errorHandler;
+
     @Override
     public AST process(Object ast_, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) ast_;
-        //construct scope tree
-        searchBlocks(ast, 0, true, (expr, depthCount) -> {
+        errorHandler = pipeline.getErrorHandler();
+
+        //construct scope tree and annotate depth, count
+        visitBlocks(ast, (expr, depthCount) -> {
             if(expr.type == Block){
                 ScopeTree.Node containingBlock = scopeTree.getNode(depthCount[0], depthCount[1]);
                 containingBlock.addChildren(1);
             }
+            expr.depth = depthCount[0];
+            expr.count = depthCount[1];
         });
-        resetSearchBlocks();
 
         //Find fn types
-        searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            if(isNamedFn(expr)){
+        ast.accept((expr, context) -> {
+            if(expr.type == Fn){
                 AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
                 Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
                 String name = expr.children[expr.children.length - 1].val.getStr();
-                FnIdentifier identifier = new FnIdentifier(depthCount[0], depthCount[1], name, argTypes);
+                FnIdentifier identifier = new FnIdentifier(expr.depth, expr.count, name, argTypes);
                 Type returnType = expr.val.getType();
 
                 //Fn already exists
-                if(fnExists(name, depthCount[0], depthCount[1], argTypes)){
+                if(fnExists(name, expr.depth, expr.count, argTypes)){
                     throw new Error("Duplicate function definition " + identifier + " in current scope");
                 }
 
@@ -61,63 +70,101 @@ public class DefaultTypeChecker implements TypeChecker{
             }
 
             //Function params
-            if(expr.type == Fn){
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - (isNamedFn(expr)? 2 : 1));
+            if(expr.type == Fn || expr.type == AnonFn){
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - (expr.type == Fn? 2 : 1));
 
                 for (AST arg : args) {
-                    fnParamTypes.put(new VarIdentifier(depthCount[0], depthCount[1], arg.children[0].val.getStr()), arg.val.getType());
+                    fnParamTypes.put(new VarIdentifier(expr.depth, expr.count, arg.children[0].val.getStr()), arg.val.getType());
                 }
             }
-        });
-        resetSearchBlocks();
+        }, null);
 
         //Find var types
-        searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            if(expr.type == Var){
-                String name = expr.children[0].val.getStr();
+        ast.accept((expr, context) -> {
+            if(expr.type != Var) return;
 
-                //Duplicate var
-                if(varExistsInScope(name, depthCount[0], depthCount[1])){
-                    throw new Error("Duplicate var " + name + " in current scope");
-                }
+            String name = expr.children[0].val.getStr();
 
-                //Duplicate fn
-                if(anyFnExists(name, depthCount[0], depthCount[1])){
-                    throw new Error("Var and fn cannot have the same name (" + name + ")");
-                }
-
-                if (expr.children.length > 1) {
-                    Type varType = getExprType(expr.children[1], depthCount[0], depthCount[1]);
-                    if(varType.primitive() == TokenType.Void){
-                        throw new Error("Cannot assign void to variable " + name);
-                    }
-                    Type expectedType = null;
-
-                    if(expr.val != null && expr.val.isType()){
-                        expectedType = expr.val.getType();
-                        if(!Objects.equals(varType, expectedType)){
-                            throw new Error("Cannot assign value of type " + varType + " to variable of type " + expectedType);
-                        }
-                    }
-
-                    varTypes.put(new VarIdentifier(depthCount[0], depthCount[1], name), expectedType == null? varType : expectedType);
-                    expr.val = new ASTType(varType);
-                }
-                else if(expr.val == null || !expr.val.isType()){
-                    throw new Error("Can't infer type of variable " + name + ", because it is not initialized");
-                }
-                else {
-                    varTypes.put(new VarIdentifier(depthCount[0], depthCount[1], name), expr.val.getType());
-                }
+            //Duplicate var
+            if(varExistsInScope(name, expr.depth, expr.count)){
+                throw new Error("Duplicate var " + name + " in current scope");
             }
-        });
-        resetSearchBlocks();
 
-        //give expressions return type
-        searchBlocks(ast, 0, true, (expr, depthCount) -> {
-            typeCheck(expr, depthCount[0], depthCount[1]);
-            expr.returnType = PrimitiveType.Void;
-        });
+            //Duplicate fn
+            if(anyFnExists(name, expr.depth, expr.count)){
+                throw new Error("Var and fn cannot have the same name (" + name + ")");
+            }
+
+            if (expr.children.length > 1) {
+                Type varType = getExprType(expr.children[1], expr.depth, expr.count);
+                if(varType.primitive() == TokenType.Void){
+                    throw new Error("Cannot assign void to variable " + name);
+                }
+                Type expectedType = null;
+
+                if(expr.val != null && expr.val.isType()){
+                    expectedType = expr.val.getType();
+                    if(!Objects.equals(varType, expectedType)){
+                        throw new Error("Cannot assign value of type " + varType + " to variable of type " + expectedType);
+                    }
+                }
+
+                varTypes.put(new VarIdentifier(expr.depth, expr.count, name), expectedType == null? varType : expectedType);
+                expr.val = new ASTType(varType);
+            }
+            else if(expr.val == null || !expr.val.isType()){
+                throw new Error("Can't infer type of variable " + name + ", because it is not initialized");
+            }
+            else {
+                varTypes.put(new VarIdentifier(expr.depth, expr.count, name), expr.val.getType());
+            }
+        }, null);
+
+        //Give expressions return type
+        ast.accept((expr, context) -> {
+            if(expr.parent != null && (expr.parent.type == Block || expr.parent.type == Prog || expr.parent.type == FnArg)) {
+                expr.returnType = PrimitiveType.Void;
+                return;
+            }
+            expr.returnType = getExprType(expr, expr.depth, expr.count);
+        }, null);
+
+        //Verify return of functions
+        ast.accept((expr, context) -> {
+            if(expr.type == Fn){
+                Type returnType = expr.val.getType();
+                if(returnType == PrimitiveType.Void) return;
+                boolean isAnon = expr.children[expr.children.length - 1].type != Identifier;
+                String name = isAnon? null : expr.children[expr.children.length - 1].val.getStr();
+                int blockIndex = expr.children.length - (isAnon ? 1 : 2);
+                Type[] params = Arrays.stream(Arrays.copyOfRange(expr.children, 0, blockIndex))
+                        .map(a -> a.returnType).toArray(Type[]::new);
+
+                boolean returnsOnAllPaths = ensureFnReturn(expr.children[blockIndex], returnType, new FnIdentifier(expr.depth, expr.count, name, params));
+                if(!returnsOnAllPaths && name == null) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, expr.line);
+                if(!returnsOnAllPaths && name != null) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, expr.line, name);
+            }
+        }, null);
+
+        //Annotate enclosing function
+        ast.accept((expr, context) -> {
+            FnIdentifier id = (FnIdentifier) context.get("id");
+
+            expr.enclosingFn = id;
+            if(expr.type == Fn){
+                String name = expr.children[expr.children.length - 1].val.getStr();
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
+                id = new FnIdentifier(expr.depth, expr.count, name, Arrays.stream(args).map(a -> a.val.getType()).toArray(Type[]::new));
+                context.put("id", id);
+            }
+
+            if(expr.type == AnonFn){
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
+                id = new FnIdentifier(expr.depth, expr.count, null, Arrays.stream(args).map(a -> a.val.getType()).toArray(Type[]::new));
+                context.put("id", id);
+            }
+
+        }, new VisitorContext(Map.of()));
 
         //System.out.println("ast:\n" + ast);
 
@@ -129,39 +176,54 @@ public class DefaultTypeChecker implements TypeChecker{
         return ast;
     }
 
-    //0,0 is global scope
-    private final HashMap<Integer, Integer> depthCounter = new HashMap<>();
-    {
-        resetSearchBlocks();
-    }
-    private void searchBlocks(AST ast, int blockDepth, boolean insideBlock, BiConsumer<AST, int[]> consumer){
-        if(hasChildren(ast)){
+    private boolean ensureFnReturn(AST ast, Type returnType, FnIdentifier fn){
+        if(ast.type == Return){
+            if(ast.children.length == 0 && fn.name() != null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID, ast.line, fn.name(), returnType);
 
-            if(!depthCounter.containsKey(blockDepth + 1)){
-                depthCounter.put(blockDepth + 1, 0);
-            }
-            int count = depthCounter.get(blockDepth + 1);
+            if(ast.children.length == 0 && fn.name() == null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID_ANON, ast.line, returnType);
 
-            for (AST expr : ast.children) {
-                if(insideBlock || expr.type == Block) {
-                    consumer.accept(expr, new int[] {blockDepth, depthCounter.get(blockDepth)} );
-                }
+            if(!ast.children[0].returnType.equals(returnType) && fn.name() != null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH, ast.line, fn.name(), returnType, ast.children[0].returnType);
 
-                if(expr.type == Block){
-                    searchBlocks(expr, blockDepth + 1, true, consumer);
-                    //System.out.println("1 Found block: d = " + blockDepth + "  c = " + count);
-                    depthCounter.put(blockDepth + 1, ++count);
-                }
-                else{
-                    searchBlocks(expr, blockDepth, false, consumer);
-                }
-            }
+            if(!ast.children[0].returnType.equals(returnType) && fn.name() == null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_ANON, ast.line, returnType, ast.children[0].returnType);
+
+            return true;
         }
+        if(ast.type == If){
+            return ast.children.length == 3
+                    && ensureFnReturn(ast.children[1], returnType, fn)
+                    && ensureFnReturn(ast.children[2], returnType, fn);
+        }
+        for (AST child : ast.children) {
+            if(ensureFnReturn(child, returnType, fn))
+                return true;
+        }
+        return false;
     }
 
-    private void resetSearchBlocks(){
-        depthCounter.clear();
-        depthCounter.put(0,0);
+    private void visitBlocks(AST ast, BiConsumer<AST, int[]> blockVisitor){
+        HashMap<Integer, Integer> depthCounter = new HashMap<>();
+        depthCounter.put(0, 0);
+
+
+        ast.accept((expr, c) -> {
+
+            int depth = (int) c.get("depth");
+            int count = (int) c.get("count");
+            blockVisitor.accept(expr, new int[]{depth, count});
+            if(expr.type == Block){
+                if(!depthCounter.containsKey(depth + 1)){
+                    depthCounter.put(depth + 1, 0);
+                }
+                c.put("count", depthCounter.get(depth + 1));
+                c.put("depth", depth + 1);
+                depthCounter.put(depth + 1, count + 1);
+            }
+
+        }, new VisitorContext(Map.of("depth", 0, "count", 0)));
     }
 
     private boolean fnExists(String name, int depth, int count, Type... args){
@@ -244,20 +306,6 @@ public class DefaultTypeChecker implements TypeChecker{
         return inScope;
     }
 
-    private void typeCheck(AST ast, int depth, int count){
-        ast.depth = depth;
-        ast.count = count;
-        ast.returnType = getExprType(ast, depth, count);
-
-        if(ast.children == null || ast.type == FnArg || ast.type == Block)
-            return;
-
-        for (AST child : ast.children) {
-            if(child.type != Block)
-                typeCheck(child, depth, count);
-        }
-    }
-
     private Type getExprType(AST expr, int depth, int count){
         switch(expr.type){
             case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return PrimitiveType.Void;}
@@ -325,20 +373,19 @@ public class DefaultTypeChecker implements TypeChecker{
                 return getReturnTypeAndVerifyArgs(calledExprType, args);
             }
             case Fn -> {
-                if(!isNamedFn(expr)){
-                    AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
-                    Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
+                Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
-                    //Functions params
-                    for (AST arg : args) {
-                        fnParamTypes.put(new VarIdentifier(depth, count, arg.children[0].val.getStr()), arg.val.getType());
-                    }
+                return new FnType(expr.val.getType(), argTypes);
+            }
+            case AnonFn -> {
+                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
+                Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
-                    return new FnType(expr.val.getType(), argTypes);
-                }
+                return new FnType(expr.val.getType(), argTypes);
             }
             case Tuple -> {
-                if(expr.children == null || expr.children.length == 0){
+                if(expr.children.length == 0){
                     return new TupleType();
                 }
                 Type[] tupTypes = Arrays.stream(expr.children).map((type) -> getExprType(type, depth, count)).toArray(Type[]::new);
@@ -352,6 +399,11 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
                 return getExprType(expr.children[1], depth, count);
             }
+
+            case VarDestruct -> {
+                return getExprType(expr.children[expr.children.length - 1], depth, count);
+            }
+
             case Cast -> {
                 return expr.val.getType();
             }
@@ -421,13 +473,5 @@ public class DefaultTypeChecker implements TypeChecker{
         }
 
         return fnType.getFnReturn();
-    }
-
-    private boolean hasChildren(AST ast){
-        return ast.children != null && ast.children.length != 0;
-    }
-
-    private boolean isNamedFn(AST fn){
-        return fn.type == Fn && fn.children[fn.children.length - 1].type == Identifier;
     }
 }

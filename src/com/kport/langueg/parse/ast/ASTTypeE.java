@@ -10,6 +10,7 @@ public enum ASTTypeE {
     Cast,
 
     Fn,
+    AnonFn,
     FnArg,
     Tuple,
     Class,
@@ -35,9 +36,12 @@ public enum ASTTypeE {
 
     //Op
     Var,
+    VarDestruct,
+    AssignDestruct,
     BinOp,
     UnaryOpBefore,
     UnaryOpAfter,
+    Index,
 
     Modifier,
 
@@ -76,6 +80,7 @@ public enum ASTTypeE {
         expandedNames.put(BinOp, "binary operator");
         expandedNames.put(UnaryOpBefore, "unary operator");
         expandedNames.put(UnaryOpAfter, "unary operator");
+        expandedNames.put(Index, "index");
 
         expandedNames.put(Modifier, "modifier");
 

@@ -33,6 +33,10 @@ public record FnIdentifier(int depth, int count, String name, Type[] args) {
         return false;
     }
 
+    public boolean isAnon(){
+        return name == null;
+    }
+
     @Override
     public String toString(){
         return "fnId(d = " + depth + ", c = " + count + ", n = " + name + ", a = " + Arrays.toString(args) + ")";

@@ -187,7 +187,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -200,7 +200,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -213,7 +213,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -226,7 +226,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -239,7 +239,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -252,7 +252,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -265,7 +265,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -278,7 +278,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -291,7 +291,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -304,7 +304,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -317,7 +317,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1]);
+            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
             ast.children[1] = cast;
         }
 
@@ -404,7 +404,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         PrimitiveType dominant = leftDominant? left : right;
 
         AST unCast = ast.children[leftDominant? 1 : 0];
-        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(dominant), unCast.line, unCast);
+        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(dominant), unCast.line, unCast.column, unCast);
         return dominant;
     }
 }

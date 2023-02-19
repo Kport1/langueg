@@ -7,7 +7,7 @@ public class ASTDouble extends ASTValue {
     public boolean isDub(){return true;}
 
     @Override
-    public double getDub(){return val;}
+    public double getDouble(){return val;}
 
     public ASTDouble(double val_){
         val = val_;

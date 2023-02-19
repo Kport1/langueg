@@ -33,7 +33,7 @@ public class MCDataCodeGenerator implements CodeGenerator {
 
 
     @Override
-    public byte[] process(Object ast_, LanguegPipeline<?, ?> pipeline) {
+    public Void process(Object ast_, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) ast_;
 
         //gen libs
@@ -70,7 +70,7 @@ public class MCDataCodeGenerator implements CodeGenerator {
             case Str -> {
             }
             case Double -> {
-                long doubleBits = Double.doubleToLongBits(ast.val.getDub());
+                long doubleBits = Double.doubleToLongBits(ast.val.getDouble());
 
                 long sign = (doubleBits & 0x8000000000000000L) >> 63;
                 long exponent = ((doubleBits & 0x7ff0000000000000L) >> 52) - 1023;

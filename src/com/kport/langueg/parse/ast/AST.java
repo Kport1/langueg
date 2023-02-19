@@ -2,44 +2,78 @@ package com.kport.langueg.parse.ast;
 
 import com.kport.langueg.parse.ast.astVals.ASTValue;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.FnIdentifier;
 
 public class AST {
-    public AST[] children;
+    public final AST[] children;
+    public AST parent;
     public ASTValue val;
     public ASTTypeE type;
 
     public int line;
+    public int column;
 
     public Type returnType = null;
+
     public int depth;
     public int count;
 
+    public FnIdentifier enclosingFn;
+
     public AST(ASTTypeE type_){
         type = type_;
+        children = new AST[0];
     }
 
-    public AST(ASTTypeE type_, int line_){
+    public AST(ASTTypeE type_, int line_, int column_){
         type = type_;
         line = line_;
+        column = column_;
+        children = new AST[0];
     }
 
-    public AST(ASTTypeE type_, int line_, AST... children_){
+    public AST(ASTTypeE type_, int line_, int column_, AST... children_){
         children = children_;
         type = type_;
         line = line_;
+        column = column_;
+        for (AST child : children) {
+            child.parent = this;
+        }
     }
 
-    public AST(ASTTypeE type_, ASTValue val_, int line_){
+    public AST(ASTTypeE type_, ASTValue val_, int line_, int column_){
         val = val_;
         type = type_;
         line = line_;
+        column = column_;
+        children = new AST[0];
     }
 
-    public AST(ASTTypeE type_, ASTValue val_, int line_, AST... children_){
+    public AST(ASTTypeE type_, ASTValue val_, int line_, int column_, AST... children_){
         children = children_;
         val = val_;
         type = type_;
         line = line_;
+        column = column_;
+        for (AST child : children) {
+            child.parent = this;
+        }
+    }
+
+    public void accept(ASTVisitor visitor, VisitorContext context){
+        visitor.visit(this, context);
+        for (AST child : children) {
+            try {
+                child.accept(visitor, context == null? null : (VisitorContext) context.clone());
+            } catch (CloneNotSupportedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public boolean hasChildren(){
+        return children.length != 0;
     }
 
     @Override
@@ -52,15 +86,19 @@ public class AST {
         str.append(" [ ")
                 .append("l: ")
                 .append(line)
+                .append(", c: ")
+                .append(column)
                 .append(", ")
                 .append(returnType != null ? "t: " + returnType + ", " : "")
                 .append("d: ")
                 .append(depth)
                 .append(", c: ")
                 .append(count)
+                .append(", fn: ")
+                .append(enclosingFn)
                 .append(" ]");
         str.append(val != null ? " ( " + val + " )" : "");
-        if(children == null){
+        if(!hasChildren()){
             return str.toString();
         }
         str.append(" {\n");

@@ -123,24 +123,24 @@ public class DefaultLexer implements Lexer{
         lexemes.add(new LexemeMatcher() {
             @Override
             public boolean isLexeme(char[] s) {
-                return isNumber(s);
-            }
-
-            @Override
-            public Token getToken(char[] s) {
-                return new Token(TokenType.NumberL, new String(s));
-            }
-        });
-
-        lexemes.add(new LexemeMatcher() {
-            @Override
-            public boolean isLexeme(char[] s) {
                 return isIdentifier(s);
             }
 
             @Override
             public Token getToken(char[] s) {
                 return new Token(TokenType.Identifier, new String(s));
+            }
+        });
+
+        lexemes.add(new LexemeMatcher() {
+            @Override
+            public boolean isLexeme(char[] s) {
+                return isNumber(s);
+            }
+
+            @Override
+            public Token getToken(char[] s) {
+                return new Token(TokenType.NumberL, new String(s));
             }
         });
     }

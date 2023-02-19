@@ -1,6 +1,7 @@
 package com.kport.langueg.lex;
 
 import java.util.EnumMap;
+import java.util.EnumSet;
 
 public enum TokenType {
 
@@ -215,8 +216,78 @@ public enum TokenType {
 
         expandedNames.put(Undefined, "undefined");
     }
+    private static final EnumSet<TokenType> opAssigns = EnumSet.of(
+            PlusAssign,
+            MinusAssign,
+            MulAssign,
+            DivAssign,
+            ModAssign,
+            PowAssign,
+            ShiftRAssign,
+            ShiftLAssign,
+            AndAssign,
+            OrAssign,
+            XOrAssign
+    );
+    private static final EnumMap<TokenType, TokenType> opAssignToOp = new EnumMap<>(TokenType.class);
+    static{
+        opAssignToOp.put(PlusAssign, Plus);
+        opAssignToOp.put(MinusAssign, Minus);
+        opAssignToOp.put(MulAssign, Mul);
+        opAssignToOp.put(DivAssign, Div);
+        opAssignToOp.put(ModAssign, Mod);
+        opAssignToOp.put(PowAssign, Pow);
+        opAssignToOp.put(ShiftRAssign, ShiftR);
+        opAssignToOp.put(ShiftLAssign, ShiftL);
+        opAssignToOp.put(AndAssign, And);
+        opAssignToOp.put(OrAssign, Or);
+        opAssignToOp.put(XOrAssign, XOr);
+    }
+    private static final EnumSet<TokenType> binOps = EnumSet.of(
+            Plus,
+            Minus,
+            Mul,
+            Div,
+            Mod,
+            Pow,
+            ShiftR,
+            ShiftL,
+            Greater,
+            Less,
+            GreaterEq,
+            LessEq,
+            Eq,
+            NotEq,
+            And,
+            AndAnd,
+            Or,
+            OrOr,
+            XOr
+    );
+    private static final EnumSet<TokenType> unaryOps = EnumSet.of(
+            Inc,
+            Dec,
+            Not
+    );
 
     public String expandedName(){
         return expandedNames.get(this);
     }
+
+    public boolean isOpAssign(){
+        return opAssigns.contains(this);
+    }
+
+    public boolean isBinOp(){
+        return binOps.contains(this);
+    }
+
+    public boolean isUnaryOp(){
+        return unaryOps.contains(this);
+    }
+
+    public TokenType getOpOfOpAssign(){
+        return opAssignToOp.get(this);
+    }
+
 }
