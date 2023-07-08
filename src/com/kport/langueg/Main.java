@@ -1,7 +1,6 @@
 package com.kport.langueg;
 
 import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmCodeGenerator;
-import com.kport.langueg.codeGen.mcDataCodeGen.MCDataCodeGenerator;
 import com.kport.langueg.fileWrite.DefaultFileWriter;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.lex.Token;
@@ -22,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException {
 
         String code = Files.readString(Path.of("src/com/kport/langueg/test.gueg"));
 
