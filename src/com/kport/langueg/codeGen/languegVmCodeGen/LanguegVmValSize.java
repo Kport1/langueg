@@ -13,10 +13,10 @@ public enum LanguegVmValSize {
     public static LanguegVmValSize ofPrimitive(PrimitiveType type){
         return switch (type){
             case Void -> NONE;
-            case Boolean, Byte -> _8;
-            case Char, Short -> _16;
-            case Int, Float -> _32;
-            case Long, Double -> _64;
+            case Bool, U8 -> _8;
+            case Char, I16 -> _16;
+            case I32, F32 -> _32;
+            case I64, F64 -> _64;
         };
     }
 

@@ -1,26 +1,31 @@
 package com.kport.langueg.parse.ast;
 
-import com.kport.langueg.parse.ast.astVals.ASTValue;
-import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.FnIdentifier;
 
-public class AST {
-    public final AST[] children;
+public abstract class AST {
+    //public final AST[] children;
     public AST parent;
-    public ASTValue val;
-    public ASTTypeE type;
+    //public ASTValue val;
+    //public ASTTypeE type;
 
     public int line;
     public int column;
-
-    public Type returnType = null;
 
     public int depth;
     public int count;
 
     public FnIdentifier enclosingFn;
 
-    public AST(ASTTypeE type_){
+    public AST(int line_, int column_, AST... children){
+        line = line_;
+        column = column_;
+        for (AST child : children) {
+            child.parent = this;
+        }
+    }
+
+    /*public AST(ASTTypeE type_){
         type = type_;
         children = new AST[0];
     }
@@ -59,11 +64,14 @@ public class AST {
         for (AST child : children) {
             child.parent = this;
         }
-    }
+    }*/
+
+    public abstract AST[] getChildren();
 
     public void accept(ASTVisitor visitor, VisitorContext context){
         visitor.visit(this, context);
-        for (AST child : children) {
+        if(!hasChildren()) return;
+        for (AST child : getChildren()) {
             try {
                 child.accept(visitor, context == null? null : (VisitorContext) context.clone());
             } catch (CloneNotSupportedException e) {
@@ -72,9 +80,9 @@ public class AST {
         }
     }
 
-    public boolean hasChildren(){
-        return children.length != 0;
-    }
+    public abstract boolean hasChildren();
+
+    protected abstract String nToString();
 
     @Override
     public String toString(){
@@ -82,29 +90,31 @@ public class AST {
     }
 
     private String toStringPretty(int indent){
-        StringBuilder str = new StringBuilder(type.name());
+        StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
         str.append(" [ ")
                 .append("l: ")
                 .append(line)
                 .append(", c: ")
                 .append(column)
-                .append(", ")
-                .append(returnType != null ? "t: " + returnType + ", " : "")
-                .append("d: ")
+                .append(", d: ")
                 .append(depth)
                 .append(", c: ")
                 .append(count)
+                .append(this instanceof NExpr expr && expr.exprType != null? ", r: " + expr.exprType : "")
                 .append(", fn: ")
                 .append(enclosingFn)
-                .append(" ]");
-        str.append(val != null ? " ( " + val + " )" : "");
+                .append(" ]")
+                .append("( ")
+                .append(nToString())
+                .append(" )");
+
         if(!hasChildren()){
             return str.toString();
         }
         str.append(" {\n");
         str.append("   ".repeat(indent));
 
-        for (AST child : children) {
+        for (AST child : getChildren()) {
             str.append(child.toStringPretty(indent + 1));
             str.append(",\n");
             str.append("   ".repeat(indent));

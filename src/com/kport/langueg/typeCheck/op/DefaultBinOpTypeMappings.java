@@ -4,138 +4,140 @@ import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTTypeE;
 import com.kport.langueg.parse.ast.astVals.ASTType;
+import com.kport.langueg.parse.ast.nodes.expr.NBinOp;
+import com.kport.langueg.parse.ast.nodes.expr.NCast;
+import com.kport.langueg.parse.ast.nodes.expr.NIdent;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 
 import static com.kport.langueg.lex.TokenType.*;
 
 public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
 
-    PLUS((left, right, ast) -> {
+    PLUS((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot add " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Plus),
 
-    MINUS((left, right, ast) -> {
+    MINUS((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot subtract " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Minus),
 
-    MUL((left, right, ast) -> {
+    MUL((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot multiply " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Mul),
 
-    DIV((left, right, ast) -> {
+    DIV((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot divide " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Div),
 
-    MOD((left, right, ast) -> {
+    MOD((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator % to " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Mod),
 
-    POW((left, right, ast) -> {
+    POW((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator ** to " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, Pow),
 
-    SHIFTR((left, right, ast) -> {
+    SHIFTR((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator >> to " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, ShiftR),
 
-    SHIFTL((left, right, ast) -> {
+    SHIFTL((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator << to " + left + " and " + right);
         }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
     }, ShiftL),
 
-    GREATER((left, right, ast) -> {
+    GREATER((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator < to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
-        return PrimitiveType.Boolean;
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+        return PrimitiveType.Bool;
     }, Greater),
 
-    LESS((left, right, ast) -> {
+    LESS((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator > to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
-        return PrimitiveType.Boolean;
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+        return PrimitiveType.Bool;
     }, Less),
 
-    GREATEREQ((left, right, ast) -> {
+    GREATEREQ((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator <= to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
-        return PrimitiveType.Boolean;
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+        return PrimitiveType.Bool;
     }, GreaterEq),
 
-    LESSEQ((left, right, ast) -> {
+    LESSEQ((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator >= to " + left + " and " + right);
         }
 
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
-        return PrimitiveType.Boolean;
+        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+        return PrimitiveType.Bool;
     }, LessEq),
 
-    EQ((left, right, ast) -> {
+    EQ((left, right, op) -> {
         if(!(left.equals(right))){
             throw new Error("Cannot apply operator == to " + left + " and " + right);
         }
 
-        return PrimitiveType.Boolean;
+        return PrimitiveType.Bool;
     }, Eq),
 
-    NOTEQ((left, right, ast) -> {
+    NOTEQ((left, right, op) -> {
         if(!(left.equals(right))){
             throw new Error("Cannot apply operator != to " + left + " and " + right);
         }
 
-        return PrimitiveType.Boolean;
+        return PrimitiveType.Bool;
     }, NotEq),
 
-    AND((left, right, ast) -> {
+    AND((left, right, op) -> {
         if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
             }
             throw new Error("Cannot apply operator & to " + left + " and " + right);
         }
@@ -143,7 +145,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, And),
 
-    ANDAND((left, right, ast) -> {
+    ANDAND((left, right, op) -> {
         if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             throw new Error("Cannot apply operator && to " + left + " and " + right);
         }
@@ -151,10 +153,10 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, AndAnd),
 
-    OR((left, right, ast) -> {
+    OR((left, right, op) -> {
         if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -162,7 +164,7 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, Or),
 
-    OROR((left, right, ast) -> {
+    OROR((left, right, op) -> {
         if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             throw new Error("Cannot apply operator & to " + left + " and " + right);
         }
@@ -170,10 +172,10 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, OrOr),
 
-    XOR((left, right, ast) -> {
+    XOR((left, right, op) -> {
         if(!(arePrim(left, right) && isBool(left) && isBool(right))){
             if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, ast);
+                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
             }
             throw new Error("Cannot apply operator | to " + left + " and " + right);
         }
@@ -181,152 +183,141 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         return left;
     }, XOr),
 
-    PLUSASSIGN((left, right, ast) -> {
+    PLUSASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator += to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, PlusAssign),
 
-    MINUSASSIGN((left, right, ast) -> {
+    MINUSASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator -= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, MinusAssign),
 
-    MULASSIGN((left, right, ast) -> {
+    MULASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator *= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, MulAssign),
 
-    DIVASSIGN((left, right, ast) -> {
+    DIVASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator /= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, DivAssign),
 
-    MODASSIGN((left, right, ast) -> {
+    MODASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator %= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, ModAssign),
 
-    POWASSIGN((left, right, ast) -> {
+    POWASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isNum(left) && isNum(right))){
             throw new Error("Cannot apply operator **= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, PowAssign),
 
-    SHIFTRASSIGN((left, right, ast) -> {
+    SHIFTRASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator >>= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, ShiftRAssign),
 
-    SHIFTLASSIGN((left, right, ast) -> {
+    SHIFTLASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator <<= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, ShiftLAssign),
 
-    ANDASSIGN((left, right, ast) -> {
+    ANDASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator &= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, AndAssign),
 
-    ORASSIGN((left, right, ast) -> {
+    ORASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator |= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, AndAssign),
 
-    XORASSIGN((left, right, ast) -> {
+    XORASSIGN((left, right, op) -> {
         if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
             throw new Error("Cannot apply operator ^= to " + left + " and " + right);
         }
 
         if(!right.equals(left)){
-            AST cast = new AST(ASTTypeE.Cast, new ASTType(left), ast.children[1].line, ast.children[1].column, ast.children[1]);
-            ast.children[1] = cast;
+            op.right = new NCast(op.right.line, op.right.column, left, op.right);
         }
 
         return left;
     }, AndAssign),
 
-    ASSIGN((left, right, ast) -> {
+    ASSIGN((left, right, op) -> {
         if(!left.equals(right)){
-            throw new Error("Cannot assign value of type " + right + " to variable " + ast.children[0].val.getStr() + " of type " + left);
+            throw new Error("Cannot assign value of type " + right + " to variable " + op.left + " of type " + left);
         }
 
         return left;
@@ -355,12 +346,12 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
     }
 
     private static final EnumMap<PrimitiveType, Integer> prec = new EnumMap<>(Map.of(
-            PrimitiveType.Byte,   0,
-            PrimitiveType.Short,  1,
-            PrimitiveType.Int,    2,
-            PrimitiveType.Long,   3,
-            PrimitiveType.Float,  4,
-            PrimitiveType.Double, 5
+            PrimitiveType.U8,   0,
+            PrimitiveType.I16,  1,
+            PrimitiveType.I32,    2,
+            PrimitiveType.I64,   3,
+            PrimitiveType.F32,  4,
+            PrimitiveType.F64, 5
     ));
 
     private static boolean isNum(Type t){
@@ -372,30 +363,30 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
 
     private static boolean isBool(Type t){
         if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.Boolean;
+            return t == PrimitiveType.Bool;
         }
         return false;
     }
 
     private static boolean isInteger(Type t){
         if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.Byte ||
-                    t == PrimitiveType.Short ||
-                    t == PrimitiveType.Int ||
-                    t == PrimitiveType.Long;
+            return t == PrimitiveType.U8 ||
+                    t == PrimitiveType.I16 ||
+                    t == PrimitiveType.I32 ||
+                    t == PrimitiveType.I64;
         }
         return false;
     }
 
     private static boolean isFloat(Type t){
         if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.Float ||
-                    t == PrimitiveType.Double;
+            return t == PrimitiveType.F32 ||
+                    t == PrimitiveType.F64;
         }
         return false;
     }
 
-    private static PrimitiveType castNonDominantGetDominant(PrimitiveType left, PrimitiveType right, AST ast){
+    private static PrimitiveType castNonDominantGetDominant(PrimitiveType left, PrimitiveType right, NBinOp op){
         if(left == right){
             return left;
         }
@@ -403,8 +394,9 @@ public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         boolean leftDominant = prec.get(left) > prec.get(right);
         PrimitiveType dominant = leftDominant? left : right;
 
-        AST unCast = ast.children[leftDominant? 1 : 0];
-        ast.children[leftDominant? 1 : 0] = new AST(ASTTypeE.Cast, new ASTType(dominant), unCast.line, unCast.column, unCast);
+        if(leftDominant) op.right = new NCast(op.right.line, op.right.column, dominant, op.right);
+        else op.left = new NCast(op.left.line, op.left.column, dominant, op.left);
+
         return dominant;
     }
 }

@@ -244,6 +244,7 @@ public enum TokenType {
         opAssignToOp.put(XOrAssign, XOr);
     }
     private static final EnumSet<TokenType> binOps = EnumSet.of(
+            Assign,
             Plus,
             Minus,
             Mul,

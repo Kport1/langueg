@@ -37,8 +37,7 @@ public class DefaultFileWriter implements FileWriter{
             throw new Error();
         }
 
-        try {
-            FileOutputStream output = new FileOutputStream(path);
+        try (FileOutputStream output = new FileOutputStream(path)){
             output.write(MAGIC);
             output.write(constIndices);
 

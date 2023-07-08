@@ -2,6 +2,14 @@ package com.kport.langueg.error;
 
 public enum Errors {
 
+    PARSE_BIN_OP_LEFT_NOT_EXPR(                 "Left side of operator \"%2$s\" is a statement! Line %1$d",
+                                                "Replace this with a valid expression"),
+    PARSE_BIN_OP_RIGHT_NOT_EXPR(                "Right side of operator \"%2$s\" is a statement! Line %1$d",
+                                                "Replace this with a valid expression"),
+
+    PARSE_CALL_CALLE_NOT_EXPR(                  "Called value is a statement! Line %1$d",
+                                                "Replace this with a valid expression"),
+
     PARSE_IF_CONDITION_EMPTY(                   "Condition of if statement cannot be empty! Line: %d",
                                                 "Add an expression between the parentheses"),
     PARSE_IF_CONDITION_TUPLE(                   "Condition of if statement cannot be a tuple! Line: %d",
@@ -52,6 +60,8 @@ public enum Errors {
 
     PARSE_VAR_EXPECTED_IDENTIFIER(              "Expected a name for the variable being declared! Line: %d",
                                                 "Variable declarations must follow the pattern: var/type name"),
+    PARSE_VAR_INIT_NOT_EXPR(                    "Variable %2$s is initialized with a statement! Line: %1$d",
+                                                "Replace this with a valid expression"),
     PARSE_VAR_DESTRUCT_EXPECTED_IDENTIFIER(     "Expected identifier in destructuring assignment! Line: %d",
                                                 "Variable declaration with destructuring assignment must follow the pattern: var (name1, name2, ...) = ..."),
     PARSE_VAR_DESTRUCT_CANNOT_INFER_TYPE(       "Cannot infer type of variables, without assignment after declaration! Line: %d",
@@ -61,6 +71,9 @@ public enum Errors {
                                                 "Hexadecimal numbers may only be integers and include the symbols 0123456789abcdefABCDEF"),
     PARSE_NUM_INVALID(                          "\"%s$s\" is neither a valid integer nor float! Line: %1$d",
                                                 ""),
+
+    PARSE_RETURN_NOT_EXPR(                      "Return value is a statement! Line: %1$d",
+                                                "Replace this with a valid expression"),
 
     PARSE_ATOM_REACHED_EOF(                     "Reached EOF whilst parsing atom!",
                                                 ""),

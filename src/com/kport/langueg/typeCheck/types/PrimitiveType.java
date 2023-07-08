@@ -5,16 +5,16 @@ import com.kport.langueg.lex.TokenType;
 public enum PrimitiveType implements Type{
     Void(TokenType.Void),
 
-    Boolean(TokenType.Boolean),
+    Bool(TokenType.Boolean),
     Char(TokenType.Char),
 
-    Byte(TokenType.Byte),
-    Short(TokenType.Short),
-    Int(TokenType.Int),
-    Long(TokenType.Long),
+    U8(TokenType.Byte),
+    I16(TokenType.Short),
+    I32(TokenType.Int),
+    I64(TokenType.Long),
 
-    Float(TokenType.Float),
-    Double(TokenType.Double);
+    F32(TokenType.Float),
+    F64(TokenType.Double);
 
 
     private final TokenType type;

@@ -4,8 +4,8 @@ import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTTypeE;
-import com.kport.langueg.parse.ast.ASTVisitor;
-import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 import com.kport.langueg.typeCheck.types.Type;
@@ -84,8 +84,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             e.printStackTrace();
         }
 
-        extractConstIndices(ast);
-
         try {
             gen(ast);
         }
@@ -109,165 +107,154 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     }
 
     private void gen(AST ast) throws IOException {
-        switch (ast.type){
-            case Prog -> {
-                for (AST child : ast.children) {
-                    gen(child);
-                }
+        switch (ast){
+            case NType type -> {
             }
-            case Type -> {
+            case NCast cast -> {
             }
-            case Cast -> {
-            }
-            case Fn -> {
-                boolean isAnon = ast.children[ast.children.length - 1].type != ASTTypeE.Identifier;
-
-                int blockIndex = ast.children.length - (isAnon ? 1 : 2);
-                Type[] paramTypes = Arrays.stream(Arrays.copyOfRange(ast.children, 0, blockIndex)).map(a -> a.val.getType()).toArray(Type[]::new);
-                String name = isAnon? null : ast.children[ast.children.length - 1].val.getStr();
-
-                FnIdentifier id = new FnIdentifier(ast.depth, ast.count, name, paramTypes);
+            case NFn fn -> {
+                FnIdentifier id = new FnIdentifier(ast.depth, ast.count, fn.name, fn.getParamTypes());
 
                 enterFn(id);
-                gen(ast.children[blockIndex]);
+                gen(fn.block);
                 exitFn();
             }
-            case FnArg -> {
+            case NTuple tup -> {
             }
-            case Tuple -> {
+            case NStr str -> {
             }
-            case Class -> {
+            case NFloat64 f64 -> {
             }
-            case Str -> {
+            case NFloat32 f32 -> {
             }
-            case Double -> {
+            case NInt32 i32 -> {
+                writeOp(Ops.PUSH32, i32.line, (short) registerConst32(i32.val));
             }
-            case Float -> {
+            case NUInt8 u8 -> {
+                writeOp(Ops.PUSH8, u8.line, u8.val);
             }
-            case Int -> {
-                writeOp(Ops.PUSH_INTC, ast.line, (short) constIndices32.get(ast.val.getInt()).intValue());
+            case NInt64 i64 -> {
             }
-            case Byte -> {
-                writeOp(Ops.PUSH_BYTE, ast.line, ast.val.getByte());
+            case NBool bool -> {
+                writeOp(Ops.PUSH8, bool.line, (byte)(bool.bool? 1 : 0));
             }
-            case Long -> {
-            }
-            case Bool -> {
-                writeOp(Ops.PUSH_BYTE, ast.line, (byte)(ast.val.getBool()? 1 : 0));
-            }
-            case If -> {
-                gen(ast.children[0]);
-                writeOp(Ops.JMP_IF_FALSE, ast.line, (short)0);
+            case NIf nif -> {
+                gen(nif.cond);
+                writeOp(Ops.JMP_IF_FALSE, nif.line, (short)0);
                 int jmpIndex = output.size() - 2;
-                gen(ast.children[1]);
-                if(ast.children.length == 3){
-                    writeOp(Ops.JMP, ast.children[1].line, (short)0);
-                    int jmpIndexElse = output.size() - 2;
-                    output.writeShort((short)(output.size() - jmpIndex - 2), jmpIndex);
-                    gen(ast.children[2]);
-                    output.writeShort((short)(output.size() - jmpIndexElse - 2), jmpIndexElse);
-                }
-                else {
-                    output.writeShort((short)(output.size() - jmpIndex - 2), jmpIndex);
-                }
+                gen(nif.ifBlock);
+                output.writeShort((short)(output.size() - jmpIndex - 2), jmpIndex);
             }
-            case Switch -> {
+            case NIfElse ifelse -> {
+                gen(ifelse.cond);
+                writeOp(Ops.JMP_IF_FALSE, ifelse.line, (short)0);
+                int jmpIndex = output.size() - 2;
+                gen(ifelse.ifBlock);
+
+                writeOp(Ops.JMP, ifelse.ifBlock.line, (short)0);
+                int jmpIndexElse = output.size() - 2;
+                output.writeShort((short)(output.size() - jmpIndex - 2), jmpIndex);
+                gen(ifelse.elseBlock);
+                output.writeShort((short)(output.size() - jmpIndexElse - 2), jmpIndexElse);
+
             }
-            case While -> {
+            case NWhile nwhile -> {
                 int jmpIndexCond = output.size();
-                gen(ast.children[0]);
-                writeOp(Ops.JMP_IF_FALSE, ast.line, (short)0);
+                gen(nwhile.condition);
+                writeOp(Ops.JMP_IF_FALSE, nwhile.line, (short)0);
                 int jmpIndexJumpOver = output.size() - 2;
-                gen(ast.children[1]);
-                writeOp(Ops.JMP, ast.line, (short)(jmpIndexCond - output.size() - 3));
+                gen(nwhile.block);
+                writeOp(Ops.JMP, nwhile.line, (short)(jmpIndexCond - output.size() - 3));
                 output.writeShort((short)(output.size() - jmpIndexJumpOver - 2), jmpIndexJumpOver);
             }
-            case For -> {
+            case NFor nfor -> {
             }
-            case Call -> {
-                AST called = ast.children[0];
-                AST[] args = Arrays.copyOfRange(ast.children, 1, ast.children.length);
-                for (AST arg : args) {
+            case NCall call -> {
+                for (AST arg : call.args) {
                     gen(arg);
                 }
-                if (called.type == ASTTypeE.Identifier &&
-                        fnTypes.containsKey(new FnIdentifier(called.depth, called.count, called.val.getStr(), called.returnType.getFnArgs()))) {
+                if (call.callee instanceof NIdent ident &&
+                        fnTypes.containsKey(new FnIdentifier(ident.depth, ident.count, ident.name, ident.exprType.getFnArgs()))) {
 
                 }
             }
-            case Block -> {
+            case NBlock block -> {
                 enterScope();
-                for (AST child : ast.children) {
+                for (AST child : block.statements) {
                     gen(child);
                 }
                 exitScope();
             }
-            case Return -> {
+            case NReturn ret -> {
             }
-            case Var -> {
-                VarIdentifier identifier = new VarIdentifier(ast.depth, ast.count, ast.children[0].val.getStr());
+            case NVarInit varInit -> {
+                VarIdentifier identifier = new VarIdentifier(varInit.depth, varInit.count, varInit.name);
 
-                if(ast.val.getType().isPrimitive()) {
-                    PrimitiveType primType = (PrimitiveType) ast.val.getType();
+                if(varInit.type.isPrimitive()) {
+                    PrimitiveType primType = (PrimitiveType) varInit.type;
                     localVariableIndices.put(identifier, getNextLocalVarIndex(LanguegVmValSize.ofPrimitive(primType)));
-                    if (ast.children.length == 2) {
-                        gen(ast.children[1]);
-                        writeOp(Ops.ofGeneric(Ops.Generic.STORE, primType), ast.line, (short)localVariableIndices.get(identifier).intValue());
+                    gen(varInit.init);
+                    writeOp(Ops.ofGeneric(Ops.Generic.STORE, LanguegVmValSize.ofPrimitive(primType)), varInit.line, (short)localVariableIndices.get(identifier).intValue());
+                }
+            }
+            case NVar var -> {
+                VarIdentifier identifier = new VarIdentifier(var.depth, var.count, var.name);
+
+                if(var.type.isPrimitive()) {
+                    PrimitiveType primType = (PrimitiveType) var.type;
+                    localVariableIndices.put(identifier, getNextLocalVarIndex(LanguegVmValSize.ofPrimitive(primType)));
+                }
+            }
+            case NBinOp op -> {
+                if(op.op == TokenType.Assign){
+                    gen(op.right);
+
+                    if(!(op.exprType instanceof PrimitiveType prim && prim == PrimitiveType.Void))
+                        writeOp(Ops.ofGeneric(Ops.Generic.DUP, LanguegVmValSize.ofType(op.exprType)), op.line);
+
+                    if(op.left instanceof NIdent ident) {
+                        writeOp(Ops.ofGeneric(Ops.Generic.STORE, LanguegVmValSize.ofType(op.exprType)), op.line, getLocalVarIndex(op.depth, op.count, ident.name));
                     }
-                }
-            }
-            case BinOp -> {
-                TokenType op = ast.val.getTok();
-                if(op == TokenType.Assign){
-                    PrimitiveType primType = (PrimitiveType) ast.children[0].returnType;
-                    gen(ast.children[1]);
+                    else {
 
-                    if(!(ast.returnType instanceof PrimitiveType prim && prim == PrimitiveType.Void))
-                        writeOp(Ops.ofGeneric(Ops.Generic.DUP, primType), ast.line);
-
-                    writeOp(Ops.ofGeneric(Ops.Generic.STORE, primType), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
+                    }
                     return;
                 }
 
-                if(op.isOpAssign()){
-                    TokenType binOp = op.getOpOfOpAssign();
+                /*if(op.op.isOpAssign()){
+                    TokenType binOp = op.op.getOpOfOpAssign();
                     PrimitiveType primType = (PrimitiveType) ast.children[0].returnType;
-                    writeOp(Ops.ofGeneric(Ops.Generic.LOAD, primType), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
+                    writeOp(Ops.ofGeneric(Ops.Generic.LOAD, LanguegVmValSize.ofPrimitive(primType)), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
                     gen(ast.children[1]);
-                    writeOp(Ops.ofBinOp(primType, binOp), ast.line);
+                    writeOp(Ops.ofOP(primType, binOp), ast.line);
 
                     if(!(ast.returnType instanceof PrimitiveType prim && prim == PrimitiveType.Void))
-                        writeOp(Ops.ofGeneric(Ops.Generic.DUP, primType), ast.line);
+                        writeOp(Ops.ofGeneric(Ops.Generic.DUP, LanguegVmValSize.ofPrimitive(primType)), ast.line);
 
-                    writeOp(Ops.ofGeneric(Ops.Generic.STORE, primType), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
+                    writeOp(Ops.ofGeneric(Ops.Generic.STORE, LanguegVmValSize.ofPrimitive(primType)), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
                     return;
-                }
+                }*/
 
-                if(op.isUnaryOp()){
+                if(op.exprType instanceof PrimitiveType prim && prim == PrimitiveType.Void) return;
 
-                }
+                gen(op.left);
+                gen(op.right);
+                writeOp(Ops.ofOP(op), ast.line);
 
-                if(op.isBinOp()){
-                    gen(ast.children[0]);
-                    gen(ast.children[1]);
-                    writeOp(Ops.ofBinOp(ast), ast.line);
-                }
             }
-            case UnaryOpBefore -> {
+            case NUnaryOpPre op -> {
             }
-            case UnaryOpAfter -> {
+            case NUnaryOpPost op -> {
             }
-            case Modifier -> {
+            case NIdent ident -> {
+                writeOp(Ops.ofGeneric(Ops.Generic.LOAD, LanguegVmValSize.ofType(ident.exprType)), ident.line, getLocalVarIndex(ident.depth, ident.count, ident.name));
             }
-            case Identifier -> {
-                if(ast.returnType.isPrimitive()) {
-                    PrimitiveType primType = (PrimitiveType) ast.returnType;
-                    writeOp(Ops.ofGeneric(Ops.Generic.LOAD, primType), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.val.getStr()));
-                }
-            }
+
+            default -> throw new IllegalStateException("Unexpected value: " + ast);
         }
     }
 
+    //
     private final Stack<EnumMap<LanguegVmValSize, Stack<Integer>>> localVarScopedIndices = new Stack<>();
     private final Stack<FnIdentifier> fnStack = new Stack<>();
     {
@@ -408,41 +395,17 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
     private int indexCount32 = 0;
     private int indexCount64 = 0;
-    private void extractConstIndices(AST ast_){
-        ast_.accept((ast, context) -> {
-            switch(ast.type){
-                case Int -> {
-                    if(constIndices32.containsKey(ast.val.getInt())) return;
-                    if(indexCount32 > 65535) throw new Error("Too many 32 bit constants");
-                    constIndices32.put(ast.val.getInt(), indexCount32);
+    private int registerConst32(int val){
+        if(indexCount32 == 65536) throw new Error();
+        if(constIndices32.containsKey(val)) return constIndices32.get(val);
+        constIndices32.put(val, indexCount32);
+        return indexCount32++;
+    }
 
-                    indexCount32++;
-                }
-
-                case Long -> {
-                    if(constIndices64.containsKey(ast.val.getLong())) return;
-                    if(indexCount64 > 65535) throw new Error("Too many 64 bit constants");
-                    constIndices64.put(ast.val.getLong(), indexCount64);
-
-                    indexCount64++;
-                }
-
-                case Float -> {
-                    if(constIndices32.containsKey(Float.floatToRawIntBits(ast.val.getFloat()))) return;
-                    if(indexCount32 > 65535) throw new Error("Too many 32 bit constants");
-                    constIndices32.put(Float.floatToRawIntBits(ast.val.getInt()), indexCount32);
-
-                    indexCount32++;
-                }
-
-                case Double -> {
-                    if(constIndices64.containsKey(Double.doubleToRawLongBits(ast.val.getDouble()))) return;
-                    if(indexCount64 > 65535) throw new Error("Too many 64 bit constants");
-                    constIndices64.put(Double.doubleToRawLongBits(ast.val.getLong()), indexCount64);
-
-                    indexCount64++;
-                }
-            }
-        }, null);
+    private int registerConst64(long val){
+        if(indexCount64 == 65536) throw new Error();
+        if(constIndices64.containsKey(val)) return constIndices64.get(val);
+        constIndices64.put(val, indexCount64);
+        return indexCount64++;
     }
 }

@@ -5,7 +5,9 @@ import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.VisitorContext;
-import com.kport.langueg.parse.ast.astVals.ASTType;
+import com.kport.langueg.parse.ast.nodes.*;
+import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.op.BinOpTypeMap;
 import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
@@ -14,8 +16,6 @@ import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.ScopeTree;
 import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.VarIdentifier;
-
-import static com.kport.langueg.parse.ast.ASTTypeE.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,7 +43,7 @@ public class DefaultTypeChecker implements TypeChecker{
 
         //construct scope tree and annotate depth, count
         visitBlocks(ast, (expr, depthCount) -> {
-            if(expr.type == Block){
+            if(expr instanceof NBlock){
                 ScopeTree.Node containingBlock = scopeTree.getNode(depthCount[0], depthCount[1]);
                 containingBlock.addChildren(1);
             }
@@ -53,96 +53,83 @@ public class DefaultTypeChecker implements TypeChecker{
 
         //Find fn types
         ast.accept((expr, context) -> {
-            if(expr.type == Fn){
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
-                Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
-
-                String name = expr.children[expr.children.length - 1].val.getStr();
-                FnIdentifier identifier = new FnIdentifier(expr.depth, expr.count, name, argTypes);
-                Type returnType = expr.val.getType();
+            if(expr instanceof NFn fn){
+                Type[] paramTypes = Arrays.stream(fn.params).map((param) -> param.type).toArray(Type[]::new);
+                FnIdentifier identifier = new FnIdentifier(fn.depth, fn.count, fn.name, paramTypes);
 
                 //Fn already exists
-                if(fnExists(name, expr.depth, expr.count, argTypes)){
+                if(fnExists(fn.name, fn.depth, fn.count, paramTypes)){
                     throw new Error("Duplicate function definition " + identifier + " in current scope");
                 }
 
-                fnTypes.put(identifier, returnType);
+                fnTypes.put(identifier, fn.returnType);
             }
 
             //Function params
-            if(expr.type == Fn || expr.type == AnonFn){
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - (expr.type == Fn? 2 : 1));
-
-                for (AST arg : args) {
-                    fnParamTypes.put(new VarIdentifier(expr.depth, expr.count, arg.children[0].val.getStr()), arg.val.getType());
+            if(expr instanceof NAnonFn fn){
+                for (NVar param : fn.params) {
+                    fnParamTypes.put(new VarIdentifier(fn.depth, fn.count, param.name), param.type);
                 }
             }
         }, null);
 
         //Find var types
         ast.accept((expr, context) -> {
-            if(expr.type != Var) return;
-
-            String name = expr.children[0].val.getStr();
+            if(!(expr instanceof NVar var)) return;
 
             //Duplicate var
-            if(varExistsInScope(name, expr.depth, expr.count)){
-                throw new Error("Duplicate var " + name + " in current scope");
+            if(varExistsInScope(var.name, var.depth, var.count)){
+                throw new Error("Duplicate var " + var.name + " in current scope");
             }
 
             //Duplicate fn
-            if(anyFnExists(name, expr.depth, expr.count)){
-                throw new Error("Var and fn cannot have the same name (" + name + ")");
+            if(anyFnExists(var.name, expr.depth, expr.count)){
+                throw new Error("Var and fn cannot have the same name (" + var.name + ")");
             }
 
-            if (expr.children.length > 1) {
-                Type varType = getExprType(expr.children[1], expr.depth, expr.count);
-                if(varType.primitive() == TokenType.Void){
-                    throw new Error("Cannot assign void to variable " + name);
+            if (var instanceof NVarInit varInit) {
+                Type inferredType = getExprType(varInit.init, expr.depth, expr.count);
+                if(inferredType.primitive() == TokenType.Void){
+                    throw new Error("Cannot assign void to variable " + varInit.name);
                 }
                 Type expectedType = null;
 
-                if(expr.val != null && expr.val.isType()){
-                    expectedType = expr.val.getType();
-                    if(!Objects.equals(varType, expectedType)){
-                        throw new Error("Cannot assign value of type " + varType + " to variable of type " + expectedType);
+                if(varInit.type != null){
+                    expectedType = varInit.type;
+                    if(!Objects.equals(inferredType, expectedType)){
+                        throw new Error("Cannot assign value of type " + inferredType + " to variable of type " + expectedType);
                     }
                 }
 
-                varTypes.put(new VarIdentifier(expr.depth, expr.count, name), expectedType == null? varType : expectedType);
-                expr.val = new ASTType(varType);
+                varTypes.put(new VarIdentifier(expr.depth, expr.count, var.name), expectedType == null? inferredType : expectedType);
+                var.type = inferredType;
             }
-            else if(expr.val == null || !expr.val.isType()){
-                throw new Error("Can't infer type of variable " + name + ", because it is not initialized");
+            else if(var.type == null){
+                throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
             }
             else {
-                varTypes.put(new VarIdentifier(expr.depth, expr.count, name), expr.val.getType());
+                varTypes.put(new VarIdentifier(expr.depth, expr.count, var.name), var.type);
             }
         }, null);
 
         //Give expressions return type
-        ast.accept((expr, context) -> {
-            if(expr.parent != null && (expr.parent.type == Block || expr.parent.type == Prog || expr.parent.type == FnArg)) {
-                expr.returnType = PrimitiveType.Void;
-                return;
+        ast.accept((expr_, context) -> {
+            if(expr_ instanceof NExpr expr){
+                expr.exprType = getExprType(expr, expr.depth, expr.count);
             }
-            expr.returnType = getExprType(expr, expr.depth, expr.count);
         }, null);
 
         //Verify return of functions
         ast.accept((expr, context) -> {
-            if(expr.type == Fn){
-                Type returnType = expr.val.getType();
-                if(returnType == PrimitiveType.Void) return;
-                boolean isAnon = expr.children[expr.children.length - 1].type != Identifier;
-                String name = isAnon? null : expr.children[expr.children.length - 1].val.getStr();
-                int blockIndex = expr.children.length - (isAnon ? 1 : 2);
-                Type[] params = Arrays.stream(Arrays.copyOfRange(expr.children, 0, blockIndex))
-                        .map(a -> a.returnType).toArray(Type[]::new);
+            if(expr instanceof NAnonFn afn){
+                if(afn.returnType == PrimitiveType.Void) return;
 
-                boolean returnsOnAllPaths = ensureFnReturn(expr.children[blockIndex], returnType, new FnIdentifier(expr.depth, expr.count, name, params));
-                if(!returnsOnAllPaths && name == null) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, expr.line);
-                if(!returnsOnAllPaths && name != null) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, expr.line, name);
+                if(afn instanceof NFn fn){
+                    if(!ensureFnReturn(afn.block, afn.returnType, fn.name)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, expr.line, fn.name);
+                }
+                else{
+                    if(!ensureFnReturn(afn.block, afn.returnType, null)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, expr.line);
+                }
             }
         }, null);
 
@@ -151,16 +138,8 @@ public class DefaultTypeChecker implements TypeChecker{
             FnIdentifier id = (FnIdentifier) context.get("id");
 
             expr.enclosingFn = id;
-            if(expr.type == Fn){
-                String name = expr.children[expr.children.length - 1].val.getStr();
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 2);
-                id = new FnIdentifier(expr.depth, expr.count, name, Arrays.stream(args).map(a -> a.val.getType()).toArray(Type[]::new));
-                context.put("id", id);
-            }
-
-            if(expr.type == AnonFn){
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
-                id = new FnIdentifier(expr.depth, expr.count, null, Arrays.stream(args).map(a -> a.val.getType()).toArray(Type[]::new));
+            if(expr instanceof NAnonFn afn){
+                id = new FnIdentifier(afn.depth, afn.count, afn instanceof NFn fn? fn.name : null, afn.getParamTypes());
                 context.put("id", id);
             }
 
@@ -176,30 +155,34 @@ public class DefaultTypeChecker implements TypeChecker{
         return ast;
     }
 
-    private boolean ensureFnReturn(AST ast, Type returnType, FnIdentifier fn){
-        if(ast.type == Return){
-            if(ast.children.length == 0 && fn.name() != null)
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID, ast.line, fn.name(), returnType);
+    private boolean ensureFnReturn(AST ast, Type returnType, String name){
+        if(ast instanceof NReturnVoid){
+            if(name != null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID, ast.line, name, returnType);
 
-            if(ast.children.length == 0 && fn.name() == null)
+            if(name == null)
                 errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID_ANON, ast.line, returnType);
+        }
+        else if(ast instanceof NReturn ret){
+            if(!ret.expr.exprType.equals(returnType) && name != null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH, ast.line, name, returnType, ret.expr.exprType);
 
-            if(!ast.children[0].returnType.equals(returnType) && fn.name() != null)
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH, ast.line, fn.name(), returnType, ast.children[0].returnType);
-
-            if(!ast.children[0].returnType.equals(returnType) && fn.name() == null)
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_ANON, ast.line, returnType, ast.children[0].returnType);
+            if(!ret.expr.exprType.equals(returnType) && name == null)
+                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_ANON, ast.line, returnType, ret.expr.exprType);
 
             return true;
         }
-        if(ast.type == If){
-            return ast.children.length == 3
-                    && ensureFnReturn(ast.children[1], returnType, fn)
-                    && ensureFnReturn(ast.children[2], returnType, fn);
+
+        if(ast instanceof NIfElse ifElse){
+            return     ensureFnReturn(ifElse.ifBlock, returnType, name)
+                    && ensureFnReturn(ifElse.elseBlock, returnType, name);
         }
-        for (AST child : ast.children) {
-            if(ensureFnReturn(child, returnType, fn))
-                return true;
+
+        if(ast instanceof NBlock block) {
+            for (AST child : block.statements) {
+                if (ensureFnReturn(child, returnType, name))
+                    return true;
+            }
         }
         return false;
     }
@@ -214,7 +197,7 @@ public class DefaultTypeChecker implements TypeChecker{
             int depth = (int) c.get("depth");
             int count = (int) c.get("count");
             blockVisitor.accept(expr, new int[]{depth, count});
-            if(expr.type == Block){
+            if(expr instanceof NBlock){
                 if(!depthCounter.containsKey(depth + 1)){
                     depthCounter.put(depth + 1, 0);
                 }
@@ -306,154 +289,126 @@ public class DefaultTypeChecker implements TypeChecker{
         return inScope;
     }
 
-    private Type getExprType(AST expr, int depth, int count){
-        switch(expr.type){
-            case Prog, Type, Switch, While, For, Block, Return, FnArg -> {return PrimitiveType.Void;}
-            case Str -> {
+    private Type getExprType(NExpr expr, int depth, int count){
+        switch(expr){
+
+            case NStr _i -> {
                 return new CustomType("String");
             }
-            case Float -> {
-                return PrimitiveType.Float;
+
+            case NFloat32 _i -> {
+                return PrimitiveType.F32;
             }
-            case Double -> {
-                return PrimitiveType.Double;
+
+            case NFloat64 _i -> {
+                return PrimitiveType.F64;
             }
-            case Byte -> {
-                return PrimitiveType.Byte;
+
+            case NUInt8 _i -> {
+                return PrimitiveType.U8;
             }
-            case Char -> {
+
+            case NChar _i -> {
                 return PrimitiveType.Char;
             }
-            case Short -> {
-                return PrimitiveType.Short;
-            }
-            case Int -> {
-                return PrimitiveType.Int;
-            }
-            case Long -> {
-                return PrimitiveType.Long;
-            }
-            case Bool -> {
-                return PrimitiveType.Boolean;
-            }
-            case If -> {
-                if(expr.children.length < 3){
-                    return PrimitiveType.Void;
-                }
 
-                Type ifType = getExprType(expr.children[1], depth, count);
-                Type elseType = getExprType(expr.children[2], depth, count);
-
-                if(!Objects.equals(ifType, elseType)){
-                    throw new Error("Return types of if and else branch don't match: " + expr);
-                }
-
-                return ifType;
+            case NInt16 _i -> {
+                return PrimitiveType.I16;
             }
-            case Call -> {
-                AST called = expr.children[0];
-                Type[] args = Arrays.stream(Arrays.copyOfRange(expr.children, 1, expr.children.length))
-                        .map((arg) -> getExprType(arg, depth, count)).toArray(Type[]::new);
 
-                if(called.type == Identifier){
-                    String name = called.val.getStr();
-                    Type fnType = getFnType(name, depth, count, args);
+            case NInt32 _i -> {
+                return PrimitiveType.I32;
+            }
+
+            case NInt64 _i -> {
+                return PrimitiveType.I64;
+            }
+
+            case NBool _i -> {
+                return PrimitiveType.Bool;
+            }
+
+            case NCall call -> {
+                Type[] args = Arrays.stream(call.args).map((arg) -> getExprType(arg, depth, count)).toArray(Type[]::new);
+
+                if(call.callee instanceof NIdent ident){
+                    Type fnType = getFnType(ident.name, depth, count, args);
                     if(fnType == null){
-                        Type varType = getVarType(name, depth, count);
+                        Type varType = getVarType(ident.name, depth, count);
                         if(varType == null){
-                            throw new Error("Function or variable " + name + " doesn't exist in current scope " +
+                            throw new Error("Function or variable " + ident.name + " doesn't exist in current scope " +
                                     "or cannot be called with " + Arrays.toString(args));
                         }
-                        return getCalledVarReturn(varType, name, args);
+                        return getCalledVarReturn(varType, ident.name, args);
                     }
                     return fnType;
                 }
 
-                Type calledExprType = getExprType(called, depth, count);
+                Type calledExprType = getExprType(call.callee, depth, count);
                 return getReturnTypeAndVerifyArgs(calledExprType, args);
             }
-            case Fn -> {
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
-                Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
-                return new FnType(expr.val.getType(), argTypes);
+            case NAnonFn fn -> {
+                return new FnType(fn.returnType, fn.getParamTypes());
             }
-            case AnonFn -> {
-                AST[] args = Arrays.copyOfRange(expr.children, 0, expr.children.length - 1);
-                Type[] argTypes = Arrays.stream(args).map((arg) -> arg.val.getType()).toArray(Type[]::new);
 
-                return new FnType(expr.val.getType(), argTypes);
-            }
-            case Tuple -> {
-                if(expr.children.length == 0){
-                    return new TupleType();
-                }
-                Type[] tupTypes = Arrays.stream(expr.children).map((type) -> getExprType(type, depth, count)).toArray(Type[]::new);
+            case NTuple tup -> {
+                Type[] tupTypes = Arrays.stream(tup.elements).map((elem) -> getExprType(elem, depth, count)).toArray(Type[]::new);
                 return new TupleType(tupTypes);
             }
-            //case Class -> {}
 
-            case Var -> {
-                if(expr.children.length < 2){
-                    return PrimitiveType.Void;
-                }
-                return getExprType(expr.children[1], depth, count);
+            case NCast cast -> {
+                return cast.type;
             }
 
-            case VarDestruct -> {
-                return getExprType(expr.children[expr.children.length - 1], depth, count);
-            }
+            case NBinOp binOp -> {
+                Type left = getExprType(binOp.left, depth, count);
+                Type right = getExprType(binOp.right, depth, count);
 
-            case Cast -> {
-                return expr.val.getType();
-            }
-            case BinOp -> {
-                TokenType op = expr.val.getTok();
-                Type left = getExprType(expr.children[0], depth, count);
-                Type right = getExprType(expr.children[1], depth, count);
-
-                BinOpTypeMap map = binOpTypeMappings.getFromOp(op);
+                BinOpTypeMap map = binOpTypeMappings.getFromOp(binOp.op);
                 if(map == null){
-                    throw new Error("Cannot apply operator " + op + " to " + left + " and " + right);
+                    throw new Error("Cannot apply operator " + binOp.op + " to " + left + " and " + right);
                 }
-                return map.getType(left, right, expr);
+                return map.getType(left, right, binOp);
             }
-            case UnaryOpBefore -> {}
-            case UnaryOpAfter -> {}
-            case Modifier -> {}
-            case Identifier -> {
-                String name = expr.val.getStr();
-                boolean varExists = varExists(name, depth, count);
-                boolean anyFnExists = anyFnExists(name, depth, count);
+
+            //case UnaryOpBefore -> {}
+            //case UnaryOpAfter -> {}
+            //case Modifier -> {}
+
+            case NIdent ident -> {
+                boolean varExists = varExists(ident.name, depth, count);
+                boolean anyFnExists = anyFnExists(ident.name, depth, count);
                 ScopeTree.Node parentScope = scopeTree.getNode(depth, count).getParent();
-                boolean fnParamExists = parentScope != null && fnParamExists(name, parentScope.depth, parentScope.count);
+                boolean fnParamExists = parentScope != null && fnParamExists(ident.name, parentScope.depth, parentScope.count);
 
                 if(varExists && anyFnExists){
-                    throw new Error("There cannot be a variable and a function with the same name (" + name + ")");
+                    throw new Error("There cannot be a variable and a function with the same name (" + ident.name + ")");
                 }
 
                 if(fnParamExists){
-                    if(varTypes.get(new VarIdentifier(depth, count, name)) != null){
-                        throw new Error("Cannot have var and function parameter with the same name (" + name + ") in the same scope");
+                    if(varTypes.get(new VarIdentifier(depth, count, ident.name)) != null){
+                        throw new Error("Cannot have var and function parameter with the same name (" + ident.name + ") in the same scope");
                     }
-                    return getFnParamType(name, parentScope.depth, parentScope.count);
+                    return getFnParamType(ident.name, parentScope.depth, parentScope.count);
                 }
 
                 if(varExists){
-                    return getVarType(name, depth, count);
+                    return getVarType(ident.name, depth, count);
                 }
 
                 if(anyFnExists){
-                    Type[] fns = getAllFnTypes(name, depth, count);
+                    Type[] fns = getAllFnTypes(ident.name, depth, count);
                     if(fns.length == 1){
                         return fns[0];
                     }
-                    //TODO: Array of all matching functions
+
                 }
-                throw new Error("Variable " + name + " doesn't exist");
+                throw new Error("Variable " + ident.name + " doesn't exist");
             }
+
+            default -> throw new IllegalStateException("Unexpected value: " + expr);
         }
-        return PrimitiveType.Void;
     }
 
     private Type getCalledVarReturn(Type varType, String varName, Type... args){

@@ -38,13 +38,13 @@ public class Main {
                         (o, p) -> time.set(System.nanoTime()),
                         (o, p) ->  {
                                     System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                    //System.out.println("AST: " + o);
+                                    System.out.println("AST: " + o);
                                 })
                 .addComponent(new DefaultTypeChecker(),
                         (o, p) -> time.set(System.nanoTime()),
                         (o, p) ->  {
                                     System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                    System.out.println("AST: " + o);
+                                    System.out.println("AAST: " + o);
                                     try {
                                         System.out.println("Scope Tree: " + p.getAdditionalData("ScopeTree", ScopeTree.class));
                                     } catch (InvalidTypeException e) {

@@ -38,7 +38,7 @@ public class MCDataCodeGenerator implements CodeGenerator {
 
         //gen libs
 
-        gen(ast, 0, 0, output);
+        //gen(ast, 0, 0, output);
 
         //return output.toString();
         return null;
@@ -47,7 +47,7 @@ public class MCDataCodeGenerator implements CodeGenerator {
 
 
 
-    private void gen(AST ast, int depth, int count, StringBuilder output) {
+    /*private void gen(AST ast, int depth, int count, StringBuilder output) {
 
         switch (ast.type){
             case Prog -> {
@@ -155,7 +155,7 @@ public class MCDataCodeGenerator implements CodeGenerator {
             }
         }
 
-    }
+    }*/
 
     public static void pushStackValue(String val, StringBuilder output){
         output.append("data modify storage ").append(stack).append(" val prepend value ").append(val).append("\n");

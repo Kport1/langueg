@@ -4,6 +4,9 @@ import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTTypeE;
+import com.kport.langueg.parse.ast.nodes.expr.NIdent;
+import com.kport.langueg.parse.ast.nodes.expr.NTuple;
+import com.kport.langueg.parse.ast.nodes.expr.NType;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -58,18 +61,18 @@ public interface Type {
 
         Type[] res =
                 Arrays.stream(asts).map((ast) -> {
-                    if(ast.type == Tuple){
+                    if(ast instanceof NTuple tup){
                         try {
-                            return new TupleType(of(ast.children));
+                            return new TupleType(of(tup.elements));
                         } catch (TypeConversionException e) {
                             err[0] = true;
                         }
                     }
-                    if (ast.type == Identifier) {
-                        return new CustomType(ast.val.getStr());
+                    if (ast instanceof NIdent ident) {
+                        return new CustomType(ident.name);
                     }
-                    if(ast.type == ASTTypeE.Type){
-                        return ast.val.getType();
+                    if(ast instanceof NType type){
+                        return type.type;
                     }
 
                     err[0] = true;
