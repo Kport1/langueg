@@ -1,23 +1,25 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.FnParamDef;
-import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
 
-public class NAnonFn extends NExpr {
+public class NFn extends NStatement {
 
     public Type returnType;
     public FnParamDef[] params;
     public AST block;
+    public String name;
 
-    public NAnonFn(int line_, int column_, Type returnType_, FnParamDef[] params_, AST block_){
+    public NFn(int line_, int column_, Type returnType_, String name_, FnParamDef[] params_, AST block_){
         super(line_, column_, block_);
         returnType = returnType_;
         params = params_;
         block = block_;
+        name = name_;
     }
 
     public Type[] getParamTypes(){
@@ -36,6 +38,6 @@ public class NAnonFn extends NExpr {
 
     @Override
     public String nToString(){
-        return "r: " + returnType.toString() + ", p: " + Arrays.toString(params);
+        return "r: " + returnType.toString() + ", n: " + name + ", p: " + Arrays.toString(params);
     }
 }

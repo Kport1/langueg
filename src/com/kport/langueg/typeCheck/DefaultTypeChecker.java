@@ -4,6 +4,7 @@ import com.kport.langueg.error.ErrorHandler;
 import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
@@ -52,8 +53,9 @@ public class DefaultTypeChecker implements TypeChecker{
         });
 
         //Find fn types
-        ast.accept((expr, context) -> {
-            if(expr instanceof NFn fn){
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NFn fn, VisitorContext context) {
                 Type[] paramTypes = Arrays.stream(fn.params).map((param) -> param.type).toArray(Type[]::new);
                 FnIdentifier identifier = new FnIdentifier(fn.depth, fn.count, fn.name, paramTypes);
 
@@ -63,89 +65,113 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
 
                 fnTypes.put(identifier, fn.returnType);
+
+                for (FnParamDef param : fn.params) {
+                    fnParamTypes.put(new VarIdentifier(fn.depth, fn.count, param.name), param.type);
+                }
             }
 
-            //Function params
-            if(expr instanceof NAnonFn fn){
-                for (NVar param : fn.params) {
-                    fnParamTypes.put(new VarIdentifier(fn.depth, fn.count, param.name), param.type);
+            @Override
+            public void visit(NAnonFn anonFn, VisitorContext context) {
+                for (FnParamDef param : anonFn.params) {
+                    fnParamTypes.put(new VarIdentifier(anonFn.depth, anonFn.count, param.name), param.type);
                 }
             }
         }, null);
 
         //Find var types
-        ast.accept((expr, context) -> {
-            if(!(expr instanceof NVar var)) return;
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NVar var, VisitorContext context) {
+                //Duplicate var
+                if(varExistsInScope(var.name, var.depth, var.count)){
+                    throw new Error("Duplicate var " + var.name + " in current scope");
+                }
 
-            //Duplicate var
-            if(varExistsInScope(var.name, var.depth, var.count)){
-                throw new Error("Duplicate var " + var.name + " in current scope");
+                //Duplicate fn
+                if(anyFnExists(var.name, var.depth, var.count)){
+                    throw new Error("Var and fn cannot have the same name (" + var.name + ")");
+                }
+
+                if(var.type == null){
+                    throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
+                }
+
+                varTypes.put(new VarIdentifier(var.depth, var.count, var.name), var.type);
             }
 
-            //Duplicate fn
-            if(anyFnExists(var.name, expr.depth, expr.count)){
-                throw new Error("Var and fn cannot have the same name (" + var.name + ")");
-            }
+            @Override
+            public void visit(NVarInit varInit, VisitorContext context){
+                //Duplicate var
+                if(varExistsInScope(varInit.name, varInit.depth, varInit.count)){
+                    throw new Error("Duplicate var " + varInit.name + " in current scope");
+                }
 
-            if (var instanceof NVarInit varInit) {
-                Type inferredType = getExprType(varInit.init, expr.depth, expr.count);
+                //Duplicate fn
+                if(anyFnExists(varInit.name, varInit.depth, varInit.count)){
+                    throw new Error("Var and fn cannot have the same name (" + varInit.name + ")");
+                }
+
+                Type inferredType = getExprType(varInit.init, varInit.depth, varInit.count);
                 if(inferredType.primitive() == TokenType.Void){
                     throw new Error("Cannot assign void to variable " + varInit.name);
                 }
-                Type expectedType = null;
 
                 if(varInit.type != null){
-                    expectedType = varInit.type;
-                    if(!Objects.equals(inferredType, expectedType)){
-                        throw new Error("Cannot assign value of type " + inferredType + " to variable of type " + expectedType);
+                    if(!Objects.equals(inferredType, varInit.type)){
+                        throw new Error("Cannot assign value of type " + inferredType + " to variable of type " + varInit.type);
                     }
                 }
+                else {
+                    varInit.type = inferredType;
+                }
 
-                varTypes.put(new VarIdentifier(expr.depth, expr.count, var.name), expectedType == null? inferredType : expectedType);
-                var.type = inferredType;
-            }
-            else if(var.type == null){
-                throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
-            }
-            else {
-                varTypes.put(new VarIdentifier(expr.depth, expr.count, var.name), var.type);
+                varTypes.put(new VarIdentifier(varInit.depth, varInit.count, varInit.name), varInit.type);
             }
         }, null);
 
-        //Give expressions return type
-        ast.accept((expr_, context) -> {
-            if(expr_ instanceof NExpr expr){
+        //Annotate expression types
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NExpr expr, VisitorContext context) {
                 expr.exprType = getExprType(expr, expr.depth, expr.count);
             }
         }, null);
 
         //Verify return of functions
-        ast.accept((expr, context) -> {
-            if(expr instanceof NAnonFn afn){
-                if(afn.returnType == PrimitiveType.Void) return;
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NAnonFn anonFn, VisitorContext context) {
+                if(anonFn.returnType == PrimitiveType.Void) return;
 
-                if(afn instanceof NFn fn){
-                    if(!ensureFnReturn(afn.block, afn.returnType, fn.name)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, expr.line, fn.name);
-                }
-                else{
-                    if(!ensureFnReturn(afn.block, afn.returnType, null)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, expr.line);
-                }
+                if(!ensureFnReturn(anonFn.block, anonFn.returnType, null)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, anonFn.line);
+            }
+
+            @Override
+            public void visit(NFn fn, VisitorContext context) {
+                if(fn.returnType == PrimitiveType.Void) return;
+
+                if(!ensureFnReturn(fn.block, fn.returnType, fn.name)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, fn.line, fn.name);
             }
         }, null);
 
         //Annotate enclosing function
-        ast.accept((expr, context) -> {
-            FnIdentifier id = (FnIdentifier) context.get("id");
-
-            expr.enclosingFn = id;
-            if(expr instanceof NAnonFn afn){
-                id = new FnIdentifier(afn.depth, afn.count, afn instanceof NFn fn? fn.name : null, afn.getParamTypes());
-                context.put("id", id);
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(AST ast, VisitorContext context) {
+                ast.enclosingFn = (FnIdentifier) context.get("id");
             }
 
-        }, new VisitorContext(Map.of()));
+            @Override
+            public void visit(NFn fn, VisitorContext context) {
+                context.put("id", new FnIdentifier(fn.depth, fn.count, fn.name, fn.getParamTypes()));
+            }
 
-        //System.out.println("ast:\n" + ast);
+            @Override
+            public void visit(NAnonFn anonFn, VisitorContext context) {
+                context.put("id", new FnIdentifier(anonFn.depth, anonFn.count, null, anonFn.getParamTypes()));
+            }
+        }, new VisitorContext(Map.of()));
 
         pipeline.putAdditionalData("ScopeTree", scopeTree);
         pipeline.putAdditionalData("FunctionTypes", fnTypes);
@@ -191,21 +217,23 @@ public class DefaultTypeChecker implements TypeChecker{
         HashMap<Integer, Integer> depthCounter = new HashMap<>();
         depthCounter.put(0, 0);
 
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(AST ast, VisitorContext context) {
+                blockVisitor.accept(ast, new int[]{(int)context.get("depth"), (int)context.get("count")});
+            }
 
-        ast.accept((expr, c) -> {
-
-            int depth = (int) c.get("depth");
-            int count = (int) c.get("count");
-            blockVisitor.accept(expr, new int[]{depth, count});
-            if(expr instanceof NBlock){
+            @Override
+            public void visit(NBlock block, VisitorContext context){
+                int depth = (int)context.get("depth");
+                int count = (int)context.get("count");
                 if(!depthCounter.containsKey(depth + 1)){
                     depthCounter.put(depth + 1, 0);
                 }
-                c.put("count", depthCounter.get(depth + 1));
-                c.put("depth", depth + 1);
+                context.put("count", depthCounter.get(depth + 1));
+                context.put("depth", depth + 1);
                 depthCounter.put(depth + 1, count + 1);
             }
-
         }, new VisitorContext(Map.of("depth", 0, "count", 0)));
     }
 

@@ -3,7 +3,6 @@ package com.kport.langueg.codeGen.languegVmCodeGen;
 import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.ast.ASTTypeE;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
@@ -108,8 +107,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
     private void gen(AST ast) throws IOException {
         switch (ast){
-            case NType type -> {
-            }
             case NCast cast -> {
             }
             case NFn fn -> {

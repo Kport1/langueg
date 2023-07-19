@@ -1,13 +1,15 @@
 package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 
 public class NWhile extends NStatement {
 
-    public AST condition, block;
+    public NExpr condition;
+    public AST block;
 
-    public NWhile(int line_, int column_, AST condition_, AST block_){
+    public NWhile(int line_, int column_, NExpr condition_, AST block_){
         super(line_, column_, condition_, block_);
         condition = condition_;
         block = block_;

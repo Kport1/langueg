@@ -7,9 +7,9 @@ import com.kport.langueg.typeCheck.types.Type;
 public class NCast extends NExpr {
 
     public Type type;
-    public AST expr;
+    public NExpr expr;
 
-    public NCast(int line_, int column_, Type type_, AST expr_) {
+    public NCast(int line_, int column_, Type type_, NExpr expr_) {
         super(line_, column_, expr_);
         type = type_;
         expr = expr_;

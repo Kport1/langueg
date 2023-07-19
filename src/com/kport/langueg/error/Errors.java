@@ -101,10 +101,13 @@ public enum Errors {
     CHECK_FN_RETURN_TYPE_MISMATCH_ANON(         "Anonymous function should return \"%2$s\", but returns \"%3$s\" instead! Line: %1$d",
                                                 ""),
     CHECK_FN_RETURN_TYPE_MISMATCH_VOID_ANON(    "Anonymous function should return \"%2$s\", but returns nothing instead! Line: %1$d",
-                                                "");
+                                                ""),
 
-    public String format;
-    public String suggestion;
+    PLACEHOLDER(                                "Fix this error",
+                                                "pls");
+
+    public final String format;
+    public final String suggestion;
 
     Errors(String format_, String suggestion_){
         format = format_;

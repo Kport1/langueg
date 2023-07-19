@@ -115,7 +115,6 @@ public enum TokenType {
         Float,
         Double,
 
-        FnType,
         Void,
         Null,
     //---------------
@@ -210,7 +209,6 @@ public enum TokenType {
         expandedNames.put(Float, "float");
         expandedNames.put(Double, "double");
 
-        expandedNames.put(FnType, "function type");
         expandedNames.put(Void, "void");
         expandedNames.put(Null, "null");
 

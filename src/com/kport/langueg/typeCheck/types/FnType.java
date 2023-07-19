@@ -38,8 +38,9 @@ public class FnType implements Type{
         if(fnArgs.length > 0) {
             builder.deleteCharAt(builder.length() - 2);
         }
-        builder.append(") -> ");
+        builder.append(") -> ( ");
         builder.append(fnReturn);
+        builder.append(" )");
 
         return builder.toString();
     }

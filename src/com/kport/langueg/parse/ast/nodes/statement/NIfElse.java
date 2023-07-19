@@ -1,13 +1,15 @@
 package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 
 public class NIfElse extends NStatement {
 
-    public AST cond, ifBlock, elseBlock;
+    public NExpr cond;
+    public AST ifBlock, elseBlock;
 
-    public NIfElse(int line_, int column_, AST cond_, AST ifBlock_, AST elseBlock_){
+    public NIfElse(int line_, int column_, NExpr cond_, AST ifBlock_, AST elseBlock_){
         super(line_, column_, cond_, ifBlock_, elseBlock_);
         cond = cond_;
         ifBlock = ifBlock_;

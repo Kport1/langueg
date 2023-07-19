@@ -5,10 +5,10 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 
 public class NUnaryOpPre extends NExpr {
-    public AST operand;
+    public NExpr operand;
     public TokenType op;
 
-    public NUnaryOpPre(int line_, int column_, AST operand_, TokenType op_){
+    public NUnaryOpPre(int line_, int column_, NExpr operand_, TokenType op_){
         super(line_, column_, operand_);
         operand = operand_;
         op = op_;

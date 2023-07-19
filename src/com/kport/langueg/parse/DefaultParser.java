@@ -11,13 +11,10 @@ import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Iterator;
-import com.kport.langueg.util.Util;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 public class DefaultParser implements Parser{
 
@@ -57,16 +54,11 @@ public class DefaultParser implements Parser{
         opPrecedence.put(TokenType.ShiftR, 6);
         opPrecedence.put(TokenType.ShiftL, 6);
     }
-    private static final HashSet<TokenType> unaryOps = new HashSet<>();
-    static {
-        unaryOps.add(TokenType.Not);
-        unaryOps.add(TokenType.Inc);
-        unaryOps.add(TokenType.Dec);
-    }
 
     private ErrorHandler errorHandler;
 
     @Override
+    @SuppressWarnings("unchecked")
     public AST process(Object tokens_, LanguegPipeline<?, ?> pipeline) {
         ArrayList<Token> tokens = (ArrayList<Token>) tokens_;
         iterator = new Iterator<>(tokens);
@@ -84,8 +76,125 @@ public class DefaultParser implements Parser{
         return new NProg(1, 0, stmnts.toArray(AST[]::new));
     }
 
+    private AST parseStatement(){
+        Token cur = iterator.current();
+        iterator.inc();
+
+        AST res = switch (cur.tok){
+
+            case Fn -> parseFn();
+
+            case If -> parseIf();
+
+            case Return -> {
+                if(iterator.current().tok == TokenType.Semicolon)
+                    yield new NReturnVoid(cur.lineNum, cur.columnNum);
+
+                NExpr expr = parseExpr();
+                yield new NReturn(cur.lineNum, cur.columnNum, expr);
+            }
+
+            case Break -> null;
+            case Continue -> null;
+            case Switch -> null;
+
+            case While -> parseWhile();
+
+            case For -> parseFor();
+
+            case LCurl -> parseBlock();
+
+            case Var, Boolean, Byte, Char, Short, Int, Long, Float, Double, Void, LParen -> {
+                iterator.dec();
+                yield parseVar();
+            }
+
+            case Identifier -> {
+                if(iterator.current().tok == TokenType.Identifier) {
+                    iterator.dec();
+                    yield parseVar();
+                }
+                iterator.dec();
+                yield parseExpr();
+            }
+
+            case Semicolon -> null;
+
+            default -> {
+                iterator.dec();
+                yield parseExpr();
+            }
+        };
+
+        boolean reqSemicolon = switch(cur.tok){
+            case Fn, If, While, For, LCurl -> false;
+            default -> true;
+        };
+
+        if(reqSemicolon && iterator.current().tok != TokenType.Semicolon){
+            throw new Error();
+        }
+        iterator.inc();
+
+        return res;
+    }
+
     private NExpr parseExpr(){
         return parseBinaryOp(parseUnaryOp(call(parseAtom())), -1);
+    }
+
+    private NExpr parseAtom(){
+
+        if(iterator.isEOF())
+            errorHandler.error(Errors.PARSE_ATOM_REACHED_EOF);
+
+
+        Token cur = iterator.current();
+        iterator.inc();
+
+        switch (cur.tok){
+
+            case LParen -> {
+                iterator.dec();
+                return parseTuple();
+            }
+
+            case StringL -> {
+                return new NStr(cur.lineNum, cur.columnNum, cur.val);
+            }
+
+            case NumberL -> {
+                return parseNum();
+            }
+
+            case LBrack -> {
+                //TODO
+            }
+
+            case Identifier -> {
+                return new NIdent(cur.lineNum, cur.columnNum, cur.val);
+            }
+
+            case True -> {
+                return new NBool(cur.lineNum, cur.columnNum, true);
+            }
+
+            case False -> {
+                return new NBool(cur.lineNum, cur.columnNum, false);
+            }
+
+            case Fn -> {
+                return parseAnonFn();
+            }
+
+            case Not, Inc, Dec -> {
+                return new NUnaryOpPre(cur.lineNum, cur.columnNum, parseExpr(), cur.tok);
+            }
+
+        }
+
+        errorHandler.error(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.lineNum, cur.tok.expandedName());
+        return null;
     }
 
     private NExpr parseBinaryOp(NExpr left, int lastPrec) {
@@ -107,13 +216,8 @@ public class DefaultParser implements Parser{
     private NExpr parseUnaryOp(NExpr left) {
         Token current  = iterator.current();
         if(current.tok.isUnaryOp()) {
-            if (left == null) {
-                iterator.inc();
-                return new NUnaryOpPre(current.lineNum, current.columnNum, parseExpr(), current.tok);
-            } else {
-                iterator.inc();
-                return new NUnaryOpPost(current.lineNum, current.columnNum, left, current.tok);
-            }
+            iterator.inc();
+            return new NUnaryOpPost(current.lineNum, current.columnNum, left, current.tok);
         }
         return left;
     }
@@ -134,13 +238,9 @@ public class DefaultParser implements Parser{
         int line = iterator.current().lineNum;
         int column = iterator.current().columnNum;
         NExpr[] exprs = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-        if(exprs.length == 0) {
-            return new NTuple(line, column);
-        }
-        if(exprs.length == 1){
-            return exprs[0];
-        }
-        return new NTuple(line, column, Util.downcastArray(exprs, NExpr[].class));
+        if(exprs.length == 1) return exprs[0];
+
+        return new NTuple(line, column, exprs);
     }
 
     private AST parseIf(){
@@ -149,7 +249,7 @@ public class DefaultParser implements Parser{
         int ifColumn = iterator.current().columnNum;
         iterator.inc();
 
-        AST condition = parseTuple();
+        NExpr condition = parseTuple();
 
         if(condition instanceof NTuple tup){
             if(tup.elements.length < 1){
@@ -163,7 +263,7 @@ public class DefaultParser implements Parser{
         if(iterator.peek().tok == TokenType.Else){
             iterator.inc();
             iterator.inc();
-            AST elseBlock = parseExpr();
+            AST elseBlock = parseStatement();
 
             return new NIfElse(ifLine, ifColumn, condition, block, elseBlock);
         }
@@ -177,7 +277,7 @@ public class DefaultParser implements Parser{
         int whileColumn = iterator.current().columnNum;
         iterator.inc();
 
-        AST condition = parseTuple();
+        NExpr condition = parseTuple();
 
         if(condition instanceof NTuple tup){
             if(tup.elements.length == 0){
@@ -210,45 +310,15 @@ public class DefaultParser implements Parser{
         return new NFor(forLine, forColumn, initCondInc[0], initCondInc[1], initCondInc[2], block);
     }
 
-    private NAnonFn parseFn(){
-        //Identifier(ASTStr), Type(ASTType)
-        int fnLine = iterator.previous().lineNum;
+    private NAnonFn parseAnonFn(){
+        iterator.dec();
+        int fnLine = iterator.current().lineNum;
         int fnColumn = iterator.current().columnNum;
         iterator.inc();
-        AST returnAST = parseAtom();
 
-        Type returnType = null;
-        try {
-            returnType = Type.of(returnAST);
-        } catch (TypeConversionException e) {
-            errorHandler.error(Errors.PARSE_FN_RETURN_INVALID_TYPE, e.notType.line, e.notType.column);
-        }
+        Type returnType = parseType();
 
-        String name = null;
-        if(iterator.current().tok == TokenType.Identifier){
-            name = iterator.current().val;
-            iterator.inc();
-        }
-
-        AST[] params_ = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-        NVar[] params = new NVar[params_.length];
-
-        //verify, that args follow: type argName
-        for (int i = 0; i < params.length; i++) {
-            if(params_[i] instanceof NVar var){
-                if(var.type == null){
-                    if(name == null)    errorHandler.error(Errors.PARSE_ANON_FN_PARAMETER_VAR, params_[i].line, var.name);
-                    else                errorHandler.error(Errors.PARSE_FN_PARAMETER_VAR, params_[i].line, name, var.name);
-                }
-                else {
-                    params[i] = var;
-                }
-            }
-            else {
-                if(name == null)    errorHandler.error(Errors.PARSE_ANON_FN_PARAMETER_MALFORMED, params_[i].line);
-                else                errorHandler.error(Errors.PARSE_FN_PARAMETER_MALFORMED, params_[i].line, name);
-            }
-        }
+        FnParamDef[] params = parseFnParams();
 
         AST stmnt = parseStatement();
 
@@ -260,50 +330,48 @@ public class DefaultParser implements Parser{
             stmnt = new NBlock(stmnt.line, stmnt.column, stmnt);
         }
 
-        if(name == null){
-            return new NAnonFn(fnLine, fnColumn, returnType, params, stmnt);
+        return new NAnonFn(fnLine, fnColumn, returnType, params, stmnt);
+    }
+
+    private NFn parseFn(){
+        iterator.dec();
+        int fnLine = iterator.current().lineNum;
+        int fnColumn = iterator.current().columnNum;
+        iterator.inc();
+
+        Type returnType = parseType();
+
+        if(iterator.current().tok != TokenType.Identifier) errorHandler.error(Errors.PLACEHOLDER);
+
+        String name = iterator.current().val;
+        iterator.inc();
+
+        FnParamDef[] params = parseFnParams();
+
+        AST stmnt = parseStatement();
+
+        iterator.inc();
+
+        //Surround expression in block and return it
+        if(!(stmnt instanceof NBlock)) {
+            if(stmnt instanceof NExpr blockExpr) stmnt = new NReturn(stmnt.line, stmnt.column, blockExpr);
+            stmnt = new NBlock(stmnt.line, stmnt.column, stmnt);
         }
 
         return new NFn(fnLine, fnColumn, returnType, name, params, stmnt);
     }
 
-    private FnType parseFnType(){
-        if(iterator.current().tok != TokenType.LBrack)
-            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_LBRACK, iterator.current().lineNum);
+    private FnParamDef[] parseFnParams(){
+        return parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, (i) -> {
+            Type type = parseType();
 
+            if(iterator.current().tok != TokenType.Identifier) errorHandler.error(Errors.PLACEHOLDER);
+            String name = iterator.current().val;
 
-        AST[] params;
-        if(iterator.next().tok == TokenType.LParen){
-            params = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-        }
-        else{
-            params = new AST[]{parseExpr()};
-        }
+            iterator.inc();
 
-        Type[] paramTypes = new Type[0];
-        try {
-            paramTypes = Type.of(params);
-        } catch (TypeConversionException e) {
-            errorHandler.error(Errors.PARSE_FNTYPE_PARAM_INVALID_TYPE, e.notType.line, e.notType.column);
-        }
-
-        if(iterator.current().tok != TokenType.SingleArrow)
-            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_ARROW, iterator.current().lineNum);
-        iterator.inc();
-
-        Type returnType = null;
-        try {
-            returnType = Type.of(parseExpr());
-        } catch (TypeConversionException e) {
-            errorHandler.error(Errors.PARSE_FNTYPE_RETURN_INVALID_TYPE, e.notType.line, e.notType.column);
-        }
-
-        if(iterator.current().tok != TokenType.RBrack)
-            errorHandler.error(Errors.PARSE_FNTYPE_EXPECTED_RBRACK, iterator.current().lineNum);
-        iterator.inc();
-
-
-        return new FnType(returnType, paramTypes);
+            return new FnParamDef(type, name);
+        }, FnParamDef.class);
     }
 
     private NBlock parseBlock(){
@@ -331,7 +399,14 @@ public class DefaultParser implements Parser{
         return null;
     }
 
-    private AST parseVar(Type varType, int varLine, int varColumn){
+    private AST parseVar(){
+        int varLine = iterator.current().lineNum;
+        int varColumn = iterator.current().columnNum;
+
+        Type varType = null;
+        if(iterator.current().tok == TokenType.Var) iterator.inc();
+        else varType = parseType();
+
         if(iterator.current().tok == TokenType.LParen){
             AST[] identifiers = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
             String[] names = new String[identifiers.length];
@@ -356,11 +431,7 @@ public class DefaultParser implements Parser{
 
         if(iterator.next().tok == TokenType.Assign){
             iterator.inc();
-            AST ast = parseExpr();
-            if(!(ast instanceof NExpr expr))
-                errorHandler.error(Errors.PARSE_VAR_INIT_NOT_EXPR, ast.line, identifier.val);
-            else
-                return new NVarInit(varLine, varColumn, varType, identifier.val, expr);
+            return new NVarInit(varLine, varColumn, varType, identifier.val, parseExpr());
         }
 
         return new NVar(varLine, varColumn, varType, identifier.val);
@@ -429,126 +500,17 @@ public class DefaultParser implements Parser{
         return null;
     }
 
-    private NExpr parseAtom(){
-
-        if(iterator.isEOF())
-            errorHandler.error(Errors.PARSE_ATOM_REACHED_EOF);
-
-
-        Token cur = iterator.current();
-        iterator.inc();
-
-        switch (cur.tok){
-
-            case LParen -> {
-                iterator.dec();
-                return parseTuple();
-            }
-
-            case StringL -> {
-                return new NStr(cur.lineNum, cur.columnNum, cur.val);
-            }
-
-            case NumberL -> {
-                return parseNum();
-            }
-
-            case LBrack -> {
-                iterator.dec();
-                int line = iterator.current().lineNum;
-                int column = iterator.current().columnNum;
-                AST[] elements = parseDelim(TokenType.LBrack, TokenType.RBrack, TokenType.Comma);
-                if(elements.length == 1){
-                    try {
-                        return new NCast(line, column, Type.of(elements[0]), parseExpr());
-                    } catch (TypeConversionException e) {
-                        errorHandler.error(Errors.PARSE_CAST_INVALID_TYPE, e.notType.line, e.notType.column);
-                    }
-                }
-            }
-
-            case Identifier -> {
-                return new NIdent(cur.lineNum, cur.columnNum, cur.val);
-            }
-
-            case True -> {
-                return new NBool(cur.lineNum, cur.columnNum, true);
-            }
-
-            case False -> {
-                return new NBool(cur.lineNum, cur.columnNum, false);
-            }
-
-            case Fn -> {
-                return parseFn();
-            }
-
-        }
-
-        errorHandler.error(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.lineNum, cur.tok.expandedName());
-        return null;
-    }
-
-    private AST parseStatement(){
-        Token cur = iterator.current();
-        iterator.inc();
-
-        AST res = switch (cur.tok){
-
-            case Var -> parseVar(null, cur.lineNum, cur.columnNum);
-
-            case If -> parseIf();
-
-            case Return -> {
-                if(iterator.current().tok == TokenType.Semicolon)
-                    yield new NReturnVoid(cur.lineNum, cur.columnNum);
-
-                NExpr expr = parseExpr();
-                yield new NReturn(cur.lineNum, cur.columnNum, expr);
-            }
-
-            case Break -> null;
-            case Continue -> null;
-            case Switch -> null;
-
-            case While -> parseWhile();
-
-            case For -> parseFor();
-
-            case LCurl -> parseBlock();
-
-            case Boolean, Byte, Char, Short, Int, Long, Float, Double, FnType, Void, LParen -> {
-                iterator.dec();
-                yield parseVar(parseType(), cur.lineNum, cur.columnNum);
-            }
-
-            case Identifier -> {
-                if(iterator.current().tok == TokenType.Identifier) {
-                    yield parseVar(parseType(), cur.lineNum, cur.columnNum);
-                }
-                iterator.dec();
-                yield parseExpr();
-            }
-
-            case Semicolon -> null;
-
-            default -> parseExpr();
-        };
-
-        boolean reqSemicolon = switch(cur.tok){
-            case If, While, For, LCurl -> false;
-            default -> true;
-        };
-
-        if(reqSemicolon && iterator.current().tok != TokenType.Semicolon){
-            throw new Error();
-        }
-        iterator.inc();
-
-        return res;
-    }
-
     private Type parseType(){
+        return unwrapTuple(parseFnType(parseTypeAtom()));
+    }
+
+    public Type unwrapTuple(Type type){
+        if(type instanceof TupleType tup && tup.getTupleTypes().length == 1)
+            return tup.getTupleTypes()[0];
+        return type;
+    }
+
+    private Type parseTypeAtom(){
         Token cur = iterator.current();
         iterator.inc();
 
@@ -577,9 +539,6 @@ public class DefaultParser implements Parser{
             case Double -> {
                 return PrimitiveType.F64;
             }
-            case FnType -> {
-                return parseFnType();
-            }
             case Void -> {
                 return PrimitiveType.Void;
             }
@@ -595,8 +554,20 @@ public class DefaultParser implements Parser{
         return null;
     }
 
+    private Type parseFnType(Type left){
+        if(iterator.current().tok != TokenType.SingleArrow)
+            return left;
+        iterator.inc();
+
+        Type returnType = parseFnType(parseTypeAtom());
+
+        return new FnType(returnType, left instanceof TupleType tup? tup.getTupleTypes() : new Type[]{ left });
+    }
+
     public TupleType parseTupleType(){
-        return new TupleType(parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, (i) -> parseType(), Type.class));
+        Type[] types = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, (i) -> parseFnType(parseTypeAtom()), Type.class);
+
+        return new TupleType(types);
     }
 
     private NExpr[] parseDelim(TokenType start, TokenType end, TokenType separator){

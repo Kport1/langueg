@@ -3,11 +3,12 @@ package com.kport.langueg.parse.ast;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.FnIdentifier;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+
 public abstract class AST {
-    //public final AST[] children;
     public AST parent;
-    //public ASTValue val;
-    //public ASTTypeE type;
 
     public int line;
     public int column;
@@ -25,51 +26,30 @@ public abstract class AST {
         }
     }
 
-    /*public AST(ASTTypeE type_){
-        type = type_;
-        children = new AST[0];
-    }
-
-    public AST(ASTTypeE type_, int line_, int column_){
-        type = type_;
-        line = line_;
-        column = column_;
-        children = new AST[0];
-    }
-
-    public AST(ASTTypeE type_, int line_, int column_, AST... children_){
-        children = children_;
-        type = type_;
-        line = line_;
-        column = column_;
-        for (AST child : children) {
-            child.parent = this;
-        }
-    }
-
-    public AST(ASTTypeE type_, ASTValue val_, int line_, int column_){
-        val = val_;
-        type = type_;
-        line = line_;
-        column = column_;
-        children = new AST[0];
-    }
-
-    public AST(ASTTypeE type_, ASTValue val_, int line_, int column_, AST... children_){
-        children = children_;
-        val = val_;
-        type = type_;
-        line = line_;
-        column = column_;
-        for (AST child : children) {
-            child.parent = this;
-        }
-    }*/
-
     public abstract AST[] getChildren();
 
+    public abstract boolean hasChildren();
+
+    protected abstract String nToString();
+
     public void accept(ASTVisitor visitor, VisitorContext context){
-        visitor.visit(this, context);
+        ArrayList<Class<?>> thisSuperClasses = new ArrayList<>();
+        Class<?> clazz = this.getClass();
+        while(!clazz.equals(Object.class)){
+            thisSuperClasses.add(clazz);
+            clazz = clazz.getSuperclass();
+        }
+
+
+        try {
+            for(int i = thisSuperClasses.size() - 1; i >= 0; i--){
+                Method m = visitor.getClass().getMethod("visit", thisSuperClasses.get(i), VisitorContext.class);
+                m.setAccessible(true);
+                m.invoke(visitor, this, context);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if(!hasChildren()) return;
         for (AST child : getChildren()) {
             try {
@@ -79,10 +59,6 @@ public abstract class AST {
             }
         }
     }
-
-    public abstract boolean hasChildren();
-
-    protected abstract String nToString();
 
     @Override
     public String toString(){
