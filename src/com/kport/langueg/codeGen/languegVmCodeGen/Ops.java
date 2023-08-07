@@ -1,7 +1,6 @@
 package com.kport.langueg.codeGen.languegVmCodeGen;
 
 import com.kport.langueg.lex.TokenType;
-import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.expr.NBinOp;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 
@@ -208,16 +207,17 @@ public enum Ops {
             case LessEq -> Generic.LESSEQ;
             case Eq -> Generic.EQ;
             case NotEq -> Generic.NOTEQ;
-            case And -> Generic.AND;
-            case AndAnd -> null;
-            case Or -> Generic.OR;
-            case OrOr -> null;
-            case XOr -> Generic.XOR;
+            case BAnd -> Generic.AND;
+            case And -> null;
+            case BOr -> Generic.OR;
+            case Or -> null;
+            case BXOr -> Generic.XOR;
+            case XOr -> null;
             case Inc -> null;
             case Dec -> null;
             case Not -> null;
 
             default -> throw new Error();
-        }, LanguegVmValSize.ofPrimitive(type));
+        }, type.getSize());
     }
 }

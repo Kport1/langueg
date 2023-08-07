@@ -2,7 +2,10 @@ package com.kport.langueg.parse.ast.nodes.expr;
 
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.sun.jdi.InvalidTypeException;
 
 public class NBinOp extends NExpr {
     public NExpr left, right;
@@ -21,6 +24,21 @@ public class NBinOp extends NExpr {
     }
 
     @Override
+    public void setChild(int index, AST ast) throws InvalidTypeException {
+        switch (index){
+            case 0 -> {
+                if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
+                left = expr;
+            }
+            case 1 -> {
+                if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
+                right = expr;
+            }
+            default -> throw new ArrayIndexOutOfBoundsException();
+        }
+    }
+
+    @Override
     public boolean hasChildren() {
         return true;
     }
@@ -28,5 +46,13 @@ public class NBinOp extends NExpr {
     @Override
     public String nToString(){
         return op.name();
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context){
+        super.accept(visitor, context);
+        visitor.visit(this, context);
+        left.accept(visitor, VisitorContext.tryClone(context));
+        right.accept(visitor, VisitorContext.tryClone(context));
     }
 }

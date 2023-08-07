@@ -1,8 +1,13 @@
 package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
+import com.sun.jdi.InvalidTypeException;
 
+//TODO fuckin for loops
 public class NFor extends NStatement {
 
     public AST init, cond, inc, block;
@@ -21,6 +26,11 @@ public class NFor extends NStatement {
     }
 
     @Override
+    public void setChild(int index, AST ast) throws InvalidTypeException {
+
+    }
+
+    @Override
     public boolean hasChildren() {
         return true;
     }
@@ -28,5 +38,12 @@ public class NFor extends NStatement {
     @Override
     public String nToString(){
         return "";
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context){
+        super.accept(visitor, context);
+        visitor.visit(this, context);
+        //
     }
 }

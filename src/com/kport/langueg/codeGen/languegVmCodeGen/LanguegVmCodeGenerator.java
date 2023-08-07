@@ -6,8 +6,8 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.typeCheck.SymbolTable;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
-import com.kport.langueg.typeCheck.types.Type;
 import com.kport.langueg.util.CodeOutputStream;
 import com.kport.langueg.util.ScopeTree;
 import com.kport.langueg.util.FnIdentifier;
@@ -45,10 +45,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     private final Map<Long, Integer> constIndices64 = new LinkedHashMap<>();
 
     //Type check data
-    private ScopeTree scopeTree;
-    private Map<FnIdentifier, Type> fnTypes;
-    private Map<VarIdentifier, Type> varTypes;
-    private Map<VarIdentifier, Type> fnParamTypes;
+    private SymbolTable symbolTable;
 
     //line info
     private final Map<FnIdentifier, CodeOutputStream> progIndexLineInfo = new LinkedHashMap<>();
@@ -73,11 +70,8 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     public Void process(Object input, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) input;
 
-        try {
-            scopeTree = pipeline.getAdditionalData("ScopeTree", ScopeTree.class);
-            fnTypes = pipeline.getAdditionalData("FunctionTypes", HashMap.class);
-            varTypes = pipeline.getAdditionalData("VariableTypes", HashMap.class);
-            fnParamTypes = pipeline.getAdditionalData("FunctionParameterTypes", HashMap.class);
+        /*try {
+            symbolTable = pipeline.getAdditionalData("SymbolTable", SymbolTable.class);
         }
         catch (InvalidTypeException e){
             e.printStackTrace();
@@ -100,16 +94,16 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             fnData.put(id, new FnData(id == null? LanguegVmValSize.NONE : LanguegVmValSize.ofType(fnTypes.get(id)), fnAmntLocals.get(id), fnMaxStackDepth.get(id), lineInfo.get(id), fnCode.get(id)));
         }
 
-        pipeline.putAdditionalData("FnData", fnData);
+        pipeline.putAdditionalData("FnData", fnData);*/
 
         return null;
     }
 
-    private void gen(AST ast) throws IOException {
+    /*private void gen(AST ast) throws IOException {
         switch (ast){
             case NCast cast -> {
             }
-            case NFn fn -> {
+            case NNamedFn fn -> {
                 FnIdentifier id = new FnIdentifier(ast.depth, ast.count, fn.name, fn.getParamTypes());
 
                 enterFn(id);
@@ -157,7 +151,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
             case NWhile nwhile -> {
                 int jmpIndexCond = output.size();
-                gen(nwhile.condition);
+                gen(nwhile.cond);
                 writeOp(Ops.JMP_IF_FALSE, nwhile.line, (short)0);
                 int jmpIndexJumpOver = output.size() - 2;
                 gen(nwhile.block);
@@ -218,7 +212,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                     return;
                 }
 
-                /*if(op.op.isOpAssign()){
+                *//*if(op.op.isOpAssign()){
                     TokenType binOp = op.op.getOpOfOpAssign();
                     PrimitiveType primType = (PrimitiveType) ast.children[0].returnType;
                     writeOp(Ops.ofGeneric(Ops.Generic.LOAD, LanguegVmValSize.ofPrimitive(primType)), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
@@ -230,7 +224,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                     writeOp(Ops.ofGeneric(Ops.Generic.STORE, LanguegVmValSize.ofPrimitive(primType)), ast.line, getLocalVarIndex(ast.depth, ast.count, ast.children[0].val.getStr()));
                     return;
-                }*/
+                }*//*
 
                 if(op.exprType instanceof PrimitiveType prim && prim == PrimitiveType.Void) return;
 
@@ -249,7 +243,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
             default -> throw new IllegalStateException("Unexpected value: " + ast);
         }
-    }
+    }*/
 
     //
     private final Stack<EnumMap<LanguegVmValSize, Stack<Integer>>> localVarScopedIndices = new Stack<>();
@@ -304,13 +298,13 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
         output = fnCodeOutputs.get(fnStack.peek());
     }
 
-    private short getLocalVarIndex(int depth, int count, String name){
+    /*private short getLocalVarIndex(int depth, int count, String name){
         Integer index = localVariableIndices.get(new VarIdentifier(depth, count, name));
         if(index != null) return (short)index.intValue();
         ScopeTree.Node scope = scopeTree.getNode(depth, count);
         if(scope.getParent() == null) throw new Error("No such variable: " + name);
         return getLocalVarIndex(scope.getParent().depth, scope.getParent().count, name);
-    }
+    }*/
 
 
     private void writeOp(Ops op, int line, byte... operands) throws IOException {

@@ -4,13 +4,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
-public record VarIdentifier(int depth, int count, String name) {
+public record VarIdentifier(Scope scope, String name) {
 
     @Override
     public boolean equals(Object o){
         if(o instanceof VarIdentifier i){
-            return  i.depth == depth &&
-                    i.count == count &&
+            return  i.scope == scope &&
                     i.name.equals(name);
         }
         return false;
@@ -18,11 +17,11 @@ public record VarIdentifier(int depth, int count, String name) {
 
     @Override
     public int hashCode(){
-        return 31 * (31 * depth + count) + name.hashCode();
+        return 31 * scope.hashCode() + name.hashCode();
     }
 
     @Override
     public String toString(){
-        return "varId(d = " + depth + ", c = " + count + ", n = " + name + ")";
+        return "varId(s = " + scope + ", n = " + name + ")";
     }
 }

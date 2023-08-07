@@ -1,6 +1,8 @@
 package com.kport.langueg.parse.ast.nodes.expr;
 
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 
 public class NInt16 extends NExpr {
@@ -18,6 +20,11 @@ public class NInt16 extends NExpr {
     }
 
     @Override
+    public void setChild(int index, AST ast) {
+        throw new ArrayIndexOutOfBoundsException();
+    }
+
+    @Override
     public boolean hasChildren() {
         return false;
     }
@@ -25,5 +32,11 @@ public class NInt16 extends NExpr {
     @Override
     protected String nToString() {
         return Long.toString(val);
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context){
+        super.accept(visitor, context);
+        visitor.visit(this, context);
     }
 }

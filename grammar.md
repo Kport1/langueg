@@ -52,7 +52,7 @@ TypeAtom =  "boolean" | "byte" | "char" | "short" | "int" | "long" | "float" | "
         
 TupleType = "(", [ Type, { ",", Type } ], ")" ;
 
-FnType = Type, "->", Type ;
+FnType = "(", [ Type, { ",", Type } ], ")", "->", Type ;
 
 CustomType = Identifier ;
 ```

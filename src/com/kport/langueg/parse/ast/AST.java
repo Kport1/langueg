@@ -2,10 +2,13 @@ package com.kport.langueg.parse.ast;
 
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.FnIdentifier;
+import com.kport.langueg.util.Scope;
+import com.sun.jdi.InvalidTypeException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public abstract class AST {
     public AST parent;
@@ -13,10 +16,7 @@ public abstract class AST {
     public int line;
     public int column;
 
-    public int depth;
-    public int count;
-
-    public FnIdentifier enclosingFn;
+    public Scope scope;
 
     public AST(int line_, int column_, AST... children){
         line = line_;
@@ -28,36 +28,17 @@ public abstract class AST {
 
     public abstract AST[] getChildren();
 
+    public abstract void setChild(int index, AST ast) throws InvalidTypeException;
+
     public abstract boolean hasChildren();
 
     protected abstract String nToString();
 
+    /*
+        Calls all applicable visitor.visit methods in the order of superclasses, then interfaces and last the class of this object itself.
+     */
     public void accept(ASTVisitor visitor, VisitorContext context){
-        ArrayList<Class<?>> thisSuperClasses = new ArrayList<>();
-        Class<?> clazz = this.getClass();
-        while(!clazz.equals(Object.class)){
-            thisSuperClasses.add(clazz);
-            clazz = clazz.getSuperclass();
-        }
-
-
-        try {
-            for(int i = thisSuperClasses.size() - 1; i >= 0; i--){
-                Method m = visitor.getClass().getMethod("visit", thisSuperClasses.get(i), VisitorContext.class);
-                m.setAccessible(true);
-                m.invoke(visitor, this, context);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if(!hasChildren()) return;
-        for (AST child : getChildren()) {
-            try {
-                child.accept(visitor, context == null? null : (VisitorContext) context.clone());
-            } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
-            }
-        }
+        visitor.visit(this, context);
     }
 
     @Override
@@ -72,13 +53,8 @@ public abstract class AST {
                 .append(line)
                 .append(", c: ")
                 .append(column)
-                .append(", d: ")
-                .append(depth)
-                .append(", c: ")
-                .append(count)
-                .append(this instanceof NExpr expr && expr.exprType != null? ", r: " + expr.exprType : "")
-                .append(", fn: ")
-                .append(enclosingFn)
+                .append(scope != null? ", s: " + scope : "")
+                .append(this instanceof NExpr expr && expr.exprType != null? ", t: " + expr.exprType : "")
                 .append(" ]")
                 .append("( ")
                 .append(nToString())

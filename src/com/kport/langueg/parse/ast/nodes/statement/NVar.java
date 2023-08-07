@@ -1,6 +1,8 @@
 package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
 
@@ -23,6 +25,11 @@ public class NVar extends NStatement {
     }
 
     @Override
+    public void setChild(int index, AST ast) {
+        throw new ArrayIndexOutOfBoundsException();
+    }
+
+    @Override
     public boolean hasChildren() {
         return false;
     }
@@ -30,5 +37,11 @@ public class NVar extends NStatement {
     @Override
     protected String nToString() {
         return "t: " + type + ", n: " + name;
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context){
+        super.accept(visitor, context);
+        visitor.visit(this, context);
     }
 }

@@ -41,9 +41,9 @@ public class DefaultParser implements Parser{
         opPrecedence.put(TokenType.LessEq, 1);
         opPrecedence.put(TokenType.Eq, 1);
         opPrecedence.put(TokenType.NotEq, 1);
-        opPrecedence.put(TokenType.And, 3);
-        opPrecedence.put(TokenType.Or, 2);
-        opPrecedence.put(TokenType.XOr, 4);
+        opPrecedence.put(TokenType.BAnd, 3);
+        opPrecedence.put(TokenType.BOr, 2);
+        opPrecedence.put(TokenType.BXOr, 4);
 
         opPrecedence.put(TokenType.Plus, 5);
         opPrecedence.put(TokenType.Minus, 5);
@@ -207,6 +207,10 @@ public class DefaultParser implements Parser{
             {
                 iterator.inc();
                 NExpr right = parseBinaryOp(parseUnaryOp(call(parseAtom())), currentPrec);
+                if(current.tok == TokenType.Assign){
+                    if(!(left instanceof NAssignable assignable)) throw new Error("Cannot assign a value to " + left);
+                    return parseBinaryOp(new NAssign(current.lineNum, current.columnNum, assignable, right), lastPrec);
+                }
                 return parseBinaryOp(new NBinOp(current.lineNum, current.columnNum, left, right, current.tok), lastPrec);
             }
         }
@@ -324,16 +328,10 @@ public class DefaultParser implements Parser{
 
         iterator.inc();
 
-        //Surround expression in block and return it
-        if(!(stmnt instanceof NBlock)) {
-            if(stmnt instanceof NExpr blockExpr) stmnt = new NReturn(stmnt.line, stmnt.column, blockExpr);
-            stmnt = new NBlock(stmnt.line, stmnt.column, stmnt);
-        }
-
         return new NAnonFn(fnLine, fnColumn, returnType, params, stmnt);
     }
 
-    private NFn parseFn(){
+    private NNamedFn parseFn(){
         iterator.dec();
         int fnLine = iterator.current().lineNum;
         int fnColumn = iterator.current().columnNum;
@@ -352,13 +350,7 @@ public class DefaultParser implements Parser{
 
         iterator.inc();
 
-        //Surround expression in block and return it
-        if(!(stmnt instanceof NBlock)) {
-            if(stmnt instanceof NExpr blockExpr) stmnt = new NReturn(stmnt.line, stmnt.column, blockExpr);
-            stmnt = new NBlock(stmnt.line, stmnt.column, stmnt);
-        }
-
-        return new NFn(fnLine, fnColumn, returnType, name, params, stmnt);
+        return new NNamedFn(fnLine, fnColumn, returnType, name, params, stmnt);
     }
 
     private FnParamDef[] parseFnParams(){

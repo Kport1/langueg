@@ -16,8 +16,15 @@ public enum TokenType {
         Div,
         Mod,
         Pow,
+
+        //Bit shift
         ShiftR,
         ShiftL,
+
+        //Bitwise
+        BAnd,
+        BOr,
+        BXOr,
 
         PlusAssign,
         MinusAssign,
@@ -31,17 +38,17 @@ public enum TokenType {
         OrAssign,
         XOrAssign,
 
-        //Bool
+        //Comparison
         Greater,
         Less,
         GreaterEq,
         LessEq,
         Eq,
         NotEq,
+
+        //Bool
         And,
-        AndAnd,
         Or,
-        OrOr,
         XOr,
     //--------------------
 
@@ -70,20 +77,6 @@ public enum TokenType {
         SingleArrow,
     //--------------
 
-    //Class---------
-        Class,
-        New,
-        Dot,
-    //--------------
-
-    //Modifiers-----
-        Public,
-        Private,
-        Protected,
-        Static,
-
-    //--------------
-
     //Struct----------
         LParen,
         RParen,
@@ -94,7 +87,6 @@ public enum TokenType {
         Semicolon,
         Comma,
     //----------------
-
 
     //Literals----------
         StringL,
@@ -154,10 +146,11 @@ public enum TokenType {
         expandedNames.put(LessEq, "less than or equals");
         expandedNames.put(Eq, "equals");
         expandedNames.put(NotEq, "not equals");
+        expandedNames.put(BAnd, "bitwise and");
         expandedNames.put(And, "and");
-        expandedNames.put(AndAnd, "double and");
+        expandedNames.put(BOr, "bitwise or");
         expandedNames.put(Or, "or");
-        expandedNames.put(OrOr, "double or");
+        expandedNames.put(BXOr, "bitwise xor");
         expandedNames.put(XOr, "xor");
 
         expandedNames.put(Inc, "increment");
@@ -176,15 +169,6 @@ public enum TokenType {
 
         expandedNames.put(Fn, "function");
         expandedNames.put(SingleArrow, "single arrow");
-
-        expandedNames.put(Class, "class");
-        expandedNames.put(New, "new");
-        expandedNames.put(Dot, "dot");
-
-        expandedNames.put(Public, "public");
-        expandedNames.put(Private, "private");
-        expandedNames.put(Protected, "protected");
-        expandedNames.put(Static, "static");
 
         expandedNames.put(LParen, "left parenthesis");
         expandedNames.put(RParen, "right parenthesis");
@@ -214,19 +198,6 @@ public enum TokenType {
 
         expandedNames.put(Undefined, "undefined");
     }
-    private static final EnumSet<TokenType> opAssigns = EnumSet.of(
-            PlusAssign,
-            MinusAssign,
-            MulAssign,
-            DivAssign,
-            ModAssign,
-            PowAssign,
-            ShiftRAssign,
-            ShiftLAssign,
-            AndAssign,
-            OrAssign,
-            XOrAssign
-    );
     private static final EnumMap<TokenType, TokenType> opAssignToOp = new EnumMap<>(TokenType.class);
     static{
         opAssignToOp.put(PlusAssign, Plus);
@@ -237,9 +208,9 @@ public enum TokenType {
         opAssignToOp.put(PowAssign, Pow);
         opAssignToOp.put(ShiftRAssign, ShiftR);
         opAssignToOp.put(ShiftLAssign, ShiftL);
-        opAssignToOp.put(AndAssign, And);
-        opAssignToOp.put(OrAssign, Or);
-        opAssignToOp.put(XOrAssign, XOr);
+        opAssignToOp.put(AndAssign, BAnd);
+        opAssignToOp.put(OrAssign, BOr);
+        opAssignToOp.put(XOrAssign, BXOr);
     }
     private static final EnumSet<TokenType> binOps = EnumSet.of(
             Assign,
@@ -257,10 +228,11 @@ public enum TokenType {
             LessEq,
             Eq,
             NotEq,
+            BAnd,
             And,
-            AndAnd,
+            BOr,
             Or,
-            OrOr,
+            BXOr,
             XOr
     );
     private static final EnumSet<TokenType> unaryOps = EnumSet.of(
@@ -274,7 +246,7 @@ public enum TokenType {
     }
 
     public boolean isOpAssign(){
-        return opAssigns.contains(this);
+        return opAssignToOp.containsKey(this);
     }
 
     public boolean isBinOp(){

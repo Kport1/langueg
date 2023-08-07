@@ -6,8 +6,12 @@ import com.kport.langueg.parse.ast.nodes.statement.*;
 
 public interface ASTVisitor {
     default void visit(AST ast, VisitorContext context){}
+
+
+
     default void visit(NExpr expr, VisitorContext context){}
     default void visit(NStatement stmnt, VisitorContext context){}
+
 
 
     default void visit(NProg prog, VisitorContext context){}
@@ -31,8 +35,6 @@ public interface ASTVisitor {
     default void visit(NFloat32 float32, VisitorContext context){}
 
     default void visit(NFloat64 float64, VisitorContext context){}
-
-    default void visit(NFn fn, VisitorContext context){}
 
     default void visit(NIdent ident, VisitorContext context){}
 
@@ -70,6 +72,8 @@ public interface ASTVisitor {
 
     default void visit(NIfElse ifElse, VisitorContext context){}
 
+    default void visit(NNamedFn namedFn, VisitorContext context){}
+
     default void visit(NReturn return_, VisitorContext context){}
 
     default void visit(NReturnVoid returnVoid, VisitorContext context){}
@@ -81,4 +85,8 @@ public interface ASTVisitor {
     default void visit(NVarInit varInit, VisitorContext context){}
 
     default void visit(NWhile while_, VisitorContext context){}
+
+
+
+    default void visit(NFn fn, VisitorContext context){}
 }

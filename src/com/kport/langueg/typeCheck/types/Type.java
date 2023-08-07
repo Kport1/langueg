@@ -1,5 +1,6 @@
 package com.kport.langueg.typeCheck.types;
 
+import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
 import com.kport.langueg.error.Errors;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
@@ -31,10 +32,6 @@ public interface Type {
         return false;
     }
 
-    default TokenType primitive() {
-        return null;
-    }
-
     default String name(){
         return null;
     }
@@ -49,5 +46,9 @@ public interface Type {
 
     default Type[] getTupleTypes(){
         return null;
+    }
+
+    default LanguegVmValSize getSize(){
+        return LanguegVmValSize._64;
     }
 }

@@ -2,8 +2,6 @@ package com.kport.langueg.lex;
 
 import com.kport.langueg.pipeline.LanguegPipeline;
 
-import java.text.CharacterIterator;
-import java.text.StringCharacterIterator;
 import java.util.*;
 
 public class DefaultLexer implements Lexer{
@@ -50,10 +48,11 @@ public class DefaultLexer implements Lexer{
         tokens.put(">=", TokenType.LessEq);
         tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
+        tokens.put("&&", TokenType.BAnd);
         tokens.put("&", TokenType.And);
-        tokens.put("&&", TokenType.AndAnd);
+        tokens.put("||", TokenType.BOr);
         tokens.put("|", TokenType.Or);
-        tokens.put("||", TokenType.OrOr);
+        tokens.put("^^", TokenType.BXOr);
         tokens.put("^", TokenType.XOr);
 
         tokens.put("++", TokenType.Inc);
@@ -72,15 +71,6 @@ public class DefaultLexer implements Lexer{
 
         tokens.put("fn", TokenType.Fn);
         tokens.put("->", TokenType.SingleArrow);
-
-        tokens.put("class", TokenType.Class);
-        tokens.put("new", TokenType.New);
-        tokens.put(".", TokenType.Dot);
-
-        tokens.put("public", TokenType.Public);
-        tokens.put("private", TokenType.Private);
-        tokens.put("protected", TokenType.Protected);
-        tokens.put("static", TokenType.Static);
 
         tokens.put("(", TokenType.LParen);
         tokens.put(")", TokenType.RParen);

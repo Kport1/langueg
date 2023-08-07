@@ -25,4 +25,12 @@ public class VisitorContext implements Cloneable{
     public void put(String s, Object val){
         values.put(s, val);
     }
+
+    public static VisitorContext tryClone(VisitorContext context){
+        try {
+            return context == null? null : (VisitorContext) context.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

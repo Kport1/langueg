@@ -1,4 +1,4 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.statement;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
@@ -6,22 +6,27 @@ import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.FnParamDef;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NFn;
+import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
+import com.sun.jdi.InvalidTypeException;
 
 import java.util.Arrays;
 
-public class NAnonFn extends NExpr implements NFn {
+public class NNamedFn extends NStatement implements NFn {
 
     public Type returnType;
     public FnParamDef[] params;
     public AST block;
+    public String name;
 
-    public NAnonFn(int line_, int column_, Type returnType_, FnParamDef[] params_, AST block_){
+    public NNamedFn(int line_, int column_, Type returnType_, String name_, FnParamDef[] params_, AST block_){
         super(line_, column_, block_);
         returnType = returnType_;
         params = params_;
         block = block_;
+        name = name_;
     }
 
     @Override
@@ -55,6 +60,13 @@ public class NAnonFn extends NExpr implements NFn {
         blockScope = scope_;
     }
 
+
+    private FnIdentifier id;
+    public FnIdentifier getId(){
+        if(id == null) id = new FnIdentifier(scope, name, getParamTypes());
+        return id;
+    }
+
     @Override
     public AST[] getChildren() {
         return new AST[]{block};
@@ -73,7 +85,7 @@ public class NAnonFn extends NExpr implements NFn {
 
     @Override
     public String nToString(){
-        return "r: " + returnType.toString() + ", p: " + Arrays.toString(params);
+        return "r: " + returnType.toString() + ", n: " + name + ", p: " + Arrays.toString(params);
     }
 
     @Override

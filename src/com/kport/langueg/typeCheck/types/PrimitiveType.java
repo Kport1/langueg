@@ -1,40 +1,60 @@
 package com.kport.langueg.typeCheck.types;
 
-import com.kport.langueg.lex.TokenType;
+import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
 
 public enum PrimitiveType implements Type{
-    Void(TokenType.Void),
+    Void,
 
-    Bool(TokenType.Boolean),
-    Char(TokenType.Char),
+    Bool,
+    Char,
 
-    U8(TokenType.Byte),
-    I16(TokenType.Short),
-    I32(TokenType.Int),
-    I64(TokenType.Long),
+    U8,
+    I16,
+    I32,
+    I64,
 
-    F32(TokenType.Float),
-    F64(TokenType.Double);
-
-
-    private final TokenType type;
-
-    PrimitiveType(TokenType type_){
-        type = type_;
-    }
+    F32,
+    F64;
 
     @Override
     public boolean isPrimitive(){
         return true;
     }
 
+    public boolean isNumeric(){
+        return switch (this) {
+            case Void, Bool, Char -> false;
+            case U8, I16, I32, I64, F32, F64 -> true;
+        };
+    }
+
+    public boolean isFloating(){
+        return switch (this) {
+            case Void, Bool, Char, U8, I16, I32, I64 -> false;
+            case F32, F64 -> true;
+        };
+    }
+
+    public boolean isInteger(){
+        return switch (this) {
+            case Void, Bool, Char, F32, F64 -> false;
+            case U8, I16, I32, I64 -> true;
+        };
+    }
+
     @Override
-    public TokenType primitive() {
-        return type;
+    public LanguegVmValSize getSize(){
+        return switch (this) {
+            case Void -> LanguegVmValSize.NONE;
+            case Bool, U8 -> LanguegVmValSize._8;
+            case Char, I16 -> LanguegVmValSize._16;
+            case I32, F32 -> LanguegVmValSize._32;
+            case I64, F64 -> LanguegVmValSize._64;
+        };
     }
 
     @Override
     public String toString(){
-        return type.name();
+        return this.name();
     }
 }

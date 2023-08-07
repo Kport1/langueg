@@ -1,402 +1,139 @@
 package com.kport.langueg.typeCheck.op;
 
 import com.kport.langueg.lex.TokenType;
-import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.ast.ASTTypeE;
-import com.kport.langueg.parse.ast.astVals.ASTType;
-import com.kport.langueg.parse.ast.nodes.expr.NBinOp;
 import com.kport.langueg.parse.ast.nodes.expr.NCast;
-import com.kport.langueg.parse.ast.nodes.expr.NIdent;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
-import com.kport.langueg.typeCheck.types.Type;
 
-import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.Map;
 
-import static com.kport.langueg.lex.TokenType.*;
+public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
 
-public enum DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
+    private static final Map<TokenType, BinOpTypeMap> binOpTypeMappings = Map.ofEntries(
+            Map.entry(TokenType.Plus, primitiveArithmeticOp(TokenType.Plus)),
+            Map.entry(TokenType.Minus, primitiveArithmeticOp(TokenType.Minus)),
+            Map.entry(TokenType.Mul, primitiveArithmeticOp(TokenType.Mul)),
+            Map.entry(TokenType.Div, primitiveArithmeticOp(TokenType.Div)),
+            Map.entry(TokenType.Mod, primitiveArithmeticOp(TokenType.Mod)),
+            Map.entry(TokenType.Pow, primitiveArithmeticOp(TokenType.Pow)),
 
-    PLUS((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot add " + left + " and " + right);
-        }
+            Map.entry(TokenType.ShiftR, primitiveBitShiftOp(TokenType.ShiftR)),
+            Map.entry(TokenType.ShiftL, primitiveBitShiftOp(TokenType.ShiftL)),
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Plus),
+            Map.entry(TokenType.BAnd, primitiveBitwiseOp(TokenType.BAnd)),
+            Map.entry(TokenType.BOr, primitiveBitwiseOp(TokenType.BOr)),
+            Map.entry(TokenType.BXOr, primitiveBitwiseOp(TokenType.BXOr)),
 
-    MINUS((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot subtract " + left + " and " + right);
-        }
+            Map.entry(TokenType.Greater, primitiveComparisonOp(TokenType.Greater)),
+            Map.entry(TokenType.Less, primitiveComparisonOp(TokenType.Less)),
+            Map.entry(TokenType.GreaterEq, primitiveComparisonOp(TokenType.GreaterEq)),
+            Map.entry(TokenType.LessEq, primitiveComparisonOp(TokenType.LessEq)),
+            Map.entry(TokenType.Eq, primitiveComparisonOp(TokenType.Eq)),
+            Map.entry(TokenType.NotEq, primitiveComparisonOp(TokenType.NotEq)),
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Minus),
+            Map.entry(TokenType.And, primitiveBoolOp(TokenType.And)),
+            Map.entry(TokenType.Or, primitiveBoolOp(TokenType.Or)),
+            Map.entry(TokenType.XOr, primitiveBoolOp(TokenType.XOr))
+    );
 
-    MUL((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot multiply " + left + " and " + right);
-        }
 
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Mul),
-
-    DIV((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot divide " + left + " and " + right);
-        }
-
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Div),
-
-    MOD((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator % to " + left + " and " + right);
-        }
-
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Mod),
-
-    POW((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator ** to " + left + " and " + right);
-        }
-
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, Pow),
-
-    SHIFTR((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator >> to " + left + " and " + right);
-        }
-
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, ShiftR),
-
-    SHIFTL((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator << to " + left + " and " + right);
-        }
-
-        return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-    }, ShiftL),
-
-    GREATER((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator < to " + left + " and " + right);
-        }
-
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-        return PrimitiveType.Bool;
-    }, Greater),
-
-    LESS((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator > to " + left + " and " + right);
-        }
-
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-        return PrimitiveType.Bool;
-    }, Less),
-
-    GREATEREQ((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator <= to " + left + " and " + right);
-        }
-
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-        return PrimitiveType.Bool;
-    }, GreaterEq),
-
-    LESSEQ((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator >= to " + left + " and " + right);
-        }
-
-        castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
-        return PrimitiveType.Bool;
-    }, LessEq),
-
-    EQ((left, right, op) -> {
-        if(!(left.equals(right))){
-            throw new Error("Cannot apply operator == to " + left + " and " + right);
-        }
-
-        return PrimitiveType.Bool;
-    }, Eq),
-
-    NOTEQ((left, right, op) -> {
-        if(!(left.equals(right))){
-            throw new Error("Cannot apply operator != to " + left + " and " + right);
-        }
-
-        return PrimitiveType.Bool;
-    }, NotEq),
-
-    AND((left, right, op) -> {
-        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
-            if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+    private static BinOpTypeMap primitiveArithmeticOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isNumeric() && rt.isNumeric())){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-            throw new Error("Cannot apply operator & to " + left + " and " + right);
-        }
 
-        return left;
-    }, And),
-
-    ANDAND((left, right, op) -> {
-        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
-            throw new Error("Cannot apply operator && to " + left + " and " + right);
-        }
-
-        return left;
-    }, AndAnd),
-
-    OR((left, right, op) -> {
-        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
-            if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+            if(lt.isFloating() && !rt.isFloating()){
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+                return leftType;
             }
-            throw new Error("Cannot apply operator | to " + left + " and " + right);
-        }
-
-        return left;
-    }, Or),
-
-    OROR((left, right, op) -> {
-        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
-            throw new Error("Cannot apply operator & to " + left + " and " + right);
-        }
-
-        return left;
-    }, OrOr),
-
-    XOR((left, right, op) -> {
-        if(!(arePrim(left, right) && isBool(left) && isBool(right))){
-            if(isInteger(left) && isInteger(right)){
-                return castNonDominantGetDominant((PrimitiveType) left, (PrimitiveType) right, op);
+            else if (rt.isFloating() && !lt.isFloating()) {
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+                return rightType;
             }
-            throw new Error("Cannot apply operator | to " + left + " and " + right);
-        }
 
-        return left;
-    }, XOr),
+            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
+            if(sizeCmp > 0) {
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+                return leftType;
+            }
+            else if(sizeCmp < 0){
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+                return rightType;
+            }
 
-    PLUSASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator += to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, PlusAssign),
-
-    MINUSASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator -= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, MinusAssign),
-
-    MULASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator *= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, MulAssign),
-
-    DIVASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator /= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, DivAssign),
-
-    MODASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator %= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, ModAssign),
-
-    POWASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isNum(left) && isNum(right))){
-            throw new Error("Cannot apply operator **= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, PowAssign),
-
-    SHIFTRASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator >>= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, ShiftRAssign),
-
-    SHIFTLASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator <<= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, ShiftLAssign),
-
-    ANDASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator &= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, AndAssign),
-
-    ORASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator |= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, AndAssign),
-
-    XORASSIGN((left, right, op) -> {
-        if(!(arePrim(left, right) && isInteger(left) && isInteger(right))){
-            throw new Error("Cannot apply operator ^= to " + left + " and " + right);
-        }
-
-        if(!right.equals(left)){
-            op.right = new NCast(op.right.line, op.right.column, left, op.right);
-        }
-
-        return left;
-    }, AndAssign),
-
-    ASSIGN((left, right, op) -> {
-        if(!left.equals(right)){
-            throw new Error("Cannot assign value of type " + right + " to variable " + op.left + " of type " + left);
-        }
-
-        return left;
-    }, Assign);
-
-
-    private final BinOpTypeMap map;
-    private final TokenType op;
-    DefaultBinOpTypeMappings(BinOpTypeMap map_, TokenType op_){
-        map = map_;
-        op = op_;
+            return leftType;
+        };
     }
 
-    private static final EnumMap<TokenType, BinOpTypeMap> opToTypeMapping = new EnumMap<>(TokenType.class);
-    static {
-        Arrays.stream(values()).forEach((m) -> opToTypeMapping.put(m.op, m.map));
+    private static BinOpTypeMap primitiveBitShiftOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt.isInteger())){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+            }
+            if(rt != PrimitiveType.U8){
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, PrimitiveType.U8, binOp.right);
+            }
+            return leftType;
+        };
+    }
+
+    private static BinOpTypeMap primitiveBitwiseOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt.isInteger())){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+            }
+
+            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
+            if(sizeCmp > 0) {
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+                return leftType;
+            }
+            else if(sizeCmp < 0){
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+                return rightType;
+            }
+
+            return leftType;
+        };
+    }
+
+    private static BinOpTypeMap primitiveComparisonOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isNumeric() && rt.isNumeric())){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+            }
+
+            if(lt.isFloating() && !rt.isFloating()){
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+            }
+            else if (rt.isFloating() && !lt.isFloating()) {
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+            }
+
+            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
+            if(sizeCmp > 0) {
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+            }
+            else if(sizeCmp < 0){
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+            }
+
+            return PrimitiveType.Bool;
+        };
+    }
+
+    private static BinOpTypeMap primitiveBoolOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt == PrimitiveType.Bool && rt == PrimitiveType.Bool)){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+            }
+
+            return PrimitiveType.Bool;
+        };
     }
 
     @Override
-    public BinOpTypeMap getFromOp(TokenType op){
-        return opToTypeMapping.get(op);
-    }
-
-    private static boolean arePrim(Type... t){
-        return Arrays.stream(t).allMatch(Type::isPrimitive);
-    }
-
-    private static final EnumMap<PrimitiveType, Integer> prec = new EnumMap<>(Map.of(
-            PrimitiveType.U8,   0,
-            PrimitiveType.I16,  1,
-            PrimitiveType.I32,    2,
-            PrimitiveType.I64,   3,
-            PrimitiveType.F32,  4,
-            PrimitiveType.F64, 5
-    ));
-
-    private static boolean isNum(Type t){
-        if(t instanceof PrimitiveType) {
-            return prec.containsKey(t);
-        }
-        return false;
-    }
-
-    private static boolean isBool(Type t){
-        if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.Bool;
-        }
-        return false;
-    }
-
-    private static boolean isInteger(Type t){
-        if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.U8 ||
-                    t == PrimitiveType.I16 ||
-                    t == PrimitiveType.I32 ||
-                    t == PrimitiveType.I64;
-        }
-        return false;
-    }
-
-    private static boolean isFloat(Type t){
-        if(t instanceof PrimitiveType) {
-            return t == PrimitiveType.F32 ||
-                    t == PrimitiveType.F64;
-        }
-        return false;
-    }
-
-    private static PrimitiveType castNonDominantGetDominant(PrimitiveType left, PrimitiveType right, NBinOp op){
-        if(left == right){
-            return left;
-        }
-
-        boolean leftDominant = prec.get(left) > prec.get(right);
-        PrimitiveType dominant = leftDominant? left : right;
-
-        if(leftDominant) op.right = new NCast(op.right.line, op.right.column, dominant, op.right);
-        else op.left = new NCast(op.left.line, op.left.column, dominant, op.left);
-
-        return dominant;
+    public BinOpTypeMap getFromOp(TokenType op) {
+        return binOpTypeMappings.get(op);
     }
 }
