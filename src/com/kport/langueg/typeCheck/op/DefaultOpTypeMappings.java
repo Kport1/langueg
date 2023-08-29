@@ -6,7 +6,7 @@ import com.kport.langueg.typeCheck.types.PrimitiveType;
 
 import java.util.Map;
 
-public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
+public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
 
     private static final Map<TokenType, BinOpTypeMap> binOpTypeMappings = Map.ofEntries(
             Map.entry(TokenType.Plus, primitiveArithmeticOp(TokenType.Plus)),
@@ -14,7 +14,7 @@ public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             Map.entry(TokenType.Mul, primitiveArithmeticOp(TokenType.Mul)),
             Map.entry(TokenType.Div, primitiveArithmeticOp(TokenType.Div)),
             Map.entry(TokenType.Mod, primitiveArithmeticOp(TokenType.Mod)),
-            Map.entry(TokenType.Pow, primitiveArithmeticOp(TokenType.Pow)),
+            Map.entry(TokenType.Pow, primitiveFloatingOp(TokenType.Pow)),
 
             Map.entry(TokenType.ShiftR, primitiveBitShiftOp(TokenType.ShiftR)),
             Map.entry(TokenType.ShiftL, primitiveBitShiftOp(TokenType.ShiftL)),
@@ -35,6 +35,28 @@ public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             Map.entry(TokenType.XOr, primitiveBoolOp(TokenType.XOr))
     );
 
+    private static final Map<TokenType, UnaryOpPreTypeMap> unaryOpPreTypeMappings = Map.ofEntries(
+            Map.entry(TokenType.Inc, primitiveIntegerUnaryOpPre(TokenType.Inc)),
+            Map.entry(TokenType.Dec, primitiveIntegerUnaryOpPre(TokenType.Dec)),
+            Map.entry(TokenType.Minus, (operand, op) -> {
+                if(!(operand instanceof PrimitiveType t && t.isNumeric())){
+                    throw new Error("Cannot apply prefix operator \"" + TokenType.Minus.expandedName() + "\" to value of type \"" + operand + "\"");
+                }
+                return operand;
+            }),
+            Map.entry(TokenType.Not, (operand, op) -> {
+                if(!(operand instanceof PrimitiveType t && t == PrimitiveType.Bool)){
+                    throw new Error("Cannot apply prefix operator \"" + TokenType.Not.expandedName() + "\" to value of type \"" + operand + "\"");
+                }
+                return operand;
+            })
+    );
+
+    private static final Map<TokenType, UnaryOpPostTypeMap> unaryOpPostTypeMappings = Map.ofEntries(
+            Map.entry(TokenType.Inc, primitiveIntegerUnaryOpPost(TokenType.Inc)),
+            Map.entry(TokenType.Dec, primitiveIntegerUnaryOpPost(TokenType.Dec))
+    );
+
 
     private static BinOpTypeMap primitiveArithmeticOp(TokenType op){
         return (leftType, rightType, binOp) -> {
@@ -49,6 +71,26 @@ public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
             else if (rt.isFloating() && !lt.isFloating()) {
                 binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
                 return rightType;
+            }
+
+            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
+            if(sizeCmp > 0) {
+                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
+                return leftType;
+            }
+            else if(sizeCmp < 0){
+                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
+                return rightType;
+            }
+
+            return leftType;
+        };
+    }
+
+    private static BinOpTypeMap primitiveFloatingOp(TokenType op){
+        return (leftType, rightType, binOp) -> {
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isFloating() && rt.isFloating())){
+                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
 
             int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
@@ -132,8 +174,36 @@ public class DefaultBinOpTypeMappings implements BinOpTypeMappingSupplier{
         };
     }
 
+    private static UnaryOpPreTypeMap primitiveIntegerUnaryOpPre(TokenType op){
+        return (operand, _op) -> {
+            if(!(operand instanceof PrimitiveType t && t.isInteger())){
+                throw new Error("Cannot apply prefix operator \"" + op.expandedName() + "\" to value of type \"" + operand + "\"");
+            }
+            return operand;
+        };
+    }
+
+    private static UnaryOpPostTypeMap primitiveIntegerUnaryOpPost(TokenType op){
+        return (operand, _op) -> {
+            if(!(operand instanceof PrimitiveType t && t.isInteger())){
+                throw new Error("Cannot apply postfix operator \"" + op.expandedName() + "\" to value of type \"" + operand + "\"");
+            }
+            return operand;
+        };
+    }
+
     @Override
-    public BinOpTypeMap getFromOp(TokenType op) {
+    public BinOpTypeMap binOpTypeMap(TokenType op) {
         return binOpTypeMappings.get(op);
+    }
+
+    @Override
+    public UnaryOpPreTypeMap unaryOpPreTypeMap(TokenType op) {
+        return unaryOpPreTypeMappings.get(op);
+    }
+
+    @Override
+    public UnaryOpPostTypeMap unaryOpPostTypeMap(TokenType op) {
+        return unaryOpPostTypeMappings.get(op);
     }
 }

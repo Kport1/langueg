@@ -8,6 +8,7 @@ import com.kport.langueg.typeCheck.types.Type;
 public abstract class NExpr extends AST {
 
     public Type exprType = null;
+    public boolean isExprStmnt = false;
 
     public NExpr(int line_, int column_, AST... children) {
         super(line_, column_, children);

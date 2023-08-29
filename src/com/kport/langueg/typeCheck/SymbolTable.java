@@ -9,13 +9,15 @@ import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
 import com.kport.langueg.util.VarIdentifier;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 
 public class SymbolTable {
 
-    private final HashMap<FnIdentifier, Type> fnTypes = new HashMap<>();
-    private final HashMap<VarIdentifier, Type> varTypes = new HashMap<>();
+    private final Map<FnIdentifier, Type> fnTypes = new HashMap<>();
+    private final Map<VarIdentifier, Type> varTypes = new HashMap<>();
+
+    private final Map<Scope, List<FnIdentifier>> fnsInScope = new HashMap<>();
+    private final Map<Scope, List<VarIdentifier>> varsInScope = new HashMap<>();
 
     public SymbolTable(){
 
@@ -74,6 +76,8 @@ public class SymbolTable {
 
         if(fnTypes.containsKey(id)) return false;
         fnTypes.put(id, fn.returnType);
+        fnsInScope.putIfAbsent(id.scope(), new ArrayList<>());
+        fnsInScope.get(id.scope()).add(id);
         for (FnParamDef param : fn.params) {
             if(!registerVar(new VarIdentifier(fn.getBlockScope(), param.name), param.type))
                 return false;
@@ -92,7 +96,18 @@ public class SymbolTable {
     public boolean registerVar(VarIdentifier id, Type type){
         if(varTypes.containsKey(id)) return false;
         varTypes.put(id, type);
+        varsInScope.putIfAbsent(id.scope(), new ArrayList<>());
+        varsInScope.get(id.scope()).add(id);
         return true;
+    }
+
+    public boolean varIsClosed(VarIdentifier id){
+        if(varTypes.containsKey(id)) return false;
+        if(id.scope().parent == null) return false;
+
+        VarIdentifier parentId = new VarIdentifier(id.scope().parent, id.name());
+        if(varTypes.containsKey(parentId) && id.scope().fnScope) return true;
+        return varIsClosed(parentId);
     }
 
 }

@@ -9,8 +9,12 @@ public enum PrimitiveType implements Type{
     Char,
 
     U8,
+    I8,
+    U16,
     I16,
+    U32,
     I32,
+    U64,
     I64,
 
     F32,
@@ -24,13 +28,13 @@ public enum PrimitiveType implements Type{
     public boolean isNumeric(){
         return switch (this) {
             case Void, Bool, Char -> false;
-            case U8, I16, I32, I64, F32, F64 -> true;
+            case U8, I8, U16, I16, U32, I32, U64, I64, F32, F64 -> true;
         };
     }
 
     public boolean isFloating(){
         return switch (this) {
-            case Void, Bool, Char, U8, I16, I32, I64 -> false;
+            case U8, I8, U16, I16, U32, I32, U64, I64, Void, Bool, Char -> false;
             case F32, F64 -> true;
         };
     }
@@ -38,18 +42,25 @@ public enum PrimitiveType implements Type{
     public boolean isInteger(){
         return switch (this) {
             case Void, Bool, Char, F32, F64 -> false;
-            case U8, I16, I32, I64 -> true;
+            case U8, I8, U16, I16, U32, I32, U64, I64 -> true;
+        };
+    }
+
+    public boolean isUnsigned(){
+        return switch (this) {
+            case I8, I16, I32, I64, F32, F64, Void, Bool, Char-> false;
+            case U8, U16, U32, U64 -> true;
         };
     }
 
     @Override
     public LanguegVmValSize getSize(){
         return switch (this) {
-            case Void -> LanguegVmValSize.NONE;
-            case Bool, U8 -> LanguegVmValSize._8;
-            case Char, I16 -> LanguegVmValSize._16;
-            case I32, F32 -> LanguegVmValSize._32;
-            case I64, F64 -> LanguegVmValSize._64;
+            case Void -> null;
+            case Bool, U8, I8 -> LanguegVmValSize._8;
+            case Char, U16, I16 -> LanguegVmValSize._16;
+            case U32, I32, F32 -> LanguegVmValSize._32;
+            case U64, I64, F64 -> LanguegVmValSize._64;
         };
     }
 

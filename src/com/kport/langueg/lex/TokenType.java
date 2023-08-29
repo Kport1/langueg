@@ -98,14 +98,18 @@ public enum TokenType {
 
     //Types----------
         //Primitive
-        Boolean,
-        Byte,
+        Bool,
         Char,
-        Short,
-        Int,
-        Long,
-        Float,
-        Double,
+        U8,
+        U16,
+        U32,
+        U64,
+        I8,
+        I16,
+        I32,
+        I64,
+        F32,
+        F64,
 
         Void,
         Null,
@@ -185,13 +189,17 @@ public enum TokenType {
         expandedNames.put(True, "true");
         expandedNames.put(False, "false");
 
-        expandedNames.put(Boolean, "boolean");
-        expandedNames.put(Byte, "byte");
-        expandedNames.put(Short, "short");
-        expandedNames.put(Int, "int");
-        expandedNames.put(Long, "long");
-        expandedNames.put(Float, "float");
-        expandedNames.put(Double, "double");
+        expandedNames.put(Bool, "boolean");
+        expandedNames.put(U8, "u8");
+        expandedNames.put(U16, "u16");
+        expandedNames.put(U32, "u32");
+        expandedNames.put(U64, "u64");
+        expandedNames.put(I8, "i8");
+        expandedNames.put(I16, "i16");
+        expandedNames.put(I32, "i32");
+        expandedNames.put(I64, "i64");
+        expandedNames.put(F32, "f32");
+        expandedNames.put(F64, "f64");
 
         expandedNames.put(Void, "void");
         expandedNames.put(Null, "null");
@@ -235,10 +243,9 @@ public enum TokenType {
             BXOr,
             XOr
     );
-    private static final EnumSet<TokenType> unaryOps = EnumSet.of(
+    private static final EnumSet<TokenType> unaryOpsPost = EnumSet.of(
             Inc,
-            Dec,
-            Not
+            Dec
     );
 
     public String expandedName(){
@@ -253,8 +260,8 @@ public enum TokenType {
         return binOps.contains(this);
     }
 
-    public boolean isUnaryOp(){
-        return unaryOps.contains(this);
+    public boolean isUnaryOpPost(){
+        return unaryOpsPost.contains(this);
     }
 
     public TokenType getOpOfOpAssign(){

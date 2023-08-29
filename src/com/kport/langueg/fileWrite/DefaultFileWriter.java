@@ -1,5 +1,6 @@
 package com.kport.langueg.fileWrite;
 
+import com.kport.langueg.codeGen.languegVmCodeGen.CodeGenState;
 import com.kport.langueg.codeGen.languegVmCodeGen.FnData;
 import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
 import com.kport.langueg.pipeline.LanguegPipeline;
@@ -26,29 +27,16 @@ public class DefaultFileWriter implements FileWriter{
     @SuppressWarnings("unchecked")
     public Void process(Object input, LanguegPipeline<?, ?> pipeline) {
 
-        byte[] constIndices;
-        Map<FnIdentifier, FnData> fnData;
+        CodeGenState state;
         try {
-            constIndices = pipeline.getAdditionalData("ConstIndices", byte[].class);
-            fnData = pipeline.getAdditionalData("FnData", Map.class);
+            state = pipeline.getAdditionalData("State", CodeGenState.class);
         }
         catch (InvalidTypeException e){
             e.printStackTrace();
             throw new Error();
         }
 
-        try (FileOutputStream output = new FileOutputStream(path)){
-            output.write(MAGIC);
-            output.write(constIndices);
 
-            fnData.forEach((id, data) -> {
-
-                System.out.println(id + "  " + data);
-
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
         return null;
     }

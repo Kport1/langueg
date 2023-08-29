@@ -84,15 +84,20 @@ public class DefaultLexer implements Lexer{
         tokens.put("true", TokenType.True);
         tokens.put("false", TokenType.False);
 
-        tokens.put("boolean", TokenType.Boolean);
-        tokens.put("byte", TokenType.Byte);
+        tokens.put("bool", TokenType.Bool);
         tokens.put("char", TokenType.Char);
-        tokens.put("short", TokenType.Short);
-        tokens.put("int", TokenType.Int);
-        tokens.put("long", TokenType.Long);
-        tokens.put("float", TokenType.Float);
-        tokens.put("double", TokenType.Double);
+        tokens.put("u8", TokenType.U8);
+        tokens.put("u16", TokenType.U16);
+        tokens.put("u32", TokenType.U32);
+        tokens.put("u64", TokenType.U64);
+        tokens.put("i8", TokenType.I8);
+        tokens.put("i16", TokenType.I16);
+        tokens.put("i32", TokenType.I32);
+        tokens.put("i64", TokenType.I64);
+        tokens.put("f32", TokenType.F32);
+        tokens.put("f64", TokenType.F64);
         tokens.put("void", TokenType.Void);
+
         tokens.put("null", TokenType.Null);
     }
     private static final List<LexemeMatcher> lexemes = new ArrayList<>();
@@ -104,8 +109,8 @@ public class DefaultLexer implements Lexer{
             }
 
             @Override
-            public Token getToken(char[] s) {
-                return new Token(tokens.get(new String(s)));
+            public Token getToken(char[] s, int line, int column) {
+                return new Token(tokens.get(new String(s)), line, column);
             }
         });
 
@@ -116,8 +121,8 @@ public class DefaultLexer implements Lexer{
             }
 
             @Override
-            public Token getToken(char[] s) {
-                return new Token(TokenType.Identifier, new String(s));
+            public Token getToken(char[] s, int line, int column) {
+                return new Token(TokenType.Identifier, new String(s), line, column);
             }
         });
 
@@ -128,8 +133,8 @@ public class DefaultLexer implements Lexer{
             }
 
             @Override
-            public Token getToken(char[] s) {
-                return new Token(TokenType.NumberL, new String(s));
+            public Token getToken(char[] s, int line, int column) {
+                return new Token(TokenType.NumberL, new String(s), line, column);
             }
         });
     }
@@ -209,9 +214,7 @@ public class DefaultLexer implements Lexer{
             if(!wordCurrentlyValid){
                 for (LexemeMatcher lexemeMatcher : lexemes) {
                     if (lexemeMatcher.isLexeme(prevWord)) {
-                        Token tok = lexemeMatcher.getToken(prevWord);
-                        tok.lineNum = prevLine;
-                        tok.columnNum = prevColumn - prevWord.length;
+                        Token tok = lexemeMatcher.getToken(prevWord, prevLine, prevColumn - prevWord.length);
                         tokens.add(tok);
                         word = new char[0];
                         i--;
@@ -228,9 +231,7 @@ public class DefaultLexer implements Lexer{
             if(i == code.length - 1){
                 for (LexemeMatcher lexemeMatcher : lexemes) {
                     if (lexemeMatcher.isLexeme(word)) {
-                        Token tok = lexemeMatcher.getToken(word);
-                        tok.lineNum = prevLine;
-                        tok.columnNum = prevColumn - word.length + 1;
+                        Token tok = lexemeMatcher.getToken(word, prevLine, prevColumn - word.length + 1);
                         tokens.add(tok);
                         continue OUTER;
                     }
@@ -271,7 +272,7 @@ public class DefaultLexer implements Lexer{
             if( '0' <= c && c <= '9' ||
                 'A' <= c && c <= 'F' ||
                 'a' <= c && c <= 'f' )
-            continue;
+                continue;
 
             if(i == chars.length - 1 && chars.length > 1){
                 return numLiteralSuffixes.indexOf(c) != -1;
@@ -287,7 +288,7 @@ public class DefaultLexer implements Lexer{
         if( startCharT != Character.UPPERCASE_LETTER &&
             startCharT != Character.LOWERCASE_LETTER &&
             startCharT != Character.CONNECTOR_PUNCTUATION)
-        return false;
+            return false;
 
         for(int i = 1; i < chars.length; i++){
             int charT = Character.getType(chars[i]);
@@ -295,13 +296,13 @@ public class DefaultLexer implements Lexer{
                 charT != Character.LOWERCASE_LETTER &&
                 charT != Character.CONNECTOR_PUNCTUATION &&
                 charT != Character.DECIMAL_DIGIT_NUMBER)
-            return false;
+                return false;
         }
         return true;
     }
 
     private interface LexemeMatcher{
         boolean isLexeme(char[] s);
-        Token getToken(char[] s);
+        Token getToken(char[] s, int line, int column);
     }
 }

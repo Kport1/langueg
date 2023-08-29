@@ -60,4 +60,14 @@ public class CodeOutputStream extends ByteArrayOutputStream {
         buf[index + 6] = (byte) (l >>> 48);
         buf[index + 7] = (byte) (l >>> 56);
     }
+
+    @Override
+    public String toString(){
+        StringBuilder s = new StringBuilder();
+        for(int i = 0; i < count; i++){
+            s.append(Integer.toHexString(buf[i])).append(", ");
+        }
+        if(s.length() > 2) s.delete(s.length() - 2, s.length());
+        return s.toString();
+    }
 }

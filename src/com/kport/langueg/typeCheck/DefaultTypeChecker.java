@@ -10,9 +10,7 @@ import com.kport.langueg.parse.ast.nodes.NFn;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
-import com.kport.langueg.typeCheck.op.BinOpTypeMap;
-import com.kport.langueg.typeCheck.op.BinOpTypeMappingSupplier;
-import com.kport.langueg.typeCheck.op.DefaultBinOpTypeMappings;
+import com.kport.langueg.typeCheck.op.*;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
@@ -24,7 +22,7 @@ import java.util.Objects;
 
 public class DefaultTypeChecker implements TypeChecker{
 
-    private final BinOpTypeMappingSupplier binOpTypeMappings = new DefaultBinOpTypeMappings();
+    private final OpTypeMappingSupplier opTypeMappings = new DefaultOpTypeMappings();
 
     private final SymbolTable symbolTable = new SymbolTable();
 
@@ -124,6 +122,7 @@ public class DefaultTypeChecker implements TypeChecker{
             @Override
             public void visit(NExpr expr, VisitorContext context) {
                 expr.exprType = getExprType(expr);
+                expr.isExprStmnt = !(expr.parent instanceof NExpr);
             }
         }, null);
 
@@ -200,57 +199,56 @@ public class DefaultTypeChecker implements TypeChecker{
     }
 
     private Type getExprType(NExpr expr){
-        switch(expr){
+        return switch(expr){
 
-            case NStr _i -> {
-                return new CustomType("String");
-            }
+            case NStr ignored -> new CustomType("String");
 
-            case NFloat32 _i -> {
-                return PrimitiveType.F32;
-            }
+            case NFloat32 ignored -> PrimitiveType.F32;
 
-            case NFloat64 _i -> {
-                return PrimitiveType.F64;
-            }
 
-            case NUInt8 _i -> {
-                return PrimitiveType.U8;
-            }
+            case NFloat64 ignored -> PrimitiveType.F64;
 
-            case NChar _i -> {
-                return PrimitiveType.Char;
-            }
 
-            case NInt16 _i -> {
-                return PrimitiveType.I16;
-            }
+            case NUInt8 ignored -> PrimitiveType.U8;
 
-            case NInt32 _i -> {
-                return PrimitiveType.I32;
-            }
 
-            case NInt64 _i -> {
-                return PrimitiveType.I64;
-            }
+            case NInt8 ignored -> PrimitiveType.I8;
 
-            case NBool _i -> {
-                return PrimitiveType.Bool;
-            }
+
+            case NChar ignored -> PrimitiveType.Char;
+
+
+            case NUInt16 ignored -> PrimitiveType.U16;
+
+
+            case NInt16 ignored -> PrimitiveType.I16;
+
+
+            case NUInt32 ignored -> PrimitiveType.U32;
+
+
+            case NInt32 ignored -> PrimitiveType.I32;
+
+
+            case NUInt64 ignored -> PrimitiveType.U64;
+
+
+            case NInt64 ignored -> PrimitiveType.I64;
+
+
+            case NBool ignored -> PrimitiveType.Bool;
 
             case NCall call -> {
                 Type[] args = Arrays.stream(call.args).map(this::getExprType).toArray(Type[]::new);
 
                 if(call.callee instanceof NIdent ident && symbolTable.fnExists(new FnIdentifier(ident.scope, ident.name, args))){
-                    return symbolTable.getFnType(new FnIdentifier(ident.scope, ident.name, args));
+                    yield symbolTable.getFnType(new FnIdentifier(ident.scope, ident.name, args));
                 }
                 Type calledExprType = getExprType(call.callee);
-                return getReturnTypeAndVerifyArgs(calledExprType, args);
+                yield getReturnTypeAndVerifyArgs(calledExprType, args);
             }
 
-            case NAnonFn fn -> {
-                return new FnType(fn.returnType, fn.getParamTypes());
-            }
+            case NAnonFn fn -> new FnType(fn.returnType, fn.getParamTypes());
 
             case NAssign assign -> {
                 Type leftExpectedType = getExprType(assign.left);
@@ -260,27 +258,45 @@ public class DefaultTypeChecker implements TypeChecker{
                     throw new Error("Cannot assign value of type " + rightType + " to location expecting type " + leftExpectedType);
                 }
 
-                return leftExpectedType;
+                yield leftExpectedType;
             }
 
             case NTuple tup -> {
                 Type[] tupTypes = Arrays.stream(tup.elements).map(this::getExprType).toArray(Type[]::new);
-                return new TupleType(tupTypes);
+                yield new TupleType(tupTypes);
             }
 
-            case NCast cast -> {
-                return cast.type;
-            }
+            case NCast cast -> cast.type;
 
             case NBinOp binOp -> {
                 Type left = getExprType(binOp.left);
                 Type right = getExprType(binOp.right);
 
-                BinOpTypeMap map = binOpTypeMappings.getFromOp(binOp.op);
+                BinOpTypeMap map = opTypeMappings.binOpTypeMap(binOp.op);
                 if(map == null){
                     throw new Error("Cannot apply operator " + binOp.op + " to " + left + " and " + right);
                 }
-                return map.getType(left, right, binOp);
+                yield map.getType(left, right, binOp);
+            }
+
+            case NUnaryOpPost uOp -> {
+                Type operandType = getExprType(uOp.operand);
+
+                UnaryOpPostTypeMap map = opTypeMappings.unaryOpPostTypeMap(uOp.op);
+                if(map == null){
+                    throw new Error("Cannot apply postfix operator " + uOp.op + " to " + operandType);
+                }
+                yield map.getType(operandType, uOp);
+            }
+
+            case NUnaryOpPre uOp -> {
+                Type operandType = getExprType(uOp.operand);
+
+                UnaryOpPreTypeMap map = opTypeMappings.unaryOpPreTypeMap(uOp.op);
+                if(map == null){
+                    throw new Error("Cannot apply prefix operator " + uOp.op + " to " + operandType);
+                }
+                yield map.getType(operandType, uOp);
             }
 
             case NIdent ident -> {
@@ -292,13 +308,13 @@ public class DefaultTypeChecker implements TypeChecker{
                 }
 
                 if(varExists){
-                    return symbolTable.getVarType(new VarIdentifier(ident.scope, ident.name));
+                    yield symbolTable.getVarType(new VarIdentifier(ident.scope, ident.name));
                 }
 
                 if(anyFnExists){
                     Type[] fns = symbolTable.getAllFnTypes(ident.name, ident.scope);
                     if(fns.length == 1){
-                        return fns[0];
+                        yield fns[0];
                     }
                     throw new Error("Reference to overloaded function " + ident.name + " is ambiguous");
                 }
@@ -307,7 +323,7 @@ public class DefaultTypeChecker implements TypeChecker{
             }
 
             default -> throw new IllegalStateException("Unexpected value: " + expr);
-        }
+        };
     }
 
     private Type getReturnTypeAndVerifyArgs(Type fnType, Type... args){

@@ -4,20 +4,14 @@ import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmCodeGenerator;
 import com.kport.langueg.desugar.DefaultDesugarer;
 import com.kport.langueg.fileWrite.DefaultFileWriter;
 import com.kport.langueg.lex.DefaultLexer;
-import com.kport.langueg.lex.Token;
 import com.kport.langueg.parse.DefaultParser;
-import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.pipeline.LanguegPipelineBuilder;
 import com.kport.langueg.typeCheck.DefaultTypeChecker;
-import com.kport.langueg.util.ScopeTree;
-import com.sun.jdi.InvalidTypeException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {

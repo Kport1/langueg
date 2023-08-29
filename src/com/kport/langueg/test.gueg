@@ -1,4 +1,0 @@
-float z = 1f;
-fn void x(int y){
-    float a = z + y;
-}

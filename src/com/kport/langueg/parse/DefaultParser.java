@@ -104,7 +104,7 @@ public class DefaultParser implements Parser{
 
             case LCurl -> parseBlock();
 
-            case Var, Boolean, Byte, Char, Short, Int, Long, Float, Double, Void, LParen -> {
+            case Var, Bool, Char, U8, U16, U32, U64, I8, I16, I32, I64, F32, F64, Void, LParen -> {
                 iterator.dec();
                 yield parseVar();
             }
@@ -187,8 +187,8 @@ public class DefaultParser implements Parser{
                 return parseAnonFn();
             }
 
-            case Not, Inc, Dec -> {
-                return new NUnaryOpPre(cur.lineNum, cur.columnNum, parseExpr(), cur.tok);
+            case Minus, Not, Inc, Dec -> {
+                return new NUnaryOpPre(cur.lineNum, cur.columnNum, parseUnaryOp(call(parseAtom())), cur.tok);
             }
 
         }
@@ -219,7 +219,7 @@ public class DefaultParser implements Parser{
 
     private NExpr parseUnaryOp(NExpr left) {
         Token current  = iterator.current();
-        if(current.tok.isUnaryOp()) {
+        if(current.tok.isUnaryOpPost()) {
             iterator.inc();
             return new NUnaryOpPost(current.lineNum, current.columnNum, left, current.tok);
         }
@@ -507,30 +507,46 @@ public class DefaultParser implements Parser{
         iterator.inc();
 
         switch (cur.tok){
-            case Boolean -> {
+            case Bool -> {
                 return PrimitiveType.Bool;
-            }
-            case Byte -> {
-                return PrimitiveType.U8;
             }
             case Char -> {
                 return PrimitiveType.Char;
             }
-            case Short -> {
+
+            case U8 -> {
+                return PrimitiveType.U8;
+            }
+            case U16 -> {
+                return PrimitiveType.U16;
+            }
+            case U32 -> {
+                return PrimitiveType.U32;
+            }
+            case U64 -> {
+                return PrimitiveType.U64;
+            }
+
+            case I8 -> {
+                return PrimitiveType.I8;
+            }
+            case I16 -> {
                 return PrimitiveType.I16;
             }
-            case Int -> {
+            case I32 -> {
                 return PrimitiveType.I32;
             }
-            case Long -> {
+            case I64 -> {
                 return PrimitiveType.I64;
             }
-            case Float -> {
+
+            case F32 -> {
                 return PrimitiveType.F32;
             }
-            case Double -> {
+            case F64 -> {
                 return PrimitiveType.F64;
             }
+
             case Void -> {
                 return PrimitiveType.Void;
             }
