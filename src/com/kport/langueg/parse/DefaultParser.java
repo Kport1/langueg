@@ -13,6 +13,8 @@ import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Iterator;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Function;
 
@@ -35,24 +37,30 @@ public class DefaultParser implements Parser{
         opPrecedence.put(TokenType.OrAssign, 0);
         opPrecedence.put(TokenType.XOrAssign, 0);
 
-        opPrecedence.put(TokenType.Greater, 1);
-        opPrecedence.put(TokenType.Less, 1);
-        opPrecedence.put(TokenType.GreaterEq, 1);
-        opPrecedence.put(TokenType.LessEq, 1);
-        opPrecedence.put(TokenType.Eq, 1);
-        opPrecedence.put(TokenType.NotEq, 1);
-        opPrecedence.put(TokenType.BAnd, 3);
-        opPrecedence.put(TokenType.BOr, 2);
-        opPrecedence.put(TokenType.BXOr, 4);
+        opPrecedence.put(TokenType.And, 1);
+        opPrecedence.put(TokenType.Or, 1);
+        opPrecedence.put(TokenType.XOr, 1);
 
-        opPrecedence.put(TokenType.Plus, 5);
-        opPrecedence.put(TokenType.Minus, 5);
-        opPrecedence.put(TokenType.Mul, 6);
-        opPrecedence.put(TokenType.Div, 6);
-        opPrecedence.put(TokenType.Mod, 6);
-        opPrecedence.put(TokenType.Pow, 7);
-        opPrecedence.put(TokenType.ShiftR, 6);
-        opPrecedence.put(TokenType.ShiftL, 6);
+        opPrecedence.put(TokenType.Greater, 2);
+        opPrecedence.put(TokenType.Less, 2);
+        opPrecedence.put(TokenType.GreaterEq, 2);
+        opPrecedence.put(TokenType.LessEq, 2);
+        opPrecedence.put(TokenType.Eq, 2);
+        opPrecedence.put(TokenType.NotEq, 2);
+
+        opPrecedence.put(TokenType.Plus, 3);
+        opPrecedence.put(TokenType.Minus, 3);
+        opPrecedence.put(TokenType.Mul, 4);
+        opPrecedence.put(TokenType.Div, 4);
+        opPrecedence.put(TokenType.Mod, 4);
+        opPrecedence.put(TokenType.Pow, 5);
+
+        opPrecedence.put(TokenType.BAnd, 6);
+        opPrecedence.put(TokenType.BOr, 6);
+        opPrecedence.put(TokenType.BXOr, 6);
+
+        opPrecedence.put(TokenType.ShiftR, 7);
+        opPrecedence.put(TokenType.ShiftL, 7);
     }
 
     private ErrorHandler errorHandler;
@@ -70,10 +78,19 @@ public class DefaultParser implements Parser{
 
     private NProg parseProg(){
         ArrayList<AST> stmnts = new ArrayList<>();
+        NNamedFn modInterface = null;
         while(!iterator.isEOF()){
+            if(iterator.current().tok == TokenType.Module){
+                if(modInterface != null) errorHandler.error(Errors.PLACEHOLDER);
+                iterator.inc();
+                modInterface = parseFn();
+                iterator.inc();
+            }
             stmnts.add(parseStatement());
         }
-        return new NProg(1, 0, stmnts.toArray(AST[]::new));
+        return new NProg(1, 0,
+                modInterface == null? new NNamedFn(1, 0, PrimitiveType.Void, "", new FnParamDef[0], new NBlock(1, 0)) : modInterface,
+                stmnts.toArray(AST[]::new));
     }
 
     private AST parseStatement(){
@@ -163,8 +180,12 @@ public class DefaultParser implements Parser{
                 return new NStr(cur.lineNum, cur.columnNum, cur.val);
             }
 
-            case NumberL -> {
-                return parseNum();
+            case IntL -> {
+                return parseInt();
+            }
+
+            case FloatL -> {
+                return parseFloat();
             }
 
             case LBrack -> {
@@ -200,15 +221,13 @@ public class DefaultParser implements Parser{
     private NExpr parseBinaryOp(NExpr left, int lastPrec) {
         Token current = iterator.current();
 
-        if(current.tok.isBinOp()){
+        if(current.tok.isBinOp() || current.tok.isOpAssign() || current.tok == TokenType.Assign){
             int currentPrec = opPrecedence.get(current.tok);
-            if(     currentPrec > lastPrec ||
-                    (current.tok == TokenType.Assign || current.tok.isOpAssign()))
-            {
+            if(currentPrec > lastPrec || current.tok.isOpAssign() || current.tok == TokenType.Assign) {
                 iterator.inc();
                 NExpr right = parseBinaryOp(parseUnaryOp(call(parseAtom())), currentPrec);
                 if(current.tok == TokenType.Assign){
-                    if(!(left instanceof NAssignable assignable)) throw new Error("Cannot assign a value to " + left);
+                    if(!(left instanceof NAssignable assignable)) throw new Error("Cannot assign a value to:\n" + left);
                     return parseBinaryOp(new NAssign(current.lineNum, current.columnNum, assignable, right), lastPrec);
                 }
                 return parseBinaryOp(new NBinOp(current.lineNum, current.columnNum, left, right, current.tok), lastPrec);
@@ -263,6 +282,7 @@ public class DefaultParser implements Parser{
         }
 
         AST block = parseStatement();
+        iterator.dec();
 
         if(iterator.peek().tok == TokenType.Else){
             iterator.inc();
@@ -347,8 +367,7 @@ public class DefaultParser implements Parser{
         FnParamDef[] params = parseFnParams();
 
         AST stmnt = parseStatement();
-
-        iterator.inc();
+        iterator.dec();
 
         return new NNamedFn(fnLine, fnColumn, returnType, name, params, stmnt);
     }
@@ -429,67 +448,87 @@ public class DefaultParser implements Parser{
         return new NVar(varLine, varColumn, varType, identifier.val);
     }
 
-    private NExpr parseNum(){
+    private NExpr parseInt(){
+        Token current = iterator.previous();
+        iterator.inc();
+        String numStr = current.val;
+
+        int postfixBeginIndex = numStr.length();
+        postfixBeginIndex = numStr.lastIndexOf('i') == -1? postfixBeginIndex : numStr.lastIndexOf('i');
+        postfixBeginIndex = numStr.lastIndexOf('u') == -1? postfixBeginIndex : numStr.lastIndexOf('u');
+        String postfix = numStr.substring(postfixBeginIndex);
+
+        BigInteger tmpParseRes;
+        try {
+            if (numStr.startsWith("0x")) {
+                tmpParseRes = new BigInteger(numStr.substring(2, postfixBeginIndex), 16);
+            } else if (numStr.startsWith("o")) {
+                tmpParseRes = new BigInteger(numStr.substring(1, postfixBeginIndex), 8);
+            } else {
+                tmpParseRes = new BigInteger(numStr.substring(0, postfixBeginIndex));
+            }
+        } catch (NumberFormatException e){
+            errorHandler.error(Errors.PARSE_INT_INVALID, current.lineNum, numStr);
+            throw new Error();
+        }
+
+        //TODO check for overflow
+        return switch (postfix){
+            case "u8" -> {
+                yield new NUInt8(current.lineNum, current.columnNum, tmpParseRes.byteValue());
+            }
+            case "u16" -> {
+                yield new NUInt16(current.lineNum, current.columnNum, tmpParseRes.shortValue());
+            }
+            case "u32", "u" -> {
+                yield new NUInt32(current.lineNum, current.columnNum, tmpParseRes.intValue());
+            }
+            case "u64" -> {
+                yield new NUInt64(current.lineNum, current.columnNum, tmpParseRes.longValue());
+            }
+            case "i8" -> {
+                yield new NInt8(current.lineNum, current.columnNum, tmpParseRes.byteValue());
+            }
+            case "i16" -> {
+                yield new NInt16(current.lineNum, current.columnNum, tmpParseRes.shortValue());
+            }
+            case "i32", "i", "" -> {
+                yield new NInt32(current.lineNum, current.columnNum, tmpParseRes.intValue());
+            }
+            case "i64" -> {
+                yield new NInt64(current.lineNum, current.columnNum, tmpParseRes.longValue());
+            }
+            default -> {
+                errorHandler.error(Errors.PARSE_INT_INVALID, current.lineNum, numStr);
+                throw new Error();
+            }
+        };
+    }
+
+    private NExpr parseFloat(){
         Token current = iterator.previous();
         iterator.inc();
 
         String numStr = current.val;
-        String prefix = numStr.length() > 1? numStr.substring(0, 2) : "";
-        String suffix = numStr.length() > 0? numStr.substring(numStr.length() - 1) : "";
+        int postfixBeginIndex = numStr.length();
+        postfixBeginIndex = numStr.lastIndexOf("f") == -1? postfixBeginIndex : numStr.lastIndexOf("f");
+        postfixBeginIndex = numStr.lastIndexOf("d") == -1? postfixBeginIndex : numStr.lastIndexOf("d");
+        String postfix = numStr.substring(postfixBeginIndex);
 
-        boolean isHex = prefix.equals("0x");
-        boolean typeSpecified = "lLsSbBdDfF".contains(suffix);
-        numStr = isHex? numStr.substring(2) : numStr;
-        numStr = typeSpecified? numStr.substring(0, numStr.length() - 1) : numStr;
-        
-        if(!typeSpecified){
-            try{ return new NInt32(current.lineNum, current.columnNum, Integer.parseInt(numStr, isHex? 16 : 10)); }
-            catch (NumberFormatException a) {
-                try{ return new NInt64(current.lineNum, current.columnNum, Long.parseLong(numStr, isHex? 16 : 10)); }
-                catch (NumberFormatException b) {
-                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
-                    try{ return new NFloat32(current.lineNum, current.columnNum, Float.parseFloat(numStr)); }
-                    catch (NumberFormatException c) {
-                        try{ return new NFloat64(current.lineNum, current.columnNum, Double.parseDouble(numStr)); }
-                        catch (NumberFormatException d) {
-                            errorHandler.error(Errors.PARSE_NUM_INVALID, current.lineNum, numStr);
-                        }
-                    }
-                }
+        BigDecimal decimal = new BigDecimal(numStr.substring(0, postfixBeginIndex));
+
+        return switch (postfix){
+            case "f", "" -> {
+                yield new NFloat32(current.lineNum, current.columnNum, decimal.floatValue());
             }
-        }
-
-        try {
-            switch (suffix) {
-                case "l", "L" -> {
-                    return new NInt64(current.lineNum, current.columnNum, Long.parseLong(numStr, isHex? 16 : 10));
-                }
-
-                case "s", "S" -> {
-                    return new NInt16(current.lineNum, current.columnNum, Short.parseShort(numStr, isHex? 16 : 10));
-                }
-
-                case "b", "B" -> {
-                    short val = Short.parseShort(numStr, isHex? 16 : 10);
-                    if(val > 255 || val < 0) throw new NumberFormatException();
-                    return new NUInt8(current.lineNum, current.columnNum, (byte)val);
-                }
-
-                case "d", "D" -> {
-                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
-                    return new NFloat64(current.lineNum, current.columnNum, Double.parseDouble(numStr));
-                }
-
-                case "f", "F" -> {
-                    if(isHex) errorHandler.error(Errors.PARSE_NUM_INVALID_HEX, current.lineNum, numStr);
-                    return new NFloat32(current.lineNum, current.columnNum, Float.parseFloat(numStr));
-                }
-
+            case "d" -> {
+                yield new NFloat64(current.lineNum, current.columnNum, decimal.doubleValue());
             }
-        } catch (NumberFormatException ignored){}
-
-        errorHandler.error(Errors.PARSE_NUM_INVALID, current.lineNum, numStr);
-        return null;
+            default -> {
+                errorHandler.error(Errors.PARSE_INT_INVALID, current.lineNum, numStr);
+                throw new Error();
+            }
+        };
     }
 
     private Type parseType(){
@@ -582,6 +621,7 @@ public class DefaultParser implements Parser{
         return parseDelimAs(start, end, separator, i -> parseExpr(), NExpr.class);
     }
 
+    @SuppressWarnings("unchecked")
     private <T> T[] parseDelimAs(TokenType start, TokenType end, TokenType separator, Function<Integer, T> fn, Class<T> clazz) {
         if(iterator.current().tok != start)
             errorHandler.error(Errors.PARSE_DELIM_EXPECTED_START, iterator.current().lineNum, start.expandedName());

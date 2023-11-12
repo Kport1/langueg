@@ -3,8 +3,8 @@ package com.kport.langueg.util;
 import java.util.Objects;
 
 public class Pair<L, R> {
-    private final L left;
-    private final R right;
+    public final L left;
+    public final R right;
 
     public Pair(L left_, R right_){
         left = left_;

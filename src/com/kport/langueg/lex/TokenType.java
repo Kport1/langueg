@@ -77,6 +77,10 @@ public enum TokenType {
         SingleArrow,
     //--------------
 
+    //Mod-----------
+        Module,
+    //--------------
+
     //Struct----------
         LParen,
         RParen,
@@ -86,11 +90,13 @@ public enum TokenType {
         RCurl,
         Semicolon,
         Comma,
+        Dot,
     //----------------
 
     //Literals----------
         StringL,
-        NumberL,
+        IntL,
+        FloatL,
         Identifier,
         True,
         False,
@@ -112,7 +118,6 @@ public enum TokenType {
         F64,
 
         Void,
-        Null,
     //---------------
 
 
@@ -174,6 +179,8 @@ public enum TokenType {
         expandedNames.put(Fn, "function");
         expandedNames.put(SingleArrow, "single arrow");
 
+        expandedNames.put(Module, "module");
+
         expandedNames.put(LParen, "left parenthesis");
         expandedNames.put(RParen, "right parenthesis");
         expandedNames.put(LBrack, "left bracket");
@@ -182,9 +189,11 @@ public enum TokenType {
         expandedNames.put(RCurl, "right curly brace");
         expandedNames.put(Semicolon, "semicolon");
         expandedNames.put(Comma, "comma");
+        expandedNames.put(Dot, "dot");
 
         expandedNames.put(StringL, "string");
-        expandedNames.put(NumberL, "number");
+        expandedNames.put(IntL, "integer");
+        expandedNames.put(FloatL, "floating point number");
         expandedNames.put(Identifier, "identifier");
         expandedNames.put(True, "true");
         expandedNames.put(False, "false");
@@ -202,7 +211,6 @@ public enum TokenType {
         expandedNames.put(F64, "f64");
 
         expandedNames.put(Void, "void");
-        expandedNames.put(Null, "null");
 
         expandedNames.put(Undefined, "undefined");
     }
@@ -221,7 +229,6 @@ public enum TokenType {
         opAssignToOp.put(XOrAssign, BXOr);
     }
     private static final EnumSet<TokenType> binOps = EnumSet.of(
-            Assign,
             Plus,
             Minus,
             Mul,

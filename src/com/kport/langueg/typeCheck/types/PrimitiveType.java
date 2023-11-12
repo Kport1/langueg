@@ -3,22 +3,29 @@ package com.kport.langueg.typeCheck.types;
 import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
 
 public enum PrimitiveType implements Type{
-    Void,
+    Void(0),
 
-    Bool,
-    Char,
+    Bool(1),
+    Char(2),
 
-    U8,
-    I8,
-    U16,
-    I16,
-    U32,
-    I32,
-    U64,
-    I64,
+    U8(3),
+    I8(4),
+    U16(5),
+    I16(6),
+    U32(7),
+    I32(8),
+    U64(9),
+    I64(10),
 
-    F32,
-    F64;
+    F32(11),
+    F64(12);
+
+    private final byte code;
+
+    PrimitiveType(int code_) {
+        code = (byte)code_;
+    }
+
 
     @Override
     public boolean isPrimitive(){
@@ -67,5 +74,10 @@ public enum PrimitiveType implements Type{
     @Override
     public String toString(){
         return this.name();
+    }
+
+    @Override
+    public byte[] serialize(){
+        return new byte[]{0x01, code};
     }
 }

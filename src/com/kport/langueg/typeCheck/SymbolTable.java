@@ -75,10 +75,10 @@ public class SymbolTable {
         FnIdentifier id = fn.getId();
 
         if(fnTypes.containsKey(id)) return false;
-        fnTypes.put(id, fn.returnType);
+        fnTypes.put(id, fn.getReturnType());
         fnsInScope.putIfAbsent(id.scope(), new ArrayList<>());
         fnsInScope.get(id.scope()).add(id);
-        for (FnParamDef param : fn.params) {
+        for (FnParamDef param : fn.getParams()) {
             if(!registerVar(new VarIdentifier(fn.getBlockScope(), param.name), param.type))
                 return false;
         }

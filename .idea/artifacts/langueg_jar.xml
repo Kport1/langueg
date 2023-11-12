@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="langueg:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/langueg_jar</output-path>
+    <root id="archive" name="langueg.jar">
+      <element id="module-output" name="langueg" />
+      <element id="library" level="project" name="commons.cli" />
+    </root>
+  </artifact>
+</component>

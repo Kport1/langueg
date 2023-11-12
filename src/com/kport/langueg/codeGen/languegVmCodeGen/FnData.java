@@ -4,13 +4,11 @@ import com.kport.langueg.util.CodeOutputStream;
 import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.VarIdentifier;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 public class FnData {
     public final LanguegVmValSize returnValSize;
+    public final LanguegVmValSize[] paramValSizes;
 
     public final Map<LanguegVmValSize, Integer> amntLocals = new EnumMap<>(LanguegVmValSize.class);
     {
@@ -40,10 +38,18 @@ public class FnData {
         }
     }
 
+    public final Map<LanguegVmValSize, Integer> stackDepthCount = new EnumMap<>(LanguegVmValSize.class);
+    {
+        for (LanguegVmValSize size : LanguegVmValSize.values()) {
+            stackDepthCount.put(size, 0);
+        }
+    }
+
     public final CodeOutputStream code = new CodeOutputStream();
 
-    public FnData(LanguegVmValSize returnValSize_){
+    public FnData(LanguegVmValSize returnValSize_, LanguegVmValSize[] paramValSizes_){
         returnValSize = returnValSize_;
+        paramValSizes = paramValSizes_;
     }
 
     @Override
@@ -57,6 +63,10 @@ public class FnData {
 
         for (LanguegVmValSize size : LanguegVmValSize.values()) {
             s.append("MaxSD ").append(size).append(": ").append(maxStackDepth.get(size)).append("\n");
+        }
+
+        for (LanguegVmValSize size : LanguegVmValSize.values()) {
+            s.append("EndSD ").append(size).append(": ").append(stackDepthCount.get(size)).append("\n");
         }
 
         for (LanguegVmValSize size : LanguegVmValSize.values()) {

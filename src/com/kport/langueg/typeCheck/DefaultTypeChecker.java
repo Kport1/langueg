@@ -7,6 +7,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NFn;
+import com.kport.langueg.parse.ast.nodes.NProg;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
@@ -122,7 +123,49 @@ public class DefaultTypeChecker implements TypeChecker{
             @Override
             public void visit(NExpr expr, VisitorContext context) {
                 expr.exprType = getExprType(expr);
-                expr.isExprStmnt = !(expr.parent instanceof NExpr);
+            }
+        }, null);
+
+        //Find expression statements
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NProg prog, VisitorContext context) {
+                for (AST stmnt : prog.statements) {
+                    if(stmnt instanceof NExpr expr) expr.isExprStmnt = true;
+                }
+            }
+
+            @Override
+            public void visit(NAnonFn anonFn, VisitorContext context) {
+                if(anonFn.block instanceof NExpr expr) expr.isExprStmnt = true;
+            }
+
+            @Override
+            public void visit(NBlock block, VisitorContext context) {
+                for (AST stmnt : block.statements) {
+                    if(stmnt instanceof NExpr expr) expr.isExprStmnt = true;
+                }
+            }
+
+            @Override
+            public void visit(NIf if_, VisitorContext context) {
+                if(if_.ifBlock instanceof NExpr expr) expr.isExprStmnt = true;
+            }
+
+            @Override
+            public void visit(NIfElse ifElse, VisitorContext context) {
+                if(ifElse.ifBlock instanceof NExpr expr) expr.isExprStmnt = true;
+                if(ifElse.elseBlock instanceof NExpr expr) expr.isExprStmnt = true;
+            }
+
+            @Override
+            public void visit(NNamedFn namedFn, VisitorContext context) {
+                if(namedFn.block instanceof NExpr expr) expr.isExprStmnt = true;
+            }
+
+            @Override
+            public void visit(NWhile while_, VisitorContext context) {
+                if(while_.block instanceof NExpr expr) expr.isExprStmnt = true;
             }
         }, null);
 
@@ -137,9 +180,9 @@ public class DefaultTypeChecker implements TypeChecker{
 
             @Override
             public void visit(NNamedFn fn, VisitorContext context) {
-                if(fn.returnType == PrimitiveType.Void) return;
+                if(fn.getReturnType() == PrimitiveType.Void) return;
 
-                if(!ensureFnReturn(fn.block, fn.returnType, fn.name)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, fn.line, fn.name);
+                if(!ensureFnReturn(fn.block, fn.getReturnType(), fn.getName())) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, fn.line, fn.getName());
             }
         }, null);
 
@@ -195,6 +238,7 @@ public class DefaultTypeChecker implements TypeChecker{
                     return true;
             }
         }
+        System.out.println(ast);
         return false;
     }
 
@@ -331,7 +375,7 @@ public class DefaultTypeChecker implements TypeChecker{
             throw new Error("Cannot call value of type " + fnType + " with params " + Arrays.toString(args));
         }
 
-        if(!Arrays.equals(fnType.getFnArgs(), args)){
+        if(!Arrays.equals(fnType.getFnParams(), args)){
             throw new Error("Mismatching function arguments: Cannot call function " + fnType + " with params " + Arrays.toString(args));
         }
 

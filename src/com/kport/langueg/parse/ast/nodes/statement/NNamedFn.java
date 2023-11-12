@@ -8,6 +8,7 @@ import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NFn;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.FnHeader;
 import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
 import com.sun.jdi.InvalidTypeException;
@@ -16,37 +17,32 @@ import java.util.Arrays;
 
 public class NNamedFn extends NStatement implements NFn {
 
-    public Type returnType;
-    public FnParamDef[] params;
+    public FnHeader header;
     public AST block;
-    public String name;
 
     public NNamedFn(int line_, int column_, Type returnType_, String name_, FnParamDef[] params_, AST block_){
         super(line_, column_, block_);
-        returnType = returnType_;
-        params = params_;
+        header = new FnHeader(returnType_, params_, name_);
         block = block_;
-        name = name_;
-    }
-
-    @Override
-    public Type[] getParamTypes(){
-        return Arrays.stream(params).map(p -> p.type).toArray(Type[]::new);
-    }
-
-    @Override
-    public Type getReturnType(){
-        return returnType;
     }
 
     @Override
     public FnParamDef[] getParams(){
-        return params;
+        return header.params();
     }
 
     @Override
-    public AST getBlock(){
-        return block;
+    public Type[] getParamTypes(){
+        return header.getParamTypes();
+    }
+
+    @Override
+    public Type getReturnType(){
+        return header.returnType();
+    }
+
+    public String getName(){
+        return header.name();
     }
 
     private Scope blockScope = null;
@@ -60,11 +56,14 @@ public class NNamedFn extends NStatement implements NFn {
         blockScope = scope_;
     }
 
-
     private FnIdentifier id;
     public FnIdentifier getId(){
-        if(id == null) id = new FnIdentifier(scope, name, getParamTypes());
+        if(id == null) id = new FnIdentifier(scope, header.name(), getParamTypes());
         return id;
+    }
+
+    public FnHeader getHeader(){
+        return header;
     }
 
     @Override
@@ -85,7 +84,7 @@ public class NNamedFn extends NStatement implements NFn {
 
     @Override
     public String nToString(){
-        return "r: " + returnType.toString() + ", n: " + name + ", p: " + Arrays.toString(params);
+        return "r: " + header.returnType().toString() + ", n: " + header.name() + ", p: " + Arrays.toString(header.params());
     }
 
     @Override

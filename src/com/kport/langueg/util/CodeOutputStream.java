@@ -65,7 +65,7 @@ public class CodeOutputStream extends ByteArrayOutputStream {
     public String toString(){
         StringBuilder s = new StringBuilder();
         for(int i = 0; i < count; i++){
-            s.append(Integer.toHexString(buf[i])).append(", ");
+            s.append(Integer.toHexString(Byte.toUnsignedInt(buf[i]))).append(", ");
         }
         if(s.length() > 2) s.delete(s.length() - 2, s.length());
         return s.toString();

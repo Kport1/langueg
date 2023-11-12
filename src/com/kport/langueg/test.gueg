@@ -1,0 +1,6 @@
+mod i32 x(i32 y, i32 a, i32 b){
+    var z = y + a + b;
+    return z;
+}
+
+x(5, 6, 7);

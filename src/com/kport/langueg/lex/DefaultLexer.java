@@ -3,6 +3,7 @@ package com.kport.langueg.lex;
 import com.kport.langueg.pipeline.LanguegPipeline;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class DefaultLexer implements Lexer{
 
@@ -12,9 +13,6 @@ public class DefaultLexer implements Lexer{
     private static final char str = '"';
     private static final char chr = '\'';
     private static final char strEsc = '\\';
-
-    private static final String numLiteralSuffixes = "lLsSbBdDfF";
-    private static final String numLiteralBases = "bxBX";
 
     private static final HashMap<String, TokenType> tokens = new HashMap<>();
     static {
@@ -72,6 +70,8 @@ public class DefaultLexer implements Lexer{
         tokens.put("fn", TokenType.Fn);
         tokens.put("->", TokenType.SingleArrow);
 
+        tokens.put("mod", TokenType.Module);
+
         tokens.put("(", TokenType.LParen);
         tokens.put(")", TokenType.RParen);
         tokens.put("[", TokenType.LBrack);
@@ -80,6 +80,7 @@ public class DefaultLexer implements Lexer{
         tokens.put("}", TokenType.RCurl);
         tokens.put(";", TokenType.Semicolon);
         tokens.put(",", TokenType.Comma);
+        tokens.put(".", TokenType.Dot);
 
         tokens.put("true", TokenType.True);
         tokens.put("false", TokenType.False);
@@ -97,9 +98,10 @@ public class DefaultLexer implements Lexer{
         tokens.put("f32", TokenType.F32);
         tokens.put("f64", TokenType.F64);
         tokens.put("void", TokenType.Void);
-
-        tokens.put("null", TokenType.Null);
     }
+    private static final Pattern intPattern = Pattern.compile("((0x[0-9A-Fa-f]+)|(o[0-7]+)|([0-9]+))([ui](8|16|32|64)?)?");
+    private static final Pattern floatPattern = Pattern.compile("([0-9]*\\.[0-9]*)[fd]?|([0-9]+[fd])");
+
     private static final List<LexemeMatcher> lexemes = new ArrayList<>();
     static {
         lexemes.add(new LexemeMatcher() {
@@ -129,12 +131,24 @@ public class DefaultLexer implements Lexer{
         lexemes.add(new LexemeMatcher() {
             @Override
             public boolean isLexeme(char[] s) {
-                return isNumber(s);
+                return intPattern.matcher(new String(s)).matches();
             }
 
             @Override
             public Token getToken(char[] s, int line, int column) {
-                return new Token(TokenType.NumberL, new String(s), line, column);
+                return new Token(TokenType.IntL, new String(s), line, column);
+            }
+        });
+
+        lexemes.add(new LexemeMatcher() {
+            @Override
+            public boolean isLexeme(char[] s) {
+                return floatPattern.matcher(new String(s)).matches();
+            }
+
+            @Override
+            public Token getToken(char[] s, int line, int column) {
+                return new Token(TokenType.FloatL, new String(s), line, column);
             }
         });
     }
@@ -251,35 +265,6 @@ public class DefaultLexer implements Lexer{
             s.append(chars[i]);
         }
         return s.toString();
-    }
-
-    private static boolean isNumber(char[] chars){
-        if(chars.length == 0) return false;
-        int startI = 0;
-        if(chars.length >= 2 && chars[0] == '0'){
-            if(numLiteralBases.indexOf(chars[1]) != -1) startI = 2;
-        }
-
-        boolean dot = false;
-        for(int i = startI; i < chars.length; i++){
-            char c = chars[i];
-            if(c == '.'){
-                if(dot) return false;
-                dot = true;
-                continue;
-            }
-
-            if( '0' <= c && c <= '9' ||
-                'A' <= c && c <= 'F' ||
-                'a' <= c && c <= 'f' )
-                continue;
-
-            if(i == chars.length - 1 && chars.length > 1){
-                return numLiteralSuffixes.indexOf(c) != -1;
-            }
-            return false;
-        }
-        return true;
     }
 
     private static boolean isIdentifier(char[] chars){

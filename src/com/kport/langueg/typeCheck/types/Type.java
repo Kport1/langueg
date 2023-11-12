@@ -8,6 +8,7 @@ import com.kport.langueg.parse.ast.ASTTypeE;
 import com.kport.langueg.parse.ast.nodes.expr.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.NTuple;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -40,12 +41,16 @@ public interface Type {
         return null;
     }
 
-    default Type[] getFnArgs() {
+    default Type[] getFnParams() {
         return null;
     }
 
     default Type[] getTupleTypes(){
         return null;
+    }
+
+    default byte[] serialize(){
+        return new byte[0];
     }
 
     default LanguegVmValSize getSize(){

@@ -55,12 +55,13 @@ public abstract class AST {
                 .append(column)
                 .append(scope != null? ", s: " + scope : "")
                 .append(this instanceof NExpr expr && expr.exprType != null? ", t: " + expr.exprType : "")
+                .append(this instanceof NExpr expr? ", isExpStmnt: " + expr.isExprStmnt : "")
                 .append(" ]")
                 .append("( ")
                 .append(nToString())
                 .append(" )");
 
-        if(!hasChildren()){
+        if(!hasChildren() || getChildren().length == 0){
             return str.toString();
         }
         str.append(" {\n");

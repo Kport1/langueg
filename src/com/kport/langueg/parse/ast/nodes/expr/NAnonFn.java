@@ -39,11 +39,6 @@ public class NAnonFn extends NExpr implements NFn {
         return params;
     }
 
-    @Override
-    public AST getBlock(){
-        return block;
-    }
-
     private Scope blockScope = null;
     @Override
     public Scope getBlockScope(){
