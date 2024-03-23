@@ -1,28 +1,24 @@
 package com.kport.langueg.typeCheck.types;
 
+import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
+
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 
 public class FnType implements Type{
     private final Type[] fnParams;
     private final Type fnReturn;
 
-    public FnType(Type fnReturn_, Type... fnArgs_){
+    public FnType(Type fnReturn_, Type... fnParams_){
         fnReturn = fnReturn_;
-        fnParams = fnArgs_;
+        fnParams = fnParams_;
     }
 
-    @Override
-    public boolean isFn(){
-        return true;
-    }
-
-    @Override
-    public Type getFnReturn(){
+    public Type fnReturn(){
         return fnReturn;
     }
 
-    @Override
-    public Type[] getFnParams() {
+    public Type[] fnParams() {
         return fnParams;
     }
 
@@ -60,31 +56,18 @@ public class FnType implements Type{
 
     @Override
     public byte[] serialize(){
-        int retArrSize = 1;
-
-        byte[] retBytes = fnReturn.serialize();
-        retArrSize += retBytes.length;
-
-        retArrSize += 1;
-        List<byte[]> paramBytesList = new ArrayList<>();
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        o.write(0x02);
+        o.writeBytes(fnReturn.serialize());
+        o.write(fnParams.length);
         for (Type fnParam : fnParams) {
-            byte[] paramBytes = fnParam.serialize();
-            retArrSize += paramBytes.length;
-            paramBytesList.add(paramBytes);
+            o.writeBytes(fnParam.serialize());
         }
+        return o.toByteArray();
+    }
 
-        byte[] ret = new byte[retArrSize];
-        ret[0] = 0x02;
-
-        System.arraycopy(retBytes, 0, ret, 1, retBytes.length);
-        ret[retBytes.length] = (byte)fnParams.length;
-
-        int dest = fnParams.length + 1;
-        for (byte[] bytes : paramBytesList) {
-            System.arraycopy(bytes, 0, ret, dest, bytes.length);
-            dest += bytes.length;
-        }
-
-        return ret;
+    @Override
+    public LanguegVmValSize getSize() {
+        return LanguegVmValSize._64;
     }
 }

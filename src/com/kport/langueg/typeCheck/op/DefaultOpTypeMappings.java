@@ -1,7 +1,6 @@
 package com.kport.langueg.typeCheck.op;
 
 import com.kport.langueg.lex.TokenType;
-import com.kport.langueg.parse.ast.nodes.expr.NCast;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 
 import java.util.Map;
@@ -60,60 +59,26 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
 
     private static BinOpTypeMap primitiveArithmeticOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isNumeric() && rt.isNumeric())){
+            if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-
-            if(lt.isFloating() && !rt.isFloating()){
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-                return leftType;
-            }
-            else if (rt.isFloating() && !lt.isFloating()) {
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-                return rightType;
-            }
-
-            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
-            if(sizeCmp > 0) {
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-                return leftType;
-            }
-            else if(sizeCmp < 0){
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-                return rightType;
-            }
-
             return leftType;
         };
     }
 
     private static BinOpTypeMap primitiveFloatingOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isFloating() && rt.isFloating())){
+            if(!(leftType instanceof PrimitiveType lt && lt.isFloating() && leftType.equals(rightType))){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-
-            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
-            if(sizeCmp > 0) {
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-                return leftType;
-            }
-            else if(sizeCmp < 0){
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-                return rightType;
-            }
-
             return leftType;
         };
     }
 
     private static BinOpTypeMap primitiveBitShiftOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt.isInteger())){
+            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt == PrimitiveType.U8)){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
-            }
-            if(rt != PrimitiveType.U8){
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, PrimitiveType.U8, binOp.right);
             }
             return leftType;
         };
@@ -121,55 +86,27 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
 
     private static BinOpTypeMap primitiveBitwiseOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt.isInteger())){
+            if(!(leftType instanceof PrimitiveType lt && lt.isInteger() && leftType.equals(rightType))){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-
-            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
-            if(sizeCmp > 0) {
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-                return leftType;
-            }
-            else if(sizeCmp < 0){
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-                return rightType;
-            }
-
             return leftType;
         };
     }
 
     private static BinOpTypeMap primitiveComparisonOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isNumeric() && rt.isNumeric())){
+            if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-
-            if(lt.isFloating() && !rt.isFloating()){
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-            }
-            else if (rt.isFloating() && !lt.isFloating()) {
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-            }
-
-            int sizeCmp = leftType.getSize().compareTo(rightType.getSize());
-            if(sizeCmp > 0) {
-                binOp.right = new NCast(binOp.right.line, binOp.right.column, leftType, binOp.right);
-            }
-            else if(sizeCmp < 0){
-                binOp.left = new NCast(binOp.left.line, binOp.left.column, rightType, binOp.left);
-            }
-
             return PrimitiveType.Bool;
         };
     }
 
     private static BinOpTypeMap primitiveBoolOp(TokenType op){
         return (leftType, rightType, binOp) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt == PrimitiveType.Bool && rt == PrimitiveType.Bool)){
+            if(!(leftType instanceof PrimitiveType lt && lt == PrimitiveType.Bool && leftType.equals(rightType))){
                 throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
-
             return PrimitiveType.Bool;
         };
     }

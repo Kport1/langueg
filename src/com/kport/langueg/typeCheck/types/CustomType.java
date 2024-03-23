@@ -1,5 +1,10 @@
 package com.kport.langueg.typeCheck.types;
 
+import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+
 public class CustomType implements Type{
     private final String typeName;
 
@@ -7,14 +12,22 @@ public class CustomType implements Type{
         typeName = typeName_;
     }
 
-    @Override
-    public boolean isCustom(){
-        return true;
+    public String customTypeName(){
+        return typeName;
     }
 
     @Override
-    public String name(){
-        return typeName;
+    public byte[] serialize() {
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        byte[] nameBytes = typeName.getBytes(StandardCharsets.UTF_8);
+        o.write(nameBytes.length);
+        o.writeBytes(nameBytes);
+        return o.toByteArray();
+    }
+
+    @Override
+    public LanguegVmValSize getSize() {
+        throw new Error("Custom type size is unknown");
     }
 
     @Override

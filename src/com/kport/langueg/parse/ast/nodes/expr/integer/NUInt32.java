@@ -1,16 +1,16 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.integer;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 
-public class NInt32 extends NExpr {
+public class NUInt32 extends NExpr {
 
     public int val;
 
-    public NInt32(int line_, int column_, int val_) {
-        super(line_, column_);
+    public NUInt32(int offset_, int val_) {
+        super(offset_);
         val = val_;
     }
 
@@ -20,23 +20,24 @@ public class NInt32 extends NExpr {
     }
 
     @Override
-    public void setChild(int index, AST ast) {
-        throw new ArrayIndexOutOfBoundsException();
-    }
-
-    @Override
     public boolean hasChildren() {
         return false;
     }
 
     @Override
     protected String nToString() {
-        return Long.toString(val);
+        return Long.toUnsignedString(val);
     }
 
     @Override
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NUInt32 a)) return false;
+        return val == a.val;
     }
 }

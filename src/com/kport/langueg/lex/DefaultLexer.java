@@ -1,20 +1,15 @@
 package com.kport.langueg.lex;
 
 import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.util.Pair;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DefaultLexer implements Lexer{
-
-    private static final char[] comment = "//".toCharArray();
-    private static final char[] blockCommentStart = "/*".toCharArray();
-    private static final char[] blockCommentEnd = "*/".toCharArray();
-    private static final char str = '"';
-    private static final char chr = '\'';
-    private static final char strEsc = '\\';
-
-    private static final HashMap<String, TokenType> tokens = new HashMap<>();
+    private static final HashMap<CharSequence, TokenType> tokens = new HashMap<>();
+    private static int maxTokenLen = 1;
     static {
         tokens.put("=", TokenType.Assign);
         tokens.put("var", TokenType.Var);
@@ -78,6 +73,7 @@ public class DefaultLexer implements Lexer{
         tokens.put("]", TokenType.RBrack);
         tokens.put("{", TokenType.LCurl);
         tokens.put("}", TokenType.RCurl);
+        tokens.put(":", TokenType.Colon);
         tokens.put(";", TokenType.Semicolon);
         tokens.put(",", TokenType.Comma);
         tokens.put(".", TokenType.Dot);
@@ -98,196 +94,102 @@ public class DefaultLexer implements Lexer{
         tokens.put("f32", TokenType.F32);
         tokens.put("f64", TokenType.F64);
         tokens.put("void", TokenType.Void);
+
+        for (CharSequence cs : tokens.keySet()) maxTokenLen = Math.max(maxTokenLen, cs.length());
     }
+
     private static final Pattern intPattern = Pattern.compile("((0x[0-9A-Fa-f]+)|(o[0-7]+)|([0-9]+))([ui](8|16|32|64)?)?");
-    private static final Pattern floatPattern = Pattern.compile("([0-9]*\\.[0-9]*)[fd]?|([0-9]+[fd])");
+    private static final Pattern floatPattern = Pattern.compile("([0-9]+\\.[0-9]*)[fd]?|([0-9]+[fd])|([0-9]*\\.[0-9]*[fd])");
+    private static final Pattern lineComment = Pattern.compile("//[^\\n]*");
+    private static final Pattern blockComment = Pattern.compile("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/");
+    private static final Pattern identifier = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
+    private static final Pattern string = Pattern.compile("\"([^\"\\\\]|\\\\.)*\"");
 
     private static final List<LexemeMatcher> lexemes = new ArrayList<>();
     static {
-        lexemes.add(new LexemeMatcher() {
-            @Override
-            public boolean isLexeme(char[] s) {
-                return tokens.containsKey(new String(s));
-            }
-
-            @Override
-            public Token getToken(char[] s, int line, int column) {
-                return new Token(tokens.get(new String(s)), line, column);
-            }
+        lexemes.add((begin, code) -> {
+            Matcher m = lineComment.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.LineComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
         });
 
-        lexemes.add(new LexemeMatcher() {
-            @Override
-            public boolean isLexeme(char[] s) {
-                return isIdentifier(s);
-            }
-
-            @Override
-            public Token getToken(char[] s, int line, int column) {
-                return new Token(TokenType.Identifier, new String(s), line, column);
-            }
+        lexemes.add((begin, code) -> {
+            Matcher m = blockComment.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.BlockComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
         });
 
-        lexemes.add(new LexemeMatcher() {
-            @Override
-            public boolean isLexeme(char[] s) {
-                return intPattern.matcher(new String(s)).matches();
-            }
-
-            @Override
-            public Token getToken(char[] s, int line, int column) {
-                return new Token(TokenType.IntL, new String(s), line, column);
-            }
+        lexemes.add((begin, code) -> {
+            Matcher m = string.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.StringL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
         });
 
-        lexemes.add(new LexemeMatcher() {
-            @Override
-            public boolean isLexeme(char[] s) {
-                return floatPattern.matcher(new String(s)).matches();
+        lexemes.add((begin, code) -> {
+            for(int i = Math.min(maxTokenLen - 1, code.length() - begin); i > 0; i--){
+                CharSequence cs = code.subSequence(begin, begin + i);
+                if(tokens.containsKey(cs)) return new Pair<>(new Token(tokens.get(cs)), i);
             }
+            return null;
+        });
 
-            @Override
-            public Token getToken(char[] s, int line, int column) {
-                return new Token(TokenType.FloatL, new String(s), line, column);
-            }
+        lexemes.add((begin, code) -> {
+            Matcher m = intPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.IntL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            Matcher m = floatPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.FloatL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            Matcher m = identifier.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.Identifier, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
         });
     }
 
     public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
-        char[] code = ((String) code_).toCharArray();
-        if(code.length == 0){
+        CharSequence code = ((CharSequence) code_);
+        if(code.isEmpty()){
             throw new Error("""
                     
                     Bruh write some code you lazy piece of shit. I'm not gonna do your work for you. Like seriously?
                     Do you think I have time to write your code? I'm busy type checking and analyzing the complete and utter bullshit you throw at me constantly.
                     I wouldn't have to spend so much time on that if you pea brained amoeba could fucking remember what types your variables are supposed to have.
-                    Go try and write some assembly, maybe you'll realize, that my only job is to catch your dumbass mistakes - and god do your two braincells produce a fuckton of those.
+                    Go try and write some assembly, maybe you'll realize, that my only job is to catch your dumbass mistakes - and boy do your two braincells produce a fuckton of those.
                     """);
         }
 
         ArrayList<Token> tokens = new ArrayList<>();
 
-        int line = 1, prevLine;
-        int column = 0, prevColumn;
-
-        char[] word = new char[0];
-        char[] prevWord;
-
+        int offset = 0;
         OUTER:
-        for(int i = 0; i < code.length; i++, column++){
-            prevLine = line;
-            prevColumn = column;
-            if(code[i] == '\r') i++;
-            if(code[i] == '\n'){
-                line++;
-                column = -1;
-            }
-            if(Character.isWhitespace(code[i]) && word.length == 0)
-                continue;
-
-            if(Arrays.equals(Arrays.copyOfRange(code, i, i + comment.length), comment) && word.length == 0){
-                while(i + 1 < code.length && code[i + 1] != '\n') i++;
+        while (offset < code.length()){
+            if(Character.isWhitespace(code.charAt(offset))){
+                offset++;
                 continue;
             }
-
-            if(Arrays.equals(Arrays.copyOfRange(code, i, i + blockCommentStart.length), blockCommentStart) && word.length == 0){
-                for(; i <= code.length - blockCommentEnd.length; i++, column++){
-                    if(Arrays.equals(Arrays.copyOfRange(code, i, i + blockCommentEnd.length), blockCommentEnd)){
-                        i++;
-                        column++;
-                        continue OUTER;
-                    }
-                    if(code[i] == '\r') i++;
-                    if(code[i] == '\n'){
-                        line++;
-                        column = -1;
-                    }
+            for (LexemeMatcher lexeme : lexemes) {
+                Pair<Token, Integer> token_len = lexeme.getNext(offset, code);
+                if (token_len == null) continue;
+                if (token_len.left.tok != TokenType.LineComment && token_len.left.tok != TokenType.BlockComment) {
+                    token_len.left.offset = offset;
+                    tokens.add(token_len.left);
                 }
-                throw new Error("Block comment not closed");
+                offset += token_len.right;
+                continue OUTER;
             }
-
-            if(code[i] == str){
-                String str = collectString(code, i);
-                i += str.length() + 1;
-                tokens.add(new Token(TokenType.StringL, str, prevLine, prevColumn));
-                continue;
-            }
-
-            //append current char to word and remember previous
-            prevWord = word;
-            word = Arrays.copyOf(word, word.length + 1);
-            word[word.length - 1] = code[i];
-
-            //Check if current word is valid
-            boolean wordCurrentlyValid = false;
-            for (LexemeMatcher lexemeMatcher : lexemes) {
-                wordCurrentlyValid |= lexemeMatcher.isLexeme(word);
-            }
-
-            //Try adding previous word, if current one isn't valid
-            if(!wordCurrentlyValid){
-                for (LexemeMatcher lexemeMatcher : lexemes) {
-                    if (lexemeMatcher.isLexeme(prevWord)) {
-                        Token tok = lexemeMatcher.getToken(prevWord, prevLine, prevColumn - prevWord.length);
-                        tokens.add(tok);
-                        word = new char[0];
-                        i--;
-                        line = prevLine;
-                        column--;
-                        continue OUTER;
-                    }
-                }
-
-                throw new Error("Invalid token: " + new String(word));
-            }
-
-            //Try adding word, if EOF has been reached
-            if(i == code.length - 1){
-                for (LexemeMatcher lexemeMatcher : lexemes) {
-                    if (lexemeMatcher.isLexeme(word)) {
-                        Token tok = lexemeMatcher.getToken(word, prevLine, prevColumn - word.length + 1);
-                        tokens.add(tok);
-                        continue OUTER;
-                    }
-                }
-
-                throw new Error("Invalid token: " + new String(word));
-            }
+            throw new Error("Lexical analysis failed at " + offset);
         }
+
         return tokens;
     }
 
-    private static String collectString(char[] chars, int off){
-        StringBuilder s = new StringBuilder();
-        for(int i = off + 1; i < chars.length; i++){
-            if(chars[i] == str) break;
-            if(i == chars.length - 1) throw new Error("String doesn't close");
-            s.append(chars[i]);
-        }
-        return s.toString();
-    }
-
-    private static boolean isIdentifier(char[] chars){
-        if(chars.length == 0) return false;
-        int startCharT = Character.getType(chars[0]);
-        if( startCharT != Character.UPPERCASE_LETTER &&
-            startCharT != Character.LOWERCASE_LETTER &&
-            startCharT != Character.CONNECTOR_PUNCTUATION)
-            return false;
-
-        for(int i = 1; i < chars.length; i++){
-            int charT = Character.getType(chars[i]);
-            if( charT != Character.UPPERCASE_LETTER &&
-                charT != Character.LOWERCASE_LETTER &&
-                charT != Character.CONNECTOR_PUNCTUATION &&
-                charT != Character.DECIMAL_DIGIT_NUMBER)
-                return false;
-        }
-        return true;
-    }
-
     private interface LexemeMatcher{
-        boolean isLexeme(char[] s);
-        Token getToken(char[] s, int line, int column);
+        Pair<Token, Integer> getNext(int begin, CharSequence code);
     }
 }

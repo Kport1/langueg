@@ -4,14 +4,15 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.sun.jdi.InvalidTypeException;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 
 public class NAssign extends NExpr {
     public NAssignable left;
     public NExpr right;
 
-    public NAssign(int line_, int column_, NAssignable left_, NExpr right_){
-        super(line_, column_, left_, right_);
+    public NAssign(int offset_, NAssignable left_, NExpr right_){
+        super(offset_, left_, right_);
         left = left_;
         right = right_;
     }
@@ -19,21 +20,6 @@ public class NAssign extends NExpr {
     @Override
     public AST[] getChildren() {
         return new AST[]{left, right};
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        switch (index){
-            case 0 -> {
-                if(!(ast instanceof NAssignable assignable)) throw new InvalidTypeException();
-                left = assignable;
-            }
-            case 1 -> {
-                if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-                right = expr;
-            }
-            default -> throw new ArrayIndexOutOfBoundsException();
-        }
     }
 
     @Override
@@ -52,5 +38,11 @@ public class NAssign extends NExpr {
         visitor.visit(this, context);
         left.accept(visitor, VisitorContext.tryClone(context));
         right.accept(visitor, VisitorContext.tryClone(context));
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NAssign a)) return false;
+        return left.equals(a.left) && right.equals(a.right);
     }
 }

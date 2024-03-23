@@ -1,27 +1,21 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.assignable;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
-import com.kport.langueg.parse.ast.nodes.NExpr;
 
-public class NInt16 extends NExpr {
+public class NIdent extends NAssignable {
 
-    public short val;
+    public String identifier;
 
-    public NInt16(int line_, int column_, short val_) {
-        super(line_, column_);
-        val = val_;
+    public NIdent(int offset_, String identifier_) {
+        super(offset_);
+        identifier = identifier_;
     }
 
     @Override
     public AST[] getChildren() {
         return null;
-    }
-
-    @Override
-    public void setChild(int index, AST ast) {
-        throw new ArrayIndexOutOfBoundsException();
     }
 
     @Override
@@ -31,12 +25,23 @@ public class NInt16 extends NExpr {
 
     @Override
     protected String nToString() {
-        return Long.toString(val);
+        return identifier;
     }
 
     @Override
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+    }
+
+    @Override
+    public int hashCode(){
+        return identifier.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NIdent ident)) return false;
+        return identifier.equals(ident.identifier);
     }
 }

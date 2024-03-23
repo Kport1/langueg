@@ -1,34 +1,23 @@
 package com.kport.langueg.parse.ast;
 
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
-import com.sun.jdi.InvalidTypeException;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 public abstract class AST {
     public AST parent;
 
-    public int line;
-    public int column;
+    public int offset;
 
     public Scope scope;
 
-    public AST(int line_, int column_, AST... children){
-        line = line_;
-        column = column_;
+    public AST(int offset_, AST... children){
+        offset = offset_;
         for (AST child : children) {
             child.parent = this;
         }
     }
 
     public abstract AST[] getChildren();
-
-    public abstract void setChild(int index, AST ast) throws InvalidTypeException;
 
     public abstract boolean hasChildren();
 
@@ -49,10 +38,8 @@ public abstract class AST {
     private String toStringPretty(int indent){
         StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
         str.append(" [ ")
-                .append("l: ")
-                .append(line)
-                .append(", c: ")
-                .append(column)
+                .append("o: ")
+                .append(offset)
                 .append(scope != null? ", s: " + scope : "")
                 .append(this instanceof NExpr expr && expr.exprType != null? ", t: " + expr.exprType : "")
                 .append(this instanceof NExpr expr? ", isExpStmnt: " + expr.isExprStmnt : "")

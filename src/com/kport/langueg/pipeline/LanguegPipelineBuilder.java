@@ -8,19 +8,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.BiConsumer;
 
-public class LanguegPipelineBuilder<I, O> {
-    private final String source;
+public class LanguegPipelineBuilder<O> {
 
     private final ArrayList<LanguegComponent> components_ = new ArrayList<>();
 
-    private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> beforeProcess_ = new ArrayList<>();
-    private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> afterProcess_ = new ArrayList<>();
+    private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> beforeProcess_ = new ArrayList<>();
+    private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> afterProcess_ = new ArrayList<>();
 
-    public LanguegPipelineBuilder(String source_){
-        source = source_;
+    public LanguegPipelineBuilder(){
+
     }
 
-    public LanguegPipelineBuilder<I, O> addComponent(LanguegComponent component, BiConsumer<Object, LanguegPipeline<I, O>> before, BiConsumer<Object, LanguegPipeline<I, O>> after){
+    public LanguegPipelineBuilder<O> addComponent(LanguegComponent component, BiConsumer<Object, LanguegPipeline<String, O>> before, BiConsumer<Object, LanguegPipeline<String, O>> after){
         components_.add(component);
         beforeProcess_.add(before);
         afterProcess_.add(after);
@@ -28,23 +27,21 @@ public class LanguegPipelineBuilder<I, O> {
         return this;
     }
 
-    public LanguegPipeline<I, O> get(){
-        return new LanguegPipeline<I, O>() {
+    public LanguegPipeline<String, O> get(){
+        return new LanguegPipeline<>() {
             private final ArrayList<LanguegComponent> components = components_;
 
-            private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> beforeProcess = beforeProcess_;
-            private final ArrayList<BiConsumer<Object, LanguegPipeline<I, O>>> afterProcess = afterProcess_;
+            private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> beforeProcess = beforeProcess_;
+            private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> afterProcess = afterProcess_;
 
             private final HashMap<String, Object> additionalData = new HashMap<>();
 
-            private final ErrorHandler errorHandler = new DefaultErrorHandler(source);
-
-            public void addStep(LanguegComponent component) {
-                components.add(component);
-            }
+            private ErrorHandler errorHandler;
 
             @Override
-            public O evaluate(I input) {
+            @SuppressWarnings("unchecked")
+            public O evaluate(String input) {
+                errorHandler = new DefaultErrorHandler(input);
 
                 Object previousRepresentation = input;
                 for (int i = 0; i < components.size(); i++) {
@@ -61,19 +58,19 @@ public class LanguegPipelineBuilder<I, O> {
             @Override
             public <T> T getAdditionalData(String key, Class<T> valType) throws InvalidTypeException {
                 Object data = additionalData.get(key);
-                if(!valType.isInstance(data)){
+                if (!valType.isInstance(data)) {
                     throw new InvalidTypeException("Data \"" + key + "\" does not have the type " + valType.getTypeName());
                 }
                 return valType.cast(data);
             }
 
             @Override
-            public void putAdditionalData(String key, Object val){
+            public void putAdditionalData(String key, Object val) {
                 additionalData.put(key, val);
             }
 
             @Override
-            public ErrorHandler getErrorHandler(){
+            public ErrorHandler getErrorHandler() {
                 return errorHandler;
             }
         };

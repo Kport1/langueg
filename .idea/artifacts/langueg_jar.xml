@@ -3,7 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts/langueg_jar</output-path>
     <root id="archive" name="langueg.jar">
       <element id="module-output" name="langueg" />
-      <element id="library" level="project" name="commons.cli" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-cli-1.6.0.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

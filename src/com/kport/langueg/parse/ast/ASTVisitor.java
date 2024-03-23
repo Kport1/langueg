@@ -2,6 +2,10 @@ package com.kport.langueg.parse.ast;
 
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
+import com.kport.langueg.parse.ast.nodes.expr.integer.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 
 public interface ASTVisitor {
@@ -22,6 +26,10 @@ public interface ASTVisitor {
 
     default void visit(NAssignable assignable, VisitorContext context){}
 
+    default void visit(NIdent ident, VisitorContext context){}
+
+    default void visit(NDotAccess access, VisitorContext context){}
+
     default void visit(NBinOp binOp, VisitorContext context){}
 
     default void visit(NBool bool, VisitorContext context){}
@@ -35,8 +43,6 @@ public interface ASTVisitor {
     default void visit(NFloat32 float32, VisitorContext context){}
 
     default void visit(NFloat64 float64, VisitorContext context){}
-
-    default void visit(NIdent ident, VisitorContext context){}
 
     default void visit(NInt8 int8, VisitorContext context){}
 
@@ -65,8 +71,6 @@ public interface ASTVisitor {
 
 
     default void visit(NBlock block, VisitorContext context){}
-
-    default void visit(NFor for_, VisitorContext context){}
 
     default void visit(NIf if_, VisitorContext context){}
 

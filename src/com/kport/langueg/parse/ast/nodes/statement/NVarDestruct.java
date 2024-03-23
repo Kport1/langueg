@@ -5,8 +5,8 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.typeCheck.types.Type;
-import com.sun.jdi.InvalidTypeException;
 
 import java.util.Arrays;
 
@@ -16,8 +16,8 @@ public class NVarDestruct extends NStatement {
     public String[] names;
     public NExpr init;
 
-    public NVarDestruct(int line_, int column_, Type[] types_, String[] names_, NExpr init_) {
-        super(line_, column_, init_);
+    public NVarDestruct(int offset_, Type[] types_, String[] names_, NExpr init_) {
+        super(offset_, init_);
         types = types_;
         names = names_;
         init = init_;
@@ -26,13 +26,6 @@ public class NVarDestruct extends NStatement {
     @Override
     public AST[] getChildren() {
         return new AST[]{init};
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        if(index != 0) throw new ArrayIndexOutOfBoundsException();
-        if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-        init = expr;
     }
 
     @Override
@@ -50,5 +43,11 @@ public class NVarDestruct extends NStatement {
         super.accept(visitor, context);
         visitor.visit(this, context);
         init.accept(visitor, VisitorContext.tryClone(context));
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NVarDestruct a)) return false;
+        return Arrays.deepEquals(types, a.types) && Arrays.deepEquals(names, a.names) && init.equals(a.init);
     }
 }

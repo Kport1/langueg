@@ -1,33 +1,33 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.assignable;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 
-public class NBool extends NExpr {
+public class NDotAccess extends NAssignable {
+    public NExpr expr;
+    public NExpr accessor;
 
-    public boolean bool;
-
-    public NBool(int offset_, boolean bool_) {
+    public NDotAccess(int offset_, NExpr expr_, NExpr accessor_){
         super(offset_);
-        bool = bool_;
+        expr = expr_;
+        accessor = accessor_;
     }
 
     @Override
     public AST[] getChildren() {
-        return null;
+        return new AST[]{expr, accessor};
     }
 
     @Override
     public boolean hasChildren() {
-        return false;
+        return true;
     }
 
     @Override
     protected String nToString() {
-        return Boolean.toString(bool);
+        return "";
     }
 
     @Override
@@ -38,7 +38,7 @@ public class NBool extends NExpr {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NBool a)) return false;
-        return bool == a.bool;
+        if(!(o instanceof NDotAccess a)) return false;
+        return expr.equals(a.expr) && accessor.equals(a.accessor);
     }
 }

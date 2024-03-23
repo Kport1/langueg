@@ -4,16 +4,16 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.typeCheck.types.Type;
-import com.sun.jdi.InvalidTypeException;
 
 public class NCast extends NExpr {
 
     public Type type;
     public NExpr expr;
 
-    public NCast(int line_, int column_, Type type_, NExpr expr_) {
-        super(line_, column_, expr_);
+    public NCast(int offset_, Type type_, NExpr expr_) {
+        super(offset_, expr_);
         type = type_;
         expr = expr_;
     }
@@ -21,13 +21,6 @@ public class NCast extends NExpr {
     @Override
     public AST[] getChildren() {
         return new AST[]{expr};
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        if(index != 0) throw new ArrayIndexOutOfBoundsException();
-        if(!(ast instanceof NExpr expr_)) throw new InvalidTypeException();
-        expr = expr_;
     }
 
     @Override
@@ -45,5 +38,11 @@ public class NCast extends NExpr {
         super.accept(visitor, context);
         visitor.visit(this, context);
         expr.accept(visitor, VisitorContext.tryClone(context));
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NCast a)) return false;
+        return type.equals(a.type) && expr.equals(a.expr);
     }
 }

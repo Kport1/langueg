@@ -3,27 +3,23 @@ package com.kport.langueg.parse.ast.nodes.statement;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
-import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
-import com.sun.jdi.InvalidTypeException;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
+
+import java.util.Arrays;
 
 public class NBlock extends NStatement {
 
     public AST[] statements;
 
-    public NBlock(int line_, int column_, AST... statements_) {
-        super(line_, column_, statements_);
+    public NBlock(int offset_, AST... statements_) {
+        super(offset_, statements_);
         statements = statements_;
     }
 
     @Override
     public AST[] getChildren() {
         return statements;
-    }
-
-    @Override
-    public void setChild(int index, AST ast) {
-        statements[index] = ast;
     }
 
     @Override
@@ -43,5 +39,11 @@ public class NBlock extends NStatement {
         for (AST statement : statements) {
             statement.accept(visitor, VisitorContext.tryClone(context));
         }
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NBlock a)) return false;
+        return Arrays.deepEquals(statements, a.statements);
     }
 }

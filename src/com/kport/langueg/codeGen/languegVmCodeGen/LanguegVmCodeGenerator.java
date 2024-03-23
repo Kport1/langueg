@@ -4,18 +4,18 @@ import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.codeGen.languegVmCodeGen.op.LanguegVmOpCodeGen;
 import com.kport.langueg.codeGen.languegVmCodeGen.op.OpCodeGenSupplier;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.nodes.NAnonFn;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.parse.ast.nodes.NNamedFn;
 import com.kport.langueg.parse.ast.nodes.NProg;
 import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
+import com.kport.langueg.parse.ast.nodes.expr.integer.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.SymbolTable;
-import com.kport.langueg.typeCheck.types.Type;
-import com.kport.langueg.util.FnIdentifier;
-import com.kport.langueg.util.VarIdentifier;
+import com.kport.langueg.util.Identifier;
 import com.sun.jdi.InvalidTypeException;
-
-import java.util.Arrays;
 
 public class LanguegVmCodeGenerator implements CodeGenerator {
     /*
@@ -46,7 +46,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
     }
 
-
     @Override
     public Void process(Object input, LanguegPipeline<?, ?> pipeline) {
         AST ast = (AST) input;
@@ -68,7 +67,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     void gen(AST ast) {
         switch (ast){
             case NProg prog -> {
-                gen(prog.moduleInterface);
                 state.enterProg(prog);
                 for (AST statement : prog.statements) {
                     gen(statement);
@@ -78,7 +76,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
             case NAnonFn aFn -> {
                 state.enterFn(aFn);
-                gen(aFn.block);
+                gen(aFn.body);
                 int fnIndex = state.exitFn();
 
                 if(aFn.isExprStmnt) return;
@@ -89,12 +87,12 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 gen(assign.right);
                 if(!assign.isExprStmnt) state.writeOp(Ops.ofGeneric(assign.exprType.getSize(), Ops.Generic.DUP));
                 switch (assign.left){
-                    case NIdent ident -> {
+                    case NIdent ident ->
                         state.writeOp(
                                 Ops.ofGeneric(ident.exprType.getSize(), Ops.Generic.STORE),
-                                state.getLocalIndex(new VarIdentifier(ident.scope, ident.name), ident.exprType.getSize())
+                                state.getLocalIndex(new Identifier(ident.scope, ident.identifier), ident.exprType.getSize())
                         );
-                    }
+
                     default -> throw new IllegalStateException("Unexpected value: " + assign.left);
                 }
             }
@@ -114,11 +112,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 for (int i = call.args.length - 1; i >= 0; i--) {
                     gen(call.args[i]);
                 }
-                if(call.callee instanceof NIdent ident){
-                    state.writeOp(Ops.PUSHFN, state.getFnIndex(new FnIdentifier(call.callee.scope, ident.name, Arrays.stream(call.args).map(a -> a.exprType).toArray(Type[]::new))));
-                } else {
-                    gen(call.callee);
-                }
+                gen(call.callee);
                 state.writeOp(Ops.CALL);
                 for (NExpr arg : call.args) {
                     state.generatingFns.peek().stackDepthCount.computeIfPresent(arg.exprType.getSize(), (size, count) -> count - 1);
@@ -136,29 +130,28 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NFloat64 float64 -> state.writeOp(Ops.PUSH64, state.registerConst64(Double.doubleToRawLongBits(float64.val)));
 
             case NIdent ident -> {
-                if(symbolTable.varExists(new VarIdentifier(ident.scope, ident.name))){
-                    state.writeOp(Ops.ofGeneric(ident.exprType.getSize(), Ops.Generic.LOAD), state.getLocalIndex(new VarIdentifier(ident.scope, ident.name), ident.exprType.getSize()));
+                switch(symbolTable.getById(new Identifier(ident.scope, ident.identifier))){
+                    case SymbolTable.Identifiable.Variable var ->
+                        state.writeOp(Ops.ofGeneric(ident.exprType.getSize(), Ops.Generic.LOAD), state.getLocalIndex(new Identifier(ident.scope, ident.identifier), ident.exprType.getSize()));
+
+                    case SymbolTable.Identifiable.Function fn ->
+                        state.writeOp(Ops.PUSHFN, state.getFnIndex(new Identifier(ident.scope, ident.identifier)));
+
+                    case SymbolTable.Identifiable.NamedType type -> {
+
+                    }
                 }
             }
 
             case NInt8 int8 -> state.writeOp(Ops.PUSH8, int8.val);
-
             case NInt16 int16 -> state.writeOp(Ops.PUSH16, int16.val);
-
             case NInt32 int32 -> state.writeOp(Ops.PUSH32, state.registerConst32(int32.val));
-
             case NInt64 int64 -> state.writeOp(Ops.PUSH64, state.registerConst64(int64.val));
-
             case NStr str -> {}
-
             case NTuple tuple -> {}
-
             case NUInt8 uint8 -> state.writeOp(Ops.PUSH8, uint8.val);
-
             case NUInt16 uint16 -> state.writeOp(Ops.PUSH16, uint16.val);
-
             case NUInt32 uint32 -> state.writeOp(Ops.PUSH32, state.registerConst32(uint32.val));
-
             case NUInt64 uint64 -> state.writeOp(Ops.PUSH64, state.registerConst64(uint64.val));
 
             case NUnaryOpPost unaryOpPost -> {}
@@ -171,10 +164,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                     gen(statement);
                 }
                 state.exitScope();
-            }
-
-            case NFor for_ -> {
-
             }
 
             case NIf if_ -> {
@@ -200,8 +189,8 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NNamedFn namedFn -> {
-                state.registerFn(namedFn.getId(), state.enterFn(namedFn));
-                gen(namedFn.block);
+                state.registerFn(new Identifier(namedFn.scope, namedFn.name), state.enterFn(namedFn));
+                gen(namedFn.body);
                 state.exitFn();
             }
 
@@ -216,7 +205,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NVar var -> {
-                state.registerLocal(new VarIdentifier(var.scope, var.name), var.type.getSize());
+                state.allocateLocal(new Identifier(var.scope, var.name), var.type.getSize());
             }
 
             case NVarDestruct varDestruct -> {
@@ -224,7 +213,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NVarInit var -> {
-                short index = state.registerLocal(new VarIdentifier(var.scope, var.name), var.type.getSize());
+                short index = state.allocateLocal(new Identifier(var.scope, var.name), var.type.getSize());
                 gen(var.init);
                 state.writeOp(Ops.ofGeneric(var.type.getSize(), Ops.Generic.STORE), index);
             }

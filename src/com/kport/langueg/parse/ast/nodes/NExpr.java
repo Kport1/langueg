@@ -10,8 +10,8 @@ public abstract class NExpr extends AST {
     public Type exprType = null;
     public boolean isExprStmnt = false;
 
-    public NExpr(int line_, int column_, AST... children) {
-        super(line_, column_, children);
+    public NExpr(int offset_, AST... children) {
+        super(offset_, children);
     }
 
     @Override

@@ -5,6 +5,9 @@ import java.util.EnumSet;
 
 public enum TokenType {
 
+    LineComment,
+    BlockComment,
+
     Assign,
     Var,
 
@@ -79,6 +82,7 @@ public enum TokenType {
 
     //Mod-----------
         Module,
+        Use,
     //--------------
 
     //Struct----------
@@ -88,6 +92,7 @@ public enum TokenType {
         RBrack,
         LCurl,
         RCurl,
+        Colon,
         Semicolon,
         Comma,
         Dot,
@@ -180,6 +185,7 @@ public enum TokenType {
         expandedNames.put(SingleArrow, "single arrow");
 
         expandedNames.put(Module, "module");
+        expandedNames.put(Use, "use");
 
         expandedNames.put(LParen, "left parenthesis");
         expandedNames.put(RParen, "right parenthesis");
@@ -187,6 +193,7 @@ public enum TokenType {
         expandedNames.put(RBrack, "right bracket");
         expandedNames.put(LCurl, "left curly brace");
         expandedNames.put(RCurl, "right curly brace");
+        expandedNames.put(Colon, "colon");
         expandedNames.put(Semicolon, "semicolon");
         expandedNames.put(Comma, "comma");
         expandedNames.put(Dot, "dot");
@@ -214,19 +221,19 @@ public enum TokenType {
 
         expandedNames.put(Undefined, "undefined");
     }
-    private static final EnumMap<TokenType, TokenType> opAssignToOp = new EnumMap<>(TokenType.class);
+    private static final EnumMap<TokenType, TokenType> compoundAssignToOp = new EnumMap<>(TokenType.class);
     static{
-        opAssignToOp.put(PlusAssign, Plus);
-        opAssignToOp.put(MinusAssign, Minus);
-        opAssignToOp.put(MulAssign, Mul);
-        opAssignToOp.put(DivAssign, Div);
-        opAssignToOp.put(ModAssign, Mod);
-        opAssignToOp.put(PowAssign, Pow);
-        opAssignToOp.put(ShiftRAssign, ShiftR);
-        opAssignToOp.put(ShiftLAssign, ShiftL);
-        opAssignToOp.put(AndAssign, BAnd);
-        opAssignToOp.put(OrAssign, BOr);
-        opAssignToOp.put(XOrAssign, BXOr);
+        compoundAssignToOp.put(PlusAssign, Plus);
+        compoundAssignToOp.put(MinusAssign, Minus);
+        compoundAssignToOp.put(MulAssign, Mul);
+        compoundAssignToOp.put(DivAssign, Div);
+        compoundAssignToOp.put(ModAssign, Mod);
+        compoundAssignToOp.put(PowAssign, Pow);
+        compoundAssignToOp.put(ShiftRAssign, ShiftR);
+        compoundAssignToOp.put(ShiftLAssign, ShiftL);
+        compoundAssignToOp.put(AndAssign, BAnd);
+        compoundAssignToOp.put(OrAssign, BOr);
+        compoundAssignToOp.put(XOrAssign, BXOr);
     }
     private static final EnumSet<TokenType> binOps = EnumSet.of(
             Plus,
@@ -259,8 +266,8 @@ public enum TokenType {
         return expandedNames.get(this);
     }
 
-    public boolean isOpAssign(){
-        return opAssignToOp.containsKey(this);
+    public boolean isCompoundAssign(){
+        return compoundAssignToOp.containsKey(this);
     }
 
     public boolean isBinOp(){
@@ -271,8 +278,8 @@ public enum TokenType {
         return unaryOpsPost.contains(this);
     }
 
-    public TokenType getOpOfOpAssign(){
-        return opAssignToOp.get(this);
+    public TokenType getOpOfCompoundAssign(){
+        return compoundAssignToOp.get(this);
     }
 
 }

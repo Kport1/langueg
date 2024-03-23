@@ -26,12 +26,6 @@ public enum PrimitiveType implements Type{
         code = (byte)code_;
     }
 
-
-    @Override
-    public boolean isPrimitive(){
-        return true;
-    }
-
     public boolean isNumeric(){
         return switch (this) {
             case Void, Bool, Char -> false;

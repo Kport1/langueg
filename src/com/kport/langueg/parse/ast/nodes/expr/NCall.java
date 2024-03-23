@@ -4,9 +4,8 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.util.Util;
-import com.sun.jdi.InvalidTypeException;
 
 import java.util.Arrays;
 
@@ -14,8 +13,8 @@ public class NCall extends NExpr {
     public NExpr callee;
     public NExpr[] args;
 
-    public NCall(int line_, int column_, NExpr callee_, NExpr... args_){
-        super(line_, column_, Util.concatArrays(new AST[]{callee_}, args_, AST[].class));
+    public NCall(int offset_, NExpr callee_, NExpr... args_){
+        super(offset_, Util.concatArrays(new AST[]{callee_}, args_, AST[].class));
         callee = callee_;
         args = args_;
     }
@@ -23,16 +22,6 @@ public class NCall extends NExpr {
     @Override
     public AST[] getChildren() {
         return Util.concatArrays(new AST[]{callee}, args, AST[].class);
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-        if(index == 0) callee = expr;
-        else {
-            index--;
-            args[index] = expr;
-        }
     }
 
     @Override
@@ -53,5 +42,11 @@ public class NCall extends NExpr {
         for (NExpr arg : args) {
             arg.accept(visitor, VisitorContext.tryClone(context));
         }
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NCall a)) return false;
+        return callee.equals(a.callee) && Arrays.deepEquals(args, a.args);
     }
 }

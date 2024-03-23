@@ -5,14 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.sun.jdi.InvalidTypeException;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 
 public class NUnaryOpPost extends NExpr {
     public NExpr operand;
     public TokenType op;
 
-    public NUnaryOpPost(int line_, int column_, NExpr operand_, TokenType op_){
-        super(line_, column_, operand_);
+    public NUnaryOpPost(int offset_, NExpr operand_, TokenType op_){
+        super(offset_, operand_);
         operand = operand_;
         op = op_;
     }
@@ -20,13 +20,6 @@ public class NUnaryOpPost extends NExpr {
     @Override
     public AST[] getChildren() {
         return new AST[]{operand};
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        if(index != 0) throw new ArrayIndexOutOfBoundsException();
-        if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-        operand = expr;
     }
 
     @Override
@@ -44,5 +37,11 @@ public class NUnaryOpPost extends NExpr {
         super.accept(visitor, context);
         visitor.visit(this, context);
         operand.accept(visitor, VisitorContext.tryClone(context));
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NUnaryOpPost a)) return false;
+        return operand.equals(a.operand) && op == a.op;
     }
 }

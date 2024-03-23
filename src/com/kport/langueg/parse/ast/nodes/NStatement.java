@@ -5,8 +5,8 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 
 public abstract class NStatement extends AST {
-    public NStatement(int line_, int column_, AST... children) {
-        super(line_, column_, children);
+    public NStatement(int offset_, AST... children) {
+        super(offset_, children);
     }
 
     @Override

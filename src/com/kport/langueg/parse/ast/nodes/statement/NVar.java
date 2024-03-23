@@ -4,17 +4,16 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NStatement;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.typeCheck.types.Type;
-
-import java.util.Objects;
 
 public class NVar extends NStatement {
 
     public Type type;
     public String name;
 
-    public NVar(int line_, int column_, Type type_, String name_) {
-        super(line_, column_);
+    public NVar(int offset_, Type type_, String name_) {
+        super(offset_);
         type = type_;
         name = name_;
     }
@@ -22,11 +21,6 @@ public class NVar extends NStatement {
     @Override
     public AST[] getChildren() {
         return null;
-    }
-
-    @Override
-    public void setChild(int index, AST ast) {
-        throw new ArrayIndexOutOfBoundsException();
     }
 
     @Override
@@ -43,5 +37,11 @@ public class NVar extends NStatement {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NVar a)) return false;
+        return type.equals(a.type) && name.equals(a.name);
     }
 }

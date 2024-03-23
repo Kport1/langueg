@@ -4,25 +4,21 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.sun.jdi.InvalidTypeException;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
+
+import java.util.Arrays;
 
 public class NTuple extends NExpr {
     public NExpr[] elements;
 
-    public NTuple(int line_, int column_, NExpr... elements_){
-        super(line_, column_, elements_);
+    public NTuple(int offset_, NExpr... elements_){
+        super(offset_, elements_);
         elements = elements_;
     }
 
     @Override
     public AST[] getChildren() {
         return elements;
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-        elements[index] = expr;
     }
 
     @Override
@@ -42,5 +38,11 @@ public class NTuple extends NExpr {
         for (NExpr element : elements) {
             element.accept(visitor, VisitorContext.tryClone(context));
         }
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NTuple a)) return false;
+        return Arrays.deepEquals(elements, a.elements);
     }
 }

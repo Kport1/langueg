@@ -5,15 +5,15 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
-import com.sun.jdi.InvalidTypeException;
+import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 
 public class NWhile extends NStatement {
 
     public NExpr cond;
     public AST block;
 
-    public NWhile(int line_, int column_, NExpr condition_, AST block_){
-        super(line_, column_, condition_, block_);
+    public NWhile(int offset_, NExpr condition_, AST block_){
+        super(offset_, condition_, block_);
         cond = condition_;
         block = block_;
     }
@@ -21,18 +21,6 @@ public class NWhile extends NStatement {
     @Override
     public AST[] getChildren() {
         return new AST[]{cond, block};
-    }
-
-    @Override
-    public void setChild(int index, AST ast) throws InvalidTypeException {
-        switch (index){
-            case 0 -> {
-                if(!(ast instanceof NExpr expr)) throw new InvalidTypeException();
-                cond = expr;
-            }
-            case 1 -> block = ast;
-            default -> throw new ArrayIndexOutOfBoundsException();
-        }
     }
 
     @Override
@@ -51,5 +39,11 @@ public class NWhile extends NStatement {
         visitor.visit(this, context);
         cond.accept(visitor, VisitorContext.tryClone(context));
         block.accept(visitor, VisitorContext.tryClone(context));
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof NWhile a)) return false;
+        return cond.equals(a.cond) && block.equals(a.block);
     }
 }

@@ -1,113 +1,78 @@
 package com.kport.langueg.typeCheck;
 
-import com.kport.langueg.parse.ast.nodes.FnParamDef;
-import com.kport.langueg.parse.ast.nodes.expr.NAnonFn;
-import com.kport.langueg.parse.ast.nodes.statement.NNamedFn;
-import com.kport.langueg.typeCheck.types.FnType;
+import com.kport.langueg.parse.ast.nodes.FnHeader;
 import com.kport.langueg.typeCheck.types.Type;
-import com.kport.langueg.util.FnIdentifier;
 import com.kport.langueg.util.Scope;
-import com.kport.langueg.util.VarIdentifier;
+import com.kport.langueg.util.Identifier;
 
 import java.util.*;
 
 public class SymbolTable {
-
-    private final Map<FnIdentifier, Type> fnTypes = new HashMap<>();
-    private final Map<VarIdentifier, Type> varTypes = new HashMap<>();
-
-    private final Map<Scope, List<FnIdentifier>> fnsInScope = new HashMap<>();
-    private final Map<Scope, List<VarIdentifier>> varsInScope = new HashMap<>();
+    private final Map<Identifier, Identifiable> identifiers = new HashMap<>();
 
     public SymbolTable(){
 
     }
 
-    public Type getFnType(FnIdentifier id){
-        Type inScope = fnTypes.get(id);
-        if(inScope != null) return inScope;
-
-        if(id.scope().parent == null) return null;
-
-        return getFnType(new FnIdentifier(id.scope().parent, id.name(), id.params()));
-    }
-
-    public boolean fnExists(FnIdentifier id){
-        return getFnType(id) != null;
-    }
-
-    public Type[] getAllFnTypes(String name, Scope scope){
-        Type[] inScope = fnTypes.keySet().stream().filter((id) -> id.name().equals(name) && id.scope().equals(scope))
-                .map((id) -> new FnType(fnTypes.get(id), id.params())).toArray(Type[]::new);
-
-        if(scope.parent == null) return inScope;
-
-        Type[] parentScopes = getAllFnTypes(name, scope.parent);
-        Type[] out = Arrays.copyOfRange(inScope, 0, inScope.length + parentScopes.length);
-        System.arraycopy(parentScopes, 0, out, inScope.length, parentScopes.length);
-        return out;
-    }
-
-    public boolean anyFnExists(String name, Scope scope){
-        return getAllFnTypes(name, scope).length != 0;
-    }
-
-    public Type getVarType(VarIdentifier id){
-        Type inScope = varTypes.get(id);
-        if(inScope != null) return inScope;
-
-        if(id.scope().parent == null){
-            return null;
+    public static sealed abstract class Identifiable {
+        public static final class Variable extends Identifiable {
+            public final Type varType;
+            public Variable(Type varType_){
+                varType = varType_;
+            }
         }
 
-        return getVarType(new VarIdentifier(id.scope().parent, id.name()));
-    }
-
-    public boolean varExists(VarIdentifier id){
-        return getVarType(id) != null;
-    }
-
-    public boolean varExistsInScope(VarIdentifier id){
-        return varTypes.containsKey(id);
-    }
-
-    public boolean registerFn(NNamedFn fn){
-        FnIdentifier id = fn.getId();
-
-        if(fnTypes.containsKey(id)) return false;
-        fnTypes.put(id, fn.getReturnType());
-        fnsInScope.putIfAbsent(id.scope(), new ArrayList<>());
-        fnsInScope.get(id.scope()).add(id);
-        for (FnParamDef param : fn.getParams()) {
-            if(!registerVar(new VarIdentifier(fn.getBlockScope(), param.name), param.type))
-                return false;
+        public static final class Function extends Identifiable {
+            public final FnHeader fnHeader;
+            public Function(FnHeader fnHeader_){
+                fnHeader = fnHeader_;
+            }
         }
+
+        public static final class NamedType extends Identifiable {
+            public final Type definition;
+            public NamedType(Type definition_){
+                definition = definition_;
+            }
+        }
+    }
+
+    public boolean fnExistsInScope(Identifier id){
+        return identifiers.get(id) instanceof Identifiable.Function;
+    }
+
+    public boolean varExistsInScope(Identifier id){
+        return identifiers.get(id) instanceof Identifiable.Variable;
+    }
+
+    public boolean fnExists(Identifier id){
+        return getById(id) instanceof Identifiable.Function;
+    }
+
+    public boolean varExists(Identifier id){
+        return getById(id) instanceof Identifiable.Variable;
+    }
+
+    public Identifiable getById(Identifier id){
+        Scope parentScope = id.scope();
+        while (parentScope != null){
+            Identifiable identifiable = identifiers.get(new Identifier(parentScope, id.name()));
+            if (identifiable != null) return identifiable;
+            parentScope = parentScope.parent;
+        }
+        return null;
+    }
+
+    public boolean registerVar(Identifier id, Type type){
+        if(identifiers.containsKey(id)) return false;
+        identifiers.put(id, new Identifiable.Variable(type));
         return true;
     }
 
-    public boolean registerAnonFn(NAnonFn fn){
-        for (FnParamDef param : fn.params) {
-            if(!registerVar(new VarIdentifier(fn.getBlockScope(), param.name), param.type))
-                return false;
-        }
+    public boolean registerFn(Identifier id, FnHeader header){
+        if(identifiers.containsKey(id)) return false;
+        identifiers.put(id, new Identifiable.Function(header));
         return true;
-    }
-
-    public boolean registerVar(VarIdentifier id, Type type){
-        if(varTypes.containsKey(id)) return false;
-        varTypes.put(id, type);
-        varsInScope.putIfAbsent(id.scope(), new ArrayList<>());
-        varsInScope.get(id.scope()).add(id);
-        return true;
-    }
-
-    public boolean varIsClosed(VarIdentifier id){
-        if(varTypes.containsKey(id)) return false;
-        if(id.scope().parent == null) return false;
-
-        VarIdentifier parentId = new VarIdentifier(id.scope().parent, id.name());
-        if(varTypes.containsKey(parentId) && id.scope().fnScope) return true;
-        return varIsClosed(parentId);
     }
 
 }
