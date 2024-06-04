@@ -32,8 +32,11 @@ public class DefaultLexer implements Lexer{
         tokens.put(">>=", TokenType.ShiftRAssign);
         tokens.put("<<=", TokenType.ShiftLAssign);
         tokens.put("&=", TokenType.AndAssign);
+        tokens.put("&&=", TokenType.BitAndAssign);
         tokens.put("|=", TokenType.OrAssign);
+        tokens.put("||=", TokenType.BitOrAssign);
         tokens.put("^=", TokenType.XOrAssign);
+        tokens.put("^^=", TokenType.BitXOrAssign);
 
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);
@@ -41,11 +44,11 @@ public class DefaultLexer implements Lexer{
         tokens.put(">=", TokenType.LessEq);
         tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
-        tokens.put("&&", TokenType.BAnd);
+        tokens.put("&&", TokenType.BitAnd);
         tokens.put("&", TokenType.And);
-        tokens.put("||", TokenType.BOr);
+        tokens.put("||", TokenType.BitOr);
         tokens.put("|", TokenType.Or);
-        tokens.put("^^", TokenType.BXOr);
+        tokens.put("^^", TokenType.BitXOr);
         tokens.put("^", TokenType.XOr);
 
         tokens.put("++", TokenType.Inc);
@@ -93,13 +96,15 @@ public class DefaultLexer implements Lexer{
         tokens.put("i64", TokenType.I64);
         tokens.put("f32", TokenType.F32);
         tokens.put("f64", TokenType.F64);
-        tokens.put("void", TokenType.Void);
+
+        tokens.put("type", TokenType.TypeDef);
+        tokens.put("as", TokenType.As);
 
         for (CharSequence cs : tokens.keySet()) maxTokenLen = Math.max(maxTokenLen, cs.length());
     }
 
     private static final Pattern intPattern = Pattern.compile("((0x[0-9A-Fa-f]+)|(o[0-7]+)|([0-9]+))([ui](8|16|32|64)?)?");
-    private static final Pattern floatPattern = Pattern.compile("([0-9]+\\.[0-9]*)[fd]?|([0-9]+[fd])|([0-9]*\\.[0-9]*[fd])");
+    private static final Pattern floatPattern = Pattern.compile("([0-9]+\\.[0-9]*)(f32|f64)?|([0-9]+(f32|f64))|([0-9]*\\.[0-9]*(f32|f64))");
     private static final Pattern lineComment = Pattern.compile("//[^\\n]*");
     private static final Pattern blockComment = Pattern.compile("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/");
     private static final Pattern identifier = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
@@ -134,14 +139,14 @@ public class DefaultLexer implements Lexer{
         });
 
         lexemes.add((begin, code) -> {
-            Matcher m = intPattern.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.IntL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            Matcher m = floatPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.FloatL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
         lexemes.add((begin, code) -> {
-            Matcher m = floatPattern.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.FloatL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            Matcher m = intPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.IntL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 

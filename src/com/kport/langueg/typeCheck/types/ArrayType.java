@@ -1,10 +1,14 @@
 package com.kport.langueg.typeCheck.types;
 
-import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 
 import java.io.ByteArrayOutputStream;
 
-public class ArrayType implements Type{
+public final class ArrayType implements Type {
+    public static final int ARRAY_LENGTH_BYTES = 8;
+    public static final int ARRAY_REF_BYTES = 8;
+
     private final Type type;
 
     public ArrayType(Type type_){
@@ -24,8 +28,8 @@ public class ArrayType implements Type{
     }
 
     @Override
-    public LanguegVmValSize getSize() {
-        return LanguegVmValSize._64;
+    public int getSize() {
+        return ARRAY_LENGTH_BYTES + ARRAY_REF_BYTES;
     }
 
     @Override
@@ -42,5 +46,12 @@ public class ArrayType implements Type{
     @Override
     public int hashCode(){
         return type.hashCode() ^ 0x6f3a05d9;
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context) {
+        Type.super.accept(visitor, context);
+        visitor.visit(this, context);
+        type.accept(visitor, VisitorContext.tryClone(context));
     }
 }

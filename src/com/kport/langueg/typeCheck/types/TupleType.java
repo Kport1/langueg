@@ -1,22 +1,53 @@
 package com.kport.langueg.typeCheck.types;
 
-import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NameTypePair;
-import com.kport.langueg.util.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class TupleType implements Type{
+public final class TupleType implements Type{
     private final NameTypePair[] nameTypePairs;
 
     public TupleType(NameTypePair... types){
         nameTypePairs = types;
     }
 
+    public NameTypePair[] nameTypePairs(){
+        return nameTypePairs;
+    }
+
     public Type[] tupleTypes(){
         return Arrays.stream(nameTypePairs).map(p -> p.type).toArray(Type[]::new);
+    }
+
+    public Type typeByName(String name){
+        for (NameTypePair nameTypePair : nameTypePairs) {
+            if (nameTypePair.name.equals(name)) {
+                return nameTypePair.type;
+            }
+        }
+        return null;
+    }
+
+    public int indexOfName(String name){
+        for (int i = 0; i < nameTypePairs.length; i++) {
+            if (nameTypePairs[i].name.equals(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public int getStride(int index){
+        if(index >= nameTypePairs.length) throw new Error();
+        int stride = 0;
+        for(int i = 0; i < index; i++){
+            stride += nameTypePairs[i].type.getSize();
+        }
+        return stride;
     }
 
     @Override
@@ -34,8 +65,8 @@ public class TupleType implements Type{
     }
 
     @Override
-    public LanguegVmValSize getSize() {
-        return LanguegVmValSize._64;
+    public int getSize() {
+        return Math.max(Arrays.stream(tupleTypes()).reduce(0, (i, type) -> i + type.getSize(), Integer::sum), 1);
     }
 
     @Override
@@ -57,7 +88,7 @@ public class TupleType implements Type{
     @Override
     public boolean equals(Object o){
         if(o instanceof TupleType t){
-            return Arrays.equals(Util.mapArray(nameTypePairs, (p) -> p.type), Util.mapArray(t.nameTypePairs, (p) -> p.type));
+            return Arrays.equals(nameTypePairs, t.nameTypePairs);
         }
         return false;
     }
@@ -65,5 +96,13 @@ public class TupleType implements Type{
     @Override
     public int hashCode(){
         return Arrays.hashCode(nameTypePairs);
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context) {
+        Type.super.accept(visitor, context);
+        visitor.visit(this, context);
+        for (NameTypePair nameTypePair : nameTypePairs)
+            nameTypePair.type.accept(visitor, VisitorContext.tryClone(context));
     }
 }

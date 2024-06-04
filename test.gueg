@@ -1,4 +1,0 @@
-fn f((i : u64) -> u64){
-    if(i == 0u64) return 1u64;
-    return i * f(i - 1u64);
-}

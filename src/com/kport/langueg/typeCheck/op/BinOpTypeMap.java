@@ -6,5 +6,5 @@ import com.kport.langueg.typeCheck.types.Type;
 
 @FunctionalInterface
 public interface BinOpTypeMap {
-    Type getType(Type left, Type right, NBinOp op);
+    Type getType(Type left, Type right);
 }

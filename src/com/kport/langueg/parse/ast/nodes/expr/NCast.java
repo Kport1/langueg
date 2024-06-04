@@ -4,11 +4,9 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.typeCheck.types.Type;
 
 public class NCast extends NExpr {
-
     public Type type;
     public NExpr expr;
 
@@ -37,6 +35,7 @@ public class NCast extends NExpr {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+        type.accept(visitor, VisitorContext.tryClone(context));
         expr.accept(visitor, VisitorContext.tryClone(context));
     }
 

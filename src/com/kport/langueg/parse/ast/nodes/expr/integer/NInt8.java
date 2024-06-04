@@ -4,7 +4,6 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 
 public class NInt8 extends NExpr {
 
@@ -27,7 +26,7 @@ public class NInt8 extends NExpr {
 
     @Override
     protected String nToString() {
-        return Long.toString(val);
+        return Byte.toString(val);
     }
 
     @Override

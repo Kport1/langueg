@@ -22,4 +22,9 @@ public class Scope {
         return super.hashCode();
     }
 
+    @Override
+    public boolean equals(Object other){
+        return this == other;
+    }
+
 }

@@ -4,13 +4,17 @@ import com.kport.langueg.error.ErrorHandler;
 import com.kport.langueg.error.Errors;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.integer.*;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.typeCheck.cast.CastAllowlist;
+import com.kport.langueg.typeCheck.cast.DefaultCastAllowlist;
 import com.kport.langueg.typeCheck.op.*;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Identifier;
@@ -22,6 +26,7 @@ import java.util.Map;
 public class DefaultTypeChecker implements TypeChecker{
 
     private final OpTypeMappingSupplier opTypeMappings = new DefaultOpTypeMappings();
+    private final CastAllowlist castAllowlist = new DefaultCastAllowlist();
 
     private final SymbolTable symbolTable = new SymbolTable();
 
@@ -37,6 +42,21 @@ public class DefaultTypeChecker implements TypeChecker{
             @Override
             public void visit(AST ast, VisitorContext context) {
                 ast.scope = (Scope) context.get("scope");
+            }
+
+            @Override
+            public void visit(NamedType namedType, VisitorContext context){
+                namedType.scope = (Scope) context.get("scope");
+            }
+
+            @Override
+            public void visit(NTypeDef typeDef, VisitorContext context){
+                typeDef.definition.accept(new ASTVisitor() {
+                    @Override
+                    public void visit(NamedType namedType, VisitorContext context_) {
+                        namedType.scope = (Scope) context.get("scope");
+                    }
+                }, null);
             }
 
             @Override
@@ -58,9 +78,24 @@ public class DefaultTypeChecker implements TypeChecker{
             }
         }, new VisitorContext(Map.of("scope", new Scope(null, true))));
 
-        //Resolve Named Types TODO
+        //Register types
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NTypeDef typeDef, VisitorContext context) {
+                if (!symbolTable.registerType(new Identifier(typeDef.scope, typeDef.name), typeDef))
+                    throw new Error("Duplicate name " + typeDef.name + " in the same scope");
+            }
+        }, null);
 
-        //Register named functions and parameters
+        //Resolve Type Sizes
+        ast.accept(new ASTVisitor() {
+            @Override
+            public void visit(NamedType namedType, VisitorContext context) {
+                namedType.size = symbolTable.getNamedTypeSize(namedType);
+            }
+        }, null);
+
+        //Register named functions and function parameters
         ast.accept(new ASTVisitor() {
             @Override
             public void visit(NNamedFn fn, VisitorContext context) {
@@ -90,13 +125,11 @@ public class DefaultTypeChecker implements TypeChecker{
             @Override
             public void visit(NVarInit varInit, VisitorContext context){
                 Type inferredType = getExprType(varInit.init);
-                if(inferredType instanceof PrimitiveType pt && pt == PrimitiveType.Void){
-                    throw new Error("Cannot assign void to variable " + varInit.name);
-                }
 
-                if(varInit.type != null)
-                    if(!varInit.type.equals(inferredType))
+                if(varInit.type != null) {
+                    if (!castAllowlist.allowCastImplicit(varInit.type, inferredType, symbolTable))
                         throw new Error("Cannot assign value of type " + inferredType + " to variable of type " + varInit.type);
+                }
                 else varInit.type = inferredType;
 
                 if(!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type))
@@ -154,15 +187,11 @@ public class DefaultTypeChecker implements TypeChecker{
         ast.accept(new ASTVisitor() {
             @Override
             public void visit(NAnonFn anonFn, VisitorContext context) {
-                if(anonFn.header.returnType == PrimitiveType.Void) return;
-
                 if(!ensureFnReturn(anonFn.body, anonFn.header.returnType, null)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, anonFn.offset);
             }
 
             @Override
             public void visit(NNamedFn fn, VisitorContext context) {
-                if(fn.header.returnType == PrimitiveType.Void) return;
-
                 if(!ensureFnReturn(fn.body, fn.header.returnType, fn.name)) errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, fn.offset, fn.name);
             }
         }, null);
@@ -191,18 +220,11 @@ public class DefaultTypeChecker implements TypeChecker{
     }
 
     private boolean ensureFnReturn(AST ast, Type returnType, String name){
-        if(ast instanceof NReturnVoid){
-            if(name != null)
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID, ast.offset, name, returnType);
-
-            if(name == null)
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_VOID_ANON, ast.offset, returnType);
-        }
-        else if(ast instanceof NReturn ret){
-            if(!ret.expr.exprType.equals(returnType) && name != null)
+        if(ast instanceof NReturn ret){
+            if(!castAllowlist.allowCastImplicit(ret.expr.exprType, returnType, symbolTable) && name != null)
                 errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH, ast.offset, name, returnType, ret.expr.exprType);
 
-            if(!ret.expr.exprType.equals(returnType) && name == null)
+            if(!castAllowlist.allowCastImplicit(ret.expr.exprType, returnType, symbolTable) && name == null)
                 errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_ANON, ast.offset, returnType, ret.expr.exprType);
 
             return true;
@@ -225,7 +247,7 @@ public class DefaultTypeChecker implements TypeChecker{
     private Type getExprType(NExpr expr){
         return switch(expr){
 
-            case NStr ignored -> new CustomType("string");
+            case NStr ignored -> new NamedType("string");
 
             case NFloat32 ignored -> PrimitiveType.F32;
             case NFloat64 ignored -> PrimitiveType.F64;
@@ -244,7 +266,8 @@ public class DefaultTypeChecker implements TypeChecker{
                 Type[] args = Arrays.stream(call.args).map(this::getExprType).toArray(Type[]::new);
 
                 Type calledExprType = getExprType(call.callee);
-                yield getReturnTypeAndVerifyArgs(calledExprType, args);
+                if(!(calledExprType instanceof FnType fnType)) throw new Error("Cannot call value of type " + calledExprType + " with params " + Arrays.toString(args));
+                yield getReturnTypeAndVerifyArgs(fnType, args);
             }
 
             case NAnonFn fn -> fn.header.getFnType();
@@ -253,7 +276,7 @@ public class DefaultTypeChecker implements TypeChecker{
                 Type leftExpectedType = getExprType(assign.left);
                 Type rightType = getExprType(assign.right);
 
-                if(!leftExpectedType.equals(rightType)){
+                if(!castAllowlist.allowCastImplicit(leftExpectedType, rightType, symbolTable)){
                     throw new Error("Cannot assign value of type " + rightType + " to location expecting type " + leftExpectedType);
                 }
 
@@ -265,7 +288,11 @@ public class DefaultTypeChecker implements TypeChecker{
                 yield new TupleType(tupTypes);
             }
 
-            case NCast cast -> cast.type; //TODO check if valid cast
+            case NCast cast -> {
+                Type castedType = getExprType(cast.expr);
+                if(!castAllowlist.allowCastExplicit(castedType, cast.type, symbolTable)) throw new Error("Cannot cast from " + castedType + " to " + cast.type);
+                yield cast.type;
+            }
 
             case NBinOp binOp -> {
                 Type left = getExprType(binOp.left);
@@ -275,7 +302,18 @@ public class DefaultTypeChecker implements TypeChecker{
                 if(map == null){
                     throw new Error("Cannot apply operator " + binOp.op + " to " + left + " and " + right);
                 }
-                yield map.getType(left, right, binOp);
+                yield map.getType(left, right);
+            }
+
+            case NAssignCompound assignCompound -> {
+                Type left = getExprType(assignCompound.left);
+                Type right = getExprType(assignCompound.right);
+
+                BinOpTypeMap map = opTypeMappings.binOpTypeMap(BinOp.fromCompoundAssign(assignCompound.op));
+                if(map == null){
+                    throw new Error("Cannot apply operator" + assignCompound.op + " to " + left + " and " + right);
+                }
+                yield map.getType(left, right);
             }
 
             case NUnaryOpPost uOp -> {
@@ -299,11 +337,53 @@ public class DefaultTypeChecker implements TypeChecker{
             }
 
             case NIdent ident -> {
-                SymbolTable.Identifiable identifiable = symbolTable.getById(new Identifier(ident.scope, ident.identifier));
+                Identifier id = new Identifier(ident.scope, ident.identifier);
+                if(!symbolTable.anyExists(id)) throw new Error("Nothing with the name " + id.name() + " exists in scope " + id.scope());
+
+                SymbolTable.Identifiable identifiable = symbolTable.getById(id);
                 yield switch (identifiable){
                     case SymbolTable.Identifiable.Function fn -> fn.fnHeader.getFnType();
                     case SymbolTable.Identifiable.Variable var -> var.varType;
-                    case SymbolTable.Identifiable.NamedType type -> throw new Error(ident.identifier + " refers to a type in this scope and cannot be used as part of an expression");
+                    case SymbolTable.Identifiable.NamedType ignored -> throw new Error(ident.identifier + " refers to a type in this scope and cannot be used as part of an expression");
+                };
+            }
+
+            case NRef ref -> new RefType(getExprType(ref.right));
+
+            case NDotAccess dotAccess -> {
+                Type accessedType_ = getExprType(dotAccess.accessed);
+                Type accessedType = symbolTable.tryInstantiateType(accessedType_);
+
+                yield switch (accessedType){
+                    case TupleType tupleType ->
+                        dotAccess.accessor.match((uint) -> {
+                            if (Integer.compareUnsigned(uint, tupleType.tupleTypes().length) >= 0) {
+                                throw new Error("The tuple being accessed has no element at this index");
+                            }
+                            return tupleType.tupleTypes()[uint];
+                        }, (ident) -> {
+                            Type t = tupleType.typeByName(ident);
+                            if(t == null){
+                                throw new Error("The tuple being accessed has no element with this name");
+                            }
+                            return t;
+                        });
+
+                    case UnionType unionType ->
+                        dotAccess.accessor.match((uint) -> {
+                            if (Integer.compareUnsigned(uint, unionType.unionTypes().length) >= 0) {
+                                throw new Error("The union being accessed has no element at this index");
+                            }
+                            return unionType.unionTypes()[uint];
+                        }, (ident) -> {
+                            Type t = unionType.typeByName(ident);
+                            if(t == null){
+                                throw new Error("The union being accessed has no element with this name");
+                            }
+                            return t;
+                        });
+
+                    default -> throw new Error("The dot access operator cannot be applied to this type: " + accessedType);
                 };
             }
 
@@ -311,15 +391,12 @@ public class DefaultTypeChecker implements TypeChecker{
         };
     }
 
-    private Type getReturnTypeAndVerifyArgs(Type fnType, Type... args){
-        if(!(fnType instanceof FnType fnT)){
-            throw new Error("Cannot call value of type " + fnType + " with params " + Arrays.toString(args));
+    private Type getReturnTypeAndVerifyArgs(FnType fnType, Type... args){
+        if(fnType.fnParams().length != args.length) throw new Error("Mismatching number of function arguments: Cannot call function " + fnType + " with params " + Arrays.toString(args));
+        for (int i = 0; i < fnType.fnParams().length; i++) {
+            if(!castAllowlist.allowCastImplicit(args[i], fnType.fnParams()[i], symbolTable)) throw new Error("Mismatching type of function arguments: Cannot call function " + fnType + " with params " + Arrays.toString(args));
         }
 
-        if(!Arrays.equals(fnT.fnParams(), args)){
-            throw new Error("Mismatching function arguments: Cannot call function " + fnType + " with params " + Arrays.toString(args));
-        }
-
-        return fnT.fnReturn();
+        return fnType.fnReturn();
     }
 }

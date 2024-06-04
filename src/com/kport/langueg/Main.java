@@ -57,7 +57,7 @@ public class Main {
         }
 
         Path inputPath = Path.of(cmd.getArgs()[0]);
-        Path outputPath = Path.of(cmd.getOptionValue('o', "./" + inputPath.getFileName().toString().replaceFirst("(\\..*)|$", ".lala")));
+        Path outputPath = Path.of(cmd.getOptionValue('o', "./" + inputPath.getFileName().toString().replaceFirst("(\\..*)|$", ".gueg")));
 
         if(cmd.hasOption("v"))
             System.out.println("Reading " + inputPath);

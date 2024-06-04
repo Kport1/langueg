@@ -26,7 +26,7 @@ public class NUInt16 extends NExpr {
 
     @Override
     protected String nToString() {
-        return Long.toUnsignedString(val);
+        return String.valueOf(Short.toUnsignedInt(val));
     }
 
     @Override

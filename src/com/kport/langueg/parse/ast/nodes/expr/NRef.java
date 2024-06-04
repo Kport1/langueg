@@ -1,29 +1,30 @@
-package com.kport.langueg.parse.ast.nodes.statement;
+package com.kport.langueg.parse.ast.nodes.expr;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
-import com.kport.langueg.parse.ast.nodes.NStatement;
-import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 
-public class NReturnVoid extends NStatement {
+public class NRef extends NExpr {
+    public NExpr right;
 
-    public NReturnVoid(int offset_) {
-        super(offset_);
+    public NRef(int offset_, NExpr right_){
+        super(offset_, right_);
+        right = right_;
     }
 
     @Override
     public AST[] getChildren() {
-        return null;
+        return new AST[]{right};
     }
 
     @Override
     public boolean hasChildren() {
-        return false;
+        return true;
     }
 
     @Override
-    protected String nToString() {
+    public String nToString(){
         return "";
     }
 
@@ -31,10 +32,12 @@ public class NReturnVoid extends NStatement {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+        right.accept(visitor, VisitorContext.tryClone(context));
     }
 
     @Override
     public boolean equals(Object o){
-        return o instanceof NReturnVoid;
+        if(!(o instanceof NRef a)) return false;
+        return right.equals(a.right);
     }
 }

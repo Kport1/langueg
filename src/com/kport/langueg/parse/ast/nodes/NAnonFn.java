@@ -57,6 +57,7 @@ public final class NAnonFn extends NExpr implements NFn {
         super.accept(visitor, context);
         visitor.visit((NFn) this, context);
         visitor.visit(this, context);
+        header.accept(visitor, VisitorContext.tryClone(context));
         body.accept(visitor, VisitorContext.tryClone(context));
     }
 

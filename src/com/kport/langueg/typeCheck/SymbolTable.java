@@ -1,7 +1,9 @@
 package com.kport.langueg.typeCheck;
 
 import com.kport.langueg.parse.ast.nodes.FnHeader;
-import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.parse.ast.nodes.NameTypePair;
+import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
+import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Scope;
 import com.kport.langueg.util.Identifier;
 
@@ -31,8 +33,10 @@ public class SymbolTable {
 
         public static final class NamedType extends Identifiable {
             public final Type definition;
-            public NamedType(Type definition_){
+            public final String[] typeParameters;
+            public NamedType(Type definition_, String[] typeParameters_){
                 definition = definition_;
+                typeParameters = typeParameters_;
             }
         }
     }
@@ -45,12 +49,24 @@ public class SymbolTable {
         return identifiers.get(id) instanceof Identifiable.Variable;
     }
 
+    public boolean typeExistsInScope(Identifier id){
+        return identifiers.get(id) instanceof Identifiable.NamedType;
+    }
+
     public boolean fnExists(Identifier id){
         return getById(id) instanceof Identifiable.Function;
     }
 
     public boolean varExists(Identifier id){
         return getById(id) instanceof Identifiable.Variable;
+    }
+
+    public boolean typeExists(Identifier id){
+        return getById(id) instanceof Identifiable.NamedType;
+    }
+
+    public boolean anyExists(Identifier id){
+        return getById(id) != null;
     }
 
     public Identifiable getById(Identifier id){
@@ -61,6 +77,10 @@ public class SymbolTable {
             parentScope = parentScope.parent;
         }
         return null;
+    }
+
+    public boolean identifiersReferToSameThing(Identifier a, Identifier b){
+        return getById(a) == getById(b);
     }
 
     public boolean registerVar(Identifier id, Type type){
@@ -74,5 +94,146 @@ public class SymbolTable {
         identifiers.put(id, new Identifiable.Function(header));
         return true;
     }
+
+    public boolean registerType(Identifier id, NTypeDef typeDef){
+        if(identifiers.containsKey(id)) return false;
+        identifiers.put(id, new Identifiable.NamedType(typeDef.definition, typeDef.typeParameters));
+        return true;
+    }
+
+    public Type tryInstantiateType(Type type){
+        if(!(type instanceof NamedType namedType)) return type;
+        return instantiateType(namedType);
+    }
+
+    public Type instantiateType(NamedType namedType){
+        if(!typeExists(new Identifier(namedType.scope, namedType.name()))) throw new Error("Type " + namedType.name() + " does not exist");
+
+        SymbolTable.Identifiable.NamedType registeredType = (SymbolTable.Identifiable.NamedType)getById(new Identifier(namedType.scope, namedType.name()));
+        if(namedType.typeArgs().length != registeredType.typeParameters.length) throw new Error("Type " + namedType.name() + " does not have the same amount of type parameters as its definition");
+
+        NameTypePair[] args = new NameTypePair[namedType.typeArgs().length];
+        for (int i = 0; i < args.length; i++) args[i] = new NameTypePair(namedType.typeArgs()[i], registeredType.typeParameters[i]);
+
+        return instantiateTypeShallow(registeredType.definition, args);
+    }
+
+    private Type instantiateTypeShallow(Type definition, NameTypePair... arguments){
+        return switch (definition){
+            case ArrayType arrayType ->
+                    new ArrayType(instantiateTypeShallow(arrayType.arrayType(), arguments));
+
+            case FnType fnType ->
+                    new FnType(
+                            instantiateTypeShallow(fnType.fnReturn(), arguments),
+                            Arrays.stream(fnType.fnParams()).map((t) -> instantiateTypeShallow(t, arguments)).toArray(Type[]::new)
+                    );
+
+            case NamedType namedType -> {
+                for (NameTypePair argument : arguments) {
+                    if(argument.name.equals(namedType.name())){
+                        if(namedType.typeArgs().length != 0) throw new Error("Type parameter " + namedType.name() + " cannot be instantiated");
+                        yield argument.type;
+                    }
+                }
+                NamedType ret = new NamedType(namedType.name(), Arrays.stream(namedType.typeArgs()).map(t -> instantiateTypeShallow(t, arguments)).toArray(Type[]::new));
+                ret.scope = namedType.scope;
+                yield ret;
+            }
+
+            case PrimitiveType primitiveType -> primitiveType;
+
+            case RefType refType -> new RefType(instantiateTypeShallow(refType.referentType(), arguments));
+
+            case TupleType tupleType ->
+                    new TupleType(
+                            Arrays.stream(tupleType.nameTypePairs()).map(nameTypePair -> new NameTypePair(instantiateTypeShallow(nameTypePair.type, arguments), nameTypePair.name)).toArray(NameTypePair[]::new)
+                    );
+
+            case UnionType unionType ->
+                    new UnionType(
+                            Arrays.stream(unionType.nameTypePairs()).map(nameTypePair -> new NameTypePair(instantiateTypeShallow(nameTypePair.type, arguments), nameTypePair.name)).toArray(NameTypePair[]::new)
+                    );
+        };
+    }
+
+    public int getNamedTypeSize(NamedType namedType){
+        if(!typeExists(new Identifier(namedType.scope, namedType.name()))) throw new Error("Type " + namedType + " does not exist");
+
+        SymbolTable.Identifiable.NamedType registeredType = (SymbolTable.Identifiable.NamedType)getById(new Identifier(namedType.scope, namedType.name()));
+        if(namedType.typeArgs().length != registeredType.typeParameters.length) throw new Error("Type " + namedType.name() + " does not have the same amount of type parameters as its definition");
+
+        NameTypePair[] args = new NameTypePair[namedType.typeArgs().length];
+        for (int i = 0; i < args.length; i++) args[i] = new NameTypePair(namedType.typeArgs()[i], registeredType.typeParameters[i]);
+
+        try {
+            return getTypeSize(registeredType.definition, args);
+        } catch (StackOverflowError err){
+            throw new Error("Type " + namedType + " is too deeply recursive");
+        }
+    }
+
+    private int getTypeSize(Type definition, NameTypePair... arguments){
+        return switch (definition){
+            case ArrayType ignored -> ArrayType.ARRAY_LENGTH_BYTES + ArrayType.ARRAY_REF_BYTES;
+
+            case FnType ignored -> FnType.FN_REF_BYTES;
+
+            case NamedType namedType -> {
+                for (NameTypePair argument : arguments) {
+                    if(argument.name.equals(namedType.name())){
+                        if(namedType.typeArgs().length != 0) throw new Error("Type parameter " + namedType.name() + " cannot be instantiated");
+                        yield getTypeSize(argument.type);
+                    }
+                }
+                NamedType namedTypeIntermediate = new NamedType(namedType.name(), Arrays.stream(namedType.typeArgs()).map(t -> instantiateTypeShallow(t, arguments)).toArray(Type[]::new));
+                namedTypeIntermediate.scope = namedType.scope;
+                yield getNamedTypeSize(namedTypeIntermediate);
+            }
+
+            case PrimitiveType primitiveType -> primitiveType.getSize();
+
+            case RefType ignored -> RefType.REF_BYTES;
+
+            case TupleType tupleType -> Arrays.stream(tupleType.tupleTypes()).reduce(0, (i, t) -> i + getTypeSize(t, arguments), Integer::sum);
+
+            case UnionType unionType -> UnionType.UNION_TAG_BYTES + Arrays.stream(unionType.unionTypes()).reduce(0, (i, t) -> Math.max(i, getTypeSize(t, arguments)), Integer::max);
+        };
+    }
+
+    //Instantiates a type recursively, until it has constant size
+    /*private Type instantiateTypeRec(Type definition, NameTypePair... arguments){
+        return switch (definition){
+            case ArrayType ignored -> new ArrayType(Type.ZERO);
+
+            case FnType ignored -> new FnType(Type.ZERO, Type.ZERO);
+
+            case NamedType namedType -> {
+                for (NameTypePair argument : arguments) {
+                    if(argument.name.equals(namedType.name())){
+                        if(namedType.typeArgs().length != 0) throw new Error("Type parameter " + namedType.name() + " cannot be instantiated");
+                        yield argument.type;
+                    }
+                }
+                NamedType namedTypeIntermediate = new NamedType(namedType.name(), Arrays.stream(namedType.typeArgs()).map(t -> instantiateTypeShallow(t, arguments)).toArray(Type[]::new));
+                namedTypeIntermediate.scope = namedType.scope;
+                yield instantiateTypeRec(namedTypeIntermediate);
+            }
+
+            case PrimitiveType primitiveType -> primitiveType;
+
+            case RefType ignored -> new RefType(Type.ZERO);
+
+            case TupleType tupleType ->
+                    new TupleType(
+                            Arrays.stream(tupleType.nameTypePairs()).map(nameTypePair -> new NameTypePair(instantiateTypeRec(nameTypePair.type, arguments), nameTypePair.name)).toArray(NameTypePair[]::new)
+                    );
+
+            case UnionType unionType ->
+                    new UnionType(
+                            Arrays.stream(unionType.nameTypePairs()).map(nameTypePair -> new NameTypePair(instantiateTypeRec(nameTypePair.type, arguments), nameTypePair.name)).toArray(NameTypePair[]::new)
+                    );
+        };
+    }*/
 
 }

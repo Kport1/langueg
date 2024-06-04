@@ -1,14 +1,15 @@
 package com.kport.langueg.parse.ast;
 
+import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.Scope;
 
-public abstract class AST {
+public abstract class AST implements Visitable {
     public AST parent;
 
     public int offset;
 
-    public Scope scope;
+    public Scope scope = null;
 
     public AST(int offset_, AST... children){
         offset = offset_;
@@ -26,6 +27,7 @@ public abstract class AST {
     /*
         Calls all applicable visitor.visit methods in the order of superclasses, then interfaces and last the class of this object itself.
      */
+    @Override
     public void accept(ASTVisitor visitor, VisitorContext context){
         visitor.visit(this, context);
     }

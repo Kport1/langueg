@@ -1,37 +1,38 @@
 package com.kport.langueg.typeCheck.op;
 
 import com.kport.langueg.lex.TokenType;
+import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 
 import java.util.Map;
 
 public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
 
-    private static final Map<TokenType, BinOpTypeMap> binOpTypeMappings = Map.ofEntries(
-            Map.entry(TokenType.Plus, primitiveArithmeticOp(TokenType.Plus)),
-            Map.entry(TokenType.Minus, primitiveArithmeticOp(TokenType.Minus)),
-            Map.entry(TokenType.Mul, primitiveArithmeticOp(TokenType.Mul)),
-            Map.entry(TokenType.Div, primitiveArithmeticOp(TokenType.Div)),
-            Map.entry(TokenType.Mod, primitiveArithmeticOp(TokenType.Mod)),
-            Map.entry(TokenType.Pow, primitiveFloatingOp(TokenType.Pow)),
+    private static final Map<BinOp, BinOpTypeMap> binOpTypeMappings = Map.ofEntries(
+            Map.entry(BinOp.Plus, primitiveArithmeticOp(BinOp.Plus)),
+            Map.entry(BinOp.Minus, primitiveArithmeticOp(BinOp.Minus)),
+            Map.entry(BinOp.Mul, primitiveArithmeticOp(BinOp.Mul)),
+            Map.entry(BinOp.Div, primitiveArithmeticOp(BinOp.Div)),
+            Map.entry(BinOp.Mod, primitiveArithmeticOp(BinOp.Mod)),
+            Map.entry(BinOp.Pow, primitiveFloatingOp(BinOp.Pow)),
 
-            Map.entry(TokenType.ShiftR, primitiveBitShiftOp(TokenType.ShiftR)),
-            Map.entry(TokenType.ShiftL, primitiveBitShiftOp(TokenType.ShiftL)),
+            Map.entry(BinOp.ShiftR, primitiveBitShiftOp(BinOp.ShiftR)),
+            Map.entry(BinOp.ShiftL, primitiveBitShiftOp(BinOp.ShiftL)),
 
-            Map.entry(TokenType.BAnd, primitiveBitwiseOp(TokenType.BAnd)),
-            Map.entry(TokenType.BOr, primitiveBitwiseOp(TokenType.BOr)),
-            Map.entry(TokenType.BXOr, primitiveBitwiseOp(TokenType.BXOr)),
+            Map.entry(BinOp.BitAnd, primitiveBitwiseOp(BinOp.BitAnd)),
+            Map.entry(BinOp.BitOr, primitiveBitwiseOp(BinOp.BitOr)),
+            Map.entry(BinOp.BitXOr, primitiveBitwiseOp(BinOp.BitXOr)),
 
-            Map.entry(TokenType.Greater, primitiveComparisonOp(TokenType.Greater)),
-            Map.entry(TokenType.Less, primitiveComparisonOp(TokenType.Less)),
-            Map.entry(TokenType.GreaterEq, primitiveComparisonOp(TokenType.GreaterEq)),
-            Map.entry(TokenType.LessEq, primitiveComparisonOp(TokenType.LessEq)),
-            Map.entry(TokenType.Eq, primitiveComparisonOp(TokenType.Eq)),
-            Map.entry(TokenType.NotEq, primitiveComparisonOp(TokenType.NotEq)),
+            Map.entry(BinOp.Greater, primitiveComparisonOp(BinOp.Greater)),
+            Map.entry(BinOp.Less, primitiveComparisonOp(BinOp.Less)),
+            Map.entry(BinOp.GreaterEq, primitiveComparisonOp(BinOp.GreaterEq)),
+            Map.entry(BinOp.LessEq, primitiveComparisonOp(BinOp.LessEq)),
+            Map.entry(BinOp.Eq, primitiveComparisonOp(BinOp.Eq)),
+            Map.entry(BinOp.NotEq, primitiveComparisonOp(BinOp.NotEq)),
 
-            Map.entry(TokenType.And, primitiveBoolOp(TokenType.And)),
-            Map.entry(TokenType.Or, primitiveBoolOp(TokenType.Or)),
-            Map.entry(TokenType.XOr, primitiveBoolOp(TokenType.XOr))
+            Map.entry(BinOp.And, primitiveBoolOp(BinOp.And)),
+            Map.entry(BinOp.Or, primitiveBoolOp(BinOp.Or)),
+            Map.entry(BinOp.XOr, primitiveBoolOp(BinOp.XOr))
     );
 
     private static final Map<TokenType, UnaryOpPreTypeMap> unaryOpPreTypeMappings = Map.ofEntries(
@@ -57,55 +58,55 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
     );
 
 
-    private static BinOpTypeMap primitiveArithmeticOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveArithmeticOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveFloatingOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveFloatingOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && lt.isFloating() && leftType.equals(rightType))){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveBitShiftOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveBitShiftOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt == PrimitiveType.U8)){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveBitwiseOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveBitwiseOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && lt.isInteger() && leftType.equals(rightType))){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveComparisonOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveComparisonOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return PrimitiveType.Bool;
         };
     }
 
-    private static BinOpTypeMap primitiveBoolOp(TokenType op){
-        return (leftType, rightType, binOp) -> {
+    private static BinOpTypeMap primitiveBoolOp(BinOp op){
+        return (leftType, rightType) -> {
             if(!(leftType instanceof PrimitiveType lt && lt == PrimitiveType.Bool && leftType.equals(rightType))){
-                throw new Error("Cannot apply operator \"" + op.expandedName() + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
+                throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return PrimitiveType.Bool;
         };
@@ -130,7 +131,7 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
     }
 
     @Override
-    public BinOpTypeMap binOpTypeMap(TokenType op) {
+    public BinOpTypeMap binOpTypeMap(BinOp op) {
         return binOpTypeMappings.get(op);
     }
 

@@ -1,0 +1,30 @@
+/*fn fib((n: u64) -> u64){
+    if(n == 0u64) return 0u64;
+    if(n == 1u64) return 1u64;
+    return fib(n - 2u64) + fib(n - 1u64);
+}
+
+fib(32u64);*/
+
+//DynMemObj { gc_mark: u8, refs : [&DynMemObj], data : [u8] }
+
+type<T> List = (
+    val : T,
+    next : {
+        some : &List<T>,
+        end : (),
+    },
+    a : ()
+);
+
+var end : List<u32>;
+end.val = 5u32;
+end.next.end = ();
+
+var mid : List<u32>;
+mid.val = 6u32;
+mid.next.some = &end;
+
+var begin : List<u32>;
+begin.val = 7u32;
+begin.next.some = &mid;

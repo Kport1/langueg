@@ -1,8 +1,13 @@
 package com.kport.langueg.parse.ast.nodes;
 
+import com.kport.langueg.parse.Visitable;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.typeCheck.types.Type;
 
-public final class NameTypePair {
+import java.util.Objects;
+
+public final class NameTypePair implements Visitable {
     public Type type;
     public String name;
 
@@ -19,6 +24,12 @@ public final class NameTypePair {
     @Override
     public boolean equals(Object o){
         if(!(o instanceof NameTypePair a)) return false;
-        return type.equals(a.type) && name.equals(a.name);
+        return Objects.equals(type, a.type) && Objects.equals(name, a.name);
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context) {
+        visitor.visit(this, context);
+        type.accept(visitor, VisitorContext.tryClone(context));
     }
 }

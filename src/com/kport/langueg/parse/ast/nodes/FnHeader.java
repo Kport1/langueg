@@ -1,11 +1,14 @@
 package com.kport.langueg.parse.ast.nodes;
 
+import com.kport.langueg.parse.Visitable;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
 
-public final class FnHeader {
+public final class FnHeader implements Visitable {
     public NameTypePair[] params;
     public Type returnType;
 
@@ -24,13 +27,13 @@ public final class FnHeader {
 
     @Override
     public String toString(){
-        StringBuilder str = new StringBuilder("(");
+        StringBuilder str = new StringBuilder("( ");
         for (NameTypePair param : params) {
             str.append(param);
-            str.append(", ");
+            str.append(",");
         }
-        str.delete(str.length() - 2, str.length());
-        str.append(") -> ");
+        str.deleteCharAt(str.length() - 1);
+        str.append(" ) -> ");
         str.append(returnType);
         return str.toString();
     }
@@ -39,5 +42,11 @@ public final class FnHeader {
     public boolean equals(Object o){
         if(!(o instanceof FnHeader a)) return false;
         return Arrays.deepEquals(params, a.params) && returnType.equals(a.returnType);
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context) {
+        visitor.visit(this, context);
+        returnType.accept(visitor, VisitorContext.tryClone(context));
     }
 }

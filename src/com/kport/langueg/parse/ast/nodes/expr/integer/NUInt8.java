@@ -26,7 +26,7 @@ public class NUInt8 extends NExpr {
 
     @Override
     protected String nToString() {
-        return Long.toUnsignedString(val);
+        return String.valueOf(Byte.toUnsignedInt(val));
     }
 
     @Override

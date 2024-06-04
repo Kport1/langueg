@@ -14,32 +14,31 @@ public enum TokenType {
     //Binary Ops----------
         //Num
         Plus,
+        PlusAssign,
         Minus,
+        MinusAssign,
         Mul,
+        MulAssign,
         Div,
+        DivAssign,
         Mod,
+        ModAssign,
         Pow,
+        PowAssign,
 
         //Bit shift
         ShiftR,
+        ShiftRAssign,
         ShiftL,
+        ShiftLAssign,
 
         //Bitwise
-        BAnd,
-        BOr,
-        BXOr,
-
-        PlusAssign,
-        MinusAssign,
-        MulAssign,
-        DivAssign,
-        ModAssign,
-        PowAssign,
-        ShiftRAssign,
-        ShiftLAssign,
-        AndAssign,
-        OrAssign,
-        XOrAssign,
+        BitAnd,
+        BitAndAssign,
+        BitOr,
+        BitOrAssign,
+        BitXOr,
+        BitXOrAssign,
 
         //Comparison
         Greater,
@@ -51,8 +50,11 @@ public enum TokenType {
 
         //Bool
         And,
+        AndAssign,
         Or,
+        OrAssign,
         XOr,
+        XOrAssign,
     //--------------------
 
     //Unary Ops----------
@@ -122,7 +124,11 @@ public enum TokenType {
         F32,
         F64,
 
-        Void,
+        //Typedef
+        TypeDef,
+
+        //Cast
+        As,
     //---------------
 
 
@@ -133,26 +139,31 @@ public enum TokenType {
     static {
         expandedNames.put(Assign, "assign");
         expandedNames.put(Var, "var");
-        expandedNames.put(Plus, "plus");
-        expandedNames.put(Minus, "minus");
-        expandedNames.put(Mul, "multiply");
-        expandedNames.put(Div, "divide");
-        expandedNames.put(Mod, "modulo");
-        expandedNames.put(Pow, "power");
-        expandedNames.put(ShiftR, "right shift");
-        expandedNames.put(ShiftL, "left shift");
 
+        expandedNames.put(Plus, "plus");
         expandedNames.put(PlusAssign, "plus assign");
+        expandedNames.put(Minus, "minus");
         expandedNames.put(MinusAssign, "minus assign");
+        expandedNames.put(Mul, "multiply");
         expandedNames.put(MulAssign, "multiply assign");
+        expandedNames.put(Div, "divide");
         expandedNames.put(DivAssign, "divide assign");
+        expandedNames.put(Mod, "modulo");
         expandedNames.put(ModAssign, "modulo assign");
+        expandedNames.put(Pow, "power");
         expandedNames.put(PowAssign, "power assign");
+
+        expandedNames.put(ShiftR, "right shift");
         expandedNames.put(ShiftRAssign, "right shift assign");
+        expandedNames.put(ShiftL, "left shift");
         expandedNames.put(ShiftLAssign, "left shift assign");
-        expandedNames.put(AndAssign, "and assign");
-        expandedNames.put(OrAssign, "or assign");
-        expandedNames.put(XOrAssign, "xor assign");
+
+        expandedNames.put(BitAnd, "bitwise and");
+        expandedNames.put(BitAndAssign, "bitwise and assign");
+        expandedNames.put(BitOr, "bitwise or assign");
+        expandedNames.put(BitOrAssign, "bitwise and");
+        expandedNames.put(BitXOr, "bitwise xor assign");
+        expandedNames.put(BitXOrAssign, "bitwise and");
 
         expandedNames.put(Greater, "greater than");
         expandedNames.put(Less, "less than");
@@ -160,12 +171,13 @@ public enum TokenType {
         expandedNames.put(LessEq, "less than or equals");
         expandedNames.put(Eq, "equals");
         expandedNames.put(NotEq, "not equals");
-        expandedNames.put(BAnd, "bitwise and");
+
         expandedNames.put(And, "and");
-        expandedNames.put(BOr, "bitwise or");
+        expandedNames.put(AndAssign, "and assign");
         expandedNames.put(Or, "or");
-        expandedNames.put(BXOr, "bitwise xor");
+        expandedNames.put(OrAssign, "or assign");
         expandedNames.put(XOr, "xor");
+        expandedNames.put(XOrAssign, "xor assign");
 
         expandedNames.put(Inc, "increment");
         expandedNames.put(Dec, "decrement");
@@ -217,46 +229,12 @@ public enum TokenType {
         expandedNames.put(F32, "f32");
         expandedNames.put(F64, "f64");
 
-        expandedNames.put(Void, "void");
+        expandedNames.put(TypeDef, "type definition");
+        expandedNames.put(As, "as");
 
         expandedNames.put(Undefined, "undefined");
     }
-    private static final EnumMap<TokenType, TokenType> compoundAssignToOp = new EnumMap<>(TokenType.class);
-    static{
-        compoundAssignToOp.put(PlusAssign, Plus);
-        compoundAssignToOp.put(MinusAssign, Minus);
-        compoundAssignToOp.put(MulAssign, Mul);
-        compoundAssignToOp.put(DivAssign, Div);
-        compoundAssignToOp.put(ModAssign, Mod);
-        compoundAssignToOp.put(PowAssign, Pow);
-        compoundAssignToOp.put(ShiftRAssign, ShiftR);
-        compoundAssignToOp.put(ShiftLAssign, ShiftL);
-        compoundAssignToOp.put(AndAssign, BAnd);
-        compoundAssignToOp.put(OrAssign, BOr);
-        compoundAssignToOp.put(XOrAssign, BXOr);
-    }
-    private static final EnumSet<TokenType> binOps = EnumSet.of(
-            Plus,
-            Minus,
-            Mul,
-            Div,
-            Mod,
-            Pow,
-            ShiftR,
-            ShiftL,
-            Greater,
-            Less,
-            GreaterEq,
-            LessEq,
-            Eq,
-            NotEq,
-            BAnd,
-            And,
-            BOr,
-            Or,
-            BXOr,
-            XOr
-    );
+
     private static final EnumSet<TokenType> unaryOpsPost = EnumSet.of(
             Inc,
             Dec
@@ -266,20 +244,7 @@ public enum TokenType {
         return expandedNames.get(this);
     }
 
-    public boolean isCompoundAssign(){
-        return compoundAssignToOp.containsKey(this);
-    }
-
-    public boolean isBinOp(){
-        return binOps.contains(this);
-    }
-
     public boolean isUnaryOpPost(){
         return unaryOpsPost.contains(this);
     }
-
-    public TokenType getOpOfCompoundAssign(){
-        return compoundAssignToOp.get(this);
-    }
-
 }

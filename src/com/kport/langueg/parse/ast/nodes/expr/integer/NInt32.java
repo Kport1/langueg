@@ -26,7 +26,7 @@ public class NInt32 extends NExpr {
 
     @Override
     protected String nToString() {
-        return Long.toString(val);
+        return Integer.toString(val);
     }
 
     @Override

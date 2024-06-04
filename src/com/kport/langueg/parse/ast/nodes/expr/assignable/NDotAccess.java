@@ -4,20 +4,27 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Either;
 
 public class NDotAccess extends NAssignable {
-    public NExpr expr;
-    public NExpr accessor;
+    public NExpr accessed;
+    public Either<Integer, String> accessor;
 
-    public NDotAccess(int offset_, NExpr expr_, NExpr accessor_){
+    public NDotAccess(int offset_, NExpr accessed_, Integer accessor_){
         super(offset_);
-        expr = expr_;
-        accessor = accessor_;
+        accessed = accessed_;
+        accessor = Either.left(accessor_);
+    }
+
+    public NDotAccess(int offset_, NExpr accessed_, String accessor_){
+        super(offset_);
+        accessed = accessed_;
+        accessor = Either.right(accessor_);
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{expr, accessor};
+        return new AST[]{accessed};
     }
 
     @Override
@@ -34,11 +41,12 @@ public class NDotAccess extends NAssignable {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+        accessed.accept(visitor, context);
     }
 
     @Override
     public boolean equals(Object o){
         if(!(o instanceof NDotAccess a)) return false;
-        return expr.equals(a.expr) && accessor.equals(a.accessor);
+        return accessed.equals(a.accessed) && accessor.equals(a.accessor);
     }
 }

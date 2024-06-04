@@ -42,6 +42,8 @@ public class NVarDestruct extends NStatement {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+        for (Type type : types)
+            type.accept(visitor, VisitorContext.tryClone(context));
         init.accept(visitor, VisitorContext.tryClone(context));
     }
 

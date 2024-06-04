@@ -1,11 +1,14 @@
 package com.kport.langueg.typeCheck.types;
 
-import com.kport.langueg.codeGen.languegVmCodeGen.LanguegVmValSize;
+import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.VisitorContext;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
 
-public class FnType implements Type{
+public final class FnType implements Type {
+    public static final int FN_REF_BYTES = 8;
+
     private final Type[] fnParams;
     private final Type fnReturn;
 
@@ -67,7 +70,16 @@ public class FnType implements Type{
     }
 
     @Override
-    public LanguegVmValSize getSize() {
-        return LanguegVmValSize._64;
+    public int getSize() {
+        return FN_REF_BYTES;
+    }
+
+    @Override
+    public void accept(ASTVisitor visitor, VisitorContext context) {
+        Type.super.accept(visitor, context);
+        visitor.visit(this, context);
+        for (Type fnParam : fnParams)
+            fnParam.accept(visitor, VisitorContext.tryClone(context));
+        fnReturn.accept(visitor, VisitorContext.tryClone(context));
     }
 }

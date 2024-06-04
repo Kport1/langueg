@@ -5,7 +5,6 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
-import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 import com.kport.langueg.typeCheck.types.Type;
 
 public class NVarInit extends NStatement {
@@ -40,6 +39,7 @@ public class NVarInit extends NStatement {
     public void accept(ASTVisitor visitor, VisitorContext context){
         super.accept(visitor, context);
         visitor.visit(this, context);
+        if(type != null) type.accept(visitor, VisitorContext.tryClone(context));
         init.accept(visitor, VisitorContext.tryClone(context));
     }
 
