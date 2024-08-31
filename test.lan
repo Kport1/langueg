@@ -1,0 +1,41 @@
+var s : Shape<u32> = {.circle = (.rad = 6u32)}
+
+var r = match(s)
+    case .circle circle => circle.rad
+    case .rect rect => rect.width + rect.height
+    case .square square => square.sideLen
+    //else => 0u32
+
+type<T> Shape = {
+    circle : (rad : T),
+    rect : (width : T, height : T),
+    square : (sideLen : T)
+}
+/*fn fib((n: u64) -> u64){
+    if(n == 0u64) return 0u64
+    if(n == 1u64) return 1u64
+    return fib(n - 2u64) + fib(n - 1u64)
+}
+
+fib(40u64)*/
+
+//DynMemObj { gc_mark: u8, refs : [&DynMemObj], data : [u8] }
+
+
+/*type<T> List = (
+    val : T,
+    next : {
+        some : &List<T>,
+        end : (),
+    }
+)
+
+var l : List<u32> = (5u32, {.end = ()})
+var l2 : List<u32> = (6u32, {.some = &l})*/
+
+/*type B = f32
+type A = (a : u32, b : B)
+{
+    type B = f64
+    var x : A = (.a = 5u32, .b = 5f32)
+}*/

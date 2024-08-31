@@ -1,154 +1,16 @@
 package com.kport.langueg.lex;
 
-import java.text.CharacterIterator;
-import java.text.StringCharacterIterator;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Hashtable;
+import com.kport.langueg.pipeline.LanguegPipeline;
+import com.kport.langueg.util.Pair;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DefaultLexer implements Lexer{
-
-    private static final String comment = "//";
-    private static final char str = '"';
-    private static final char strEsc = '\\';
-
-    private boolean wasIdentifier = false;
-    private boolean wasNumber = false;
-    private boolean wasToken = false;
-
-    private String word = "";
-    private int lineCounter = 1;
-
-    @Override
-    public ArrayList<Token> lex(String code) {
-
-        ArrayList<Token> outTokens = new ArrayList<>();
-
-        CharacterIterator iterator = new StringCharacterIterator(code);
-
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
-
-            if(Character.isWhitespace(c) && word.length() == 0){
-                if(c == '\n'){
-                    lineCounter++;
-                }
-                continue;
-            }
-
-            word += c;
-
-            if(word.equals(comment)){
-                skipToChar('\n', iterator);
-
-                wasIdentifier = false;
-                wasNumber = false;
-                wasToken = false;
-
-                word = "";
-                lineCounter++;
-                continue;
-            }
-            if(word.charAt(word.length() - 1) == str){
-                if(word.length() == 1){
-                    word = "";
-                    iterator.previous();
-                }
-                addTok(outTokens, iterator, true);
-                outTokens.add(new Token(TokenType.String, collectStr(iterator)));
-                continue;
-            }
-            /*if(c == '\n'){
-                lineCounter++;
-            }*/
-            if(isValidToken(word)){
-                wasToken = true;
-            }
-            else if(isValidNum(word)){
-                wasNumber = true;
-            }
-            else if(isValidIdentifier(word)){
-                wasIdentifier = true;
-            }
-            else{
-                addTok(outTokens, iterator, false);
-            }
-
-            if(iterator.getIndex() == code.length() - 1){
-                word += "a";
-                addTok(outTokens, iterator, true);
-                break;
-            }
-        }
-
-        wasIdentifier = false;
-        wasNumber = false;
-        wasToken = false;
-        word = "";
-        lineCounter++;
-
-        return outTokens;
-    }
-
-    private void addTok(ArrayList<Token> outTokens, CharacterIterator iterator, boolean reqValid){
-        if(wasToken){
-            outTokens.add(new Token(tokens.get(word.substring(0, word.length() - 1)), lineCounter));
-            iterator.previous();
-            word = "";
-            wasToken = false;
-        }
-        else if(wasNumber){
-            outTokens.add(new Token(TokenType.Number, word.substring(0, word.length() - 1), lineCounter));
-            iterator.previous();
-            word = "";
-            wasNumber = false;
-        }
-        else if(wasIdentifier){
-            outTokens.add(new Token(TokenType.Identifier, word.substring(0, word.length() - 1), lineCounter));
-            iterator.previous();
-            word = "";
-            wasIdentifier = false;
-        }
-        else if(reqValid && word.length() != 0){
-            throw new Error("Invalid Token: " + word.substring(0, word.length() - 1) + " on line " + lineCounter);
-        }
-    }
-
-    private static boolean isValidIdentifier(String str) {
-        CharacterIterator iterator = new StringCharacterIterator(str);
-        if(!Character.isJavaIdentifierStart(iterator.first())){
-            return false;
-        }
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
-            if(!Character.isJavaIdentifierPart(c)){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isValidNum(String str){
-        CharacterIterator iterator = new StringCharacterIterator(str);
-
-        boolean dot = false;
-        for (char c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
-            if(!Character.isDigit(c)){
-                if(c == '.' && !dot){
-                    dot = true;
-                    continue;
-                }
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean isValidToken(String str){
-        return tokens.containsKey(str);
-    }
-
-    private static final HashMap<String, TokenType> tokens = new HashMap<>();
+    private static final HashMap<CharSequence, TokenType> tokens = new HashMap<>();
+    private static int maxTokenLen = 1;
     static {
-
         tokens.put("=", TokenType.Assign);
         tokens.put("var", TokenType.Var);
 
@@ -161,15 +23,33 @@ public class DefaultLexer implements Lexer{
         tokens.put(">>", TokenType.ShiftR);
         tokens.put("<<", TokenType.ShiftL);
 
+        tokens.put("+=", TokenType.PlusAssign);
+        tokens.put("-=", TokenType.MinusAssign);
+        tokens.put("*=", TokenType.MulAssign);
+        tokens.put("/=", TokenType.DivAssign);
+        tokens.put("%=", TokenType.ModAssign);
+        tokens.put("**=", TokenType.PowAssign);
+        tokens.put(">>=", TokenType.ShiftRAssign);
+        tokens.put("<<=", TokenType.ShiftLAssign);
+        tokens.put("&=", TokenType.AndAssign);
+        tokens.put("&&=", TokenType.BitAndAssign);
+        tokens.put("|=", TokenType.OrAssign);
+        tokens.put("||=", TokenType.BitOrAssign);
+        tokens.put("^=", TokenType.XOrAssign);
+        tokens.put("^^=", TokenType.BitXOrAssign);
+
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);
         tokens.put("<=", TokenType.GreaterEq);
         tokens.put(">=", TokenType.LessEq);
         tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
+        tokens.put("&&", TokenType.BitAnd);
         tokens.put("&", TokenType.And);
+        tokens.put("||", TokenType.BitOr);
         tokens.put("|", TokenType.Or);
-        tokens.put("^", TokenType.XOR);
+        tokens.put("^^", TokenType.BitXOr);
+        tokens.put("^", TokenType.XOr);
 
         tokens.put("++", TokenType.Inc);
         tokens.put("--", TokenType.Dec);
@@ -181,9 +61,15 @@ public class DefaultLexer implements Lexer{
         tokens.put("return", TokenType.Return);
         tokens.put("break", TokenType.Break);
         tokens.put("continue", TokenType.Continue);
-        tokens.put("switch", TokenType.Switch);
+        tokens.put("match", TokenType.Match);
+        tokens.put("case", TokenType.Case);
         tokens.put("while", TokenType.While);
         tokens.put("for", TokenType.For);
+
+        tokens.put("fn", TokenType.Fn);
+        tokens.put("->", TokenType.SingleArrow);
+
+        tokens.put("mod", TokenType.Module);
 
         tokens.put("(", TokenType.LParen);
         tokens.put(")", TokenType.RParen);
@@ -191,47 +77,117 @@ public class DefaultLexer implements Lexer{
         tokens.put("]", TokenType.RBrack);
         tokens.put("{", TokenType.LCurl);
         tokens.put("}", TokenType.RCurl);
+        tokens.put(":", TokenType.Colon);
         tokens.put(";", TokenType.Semicolon);
         tokens.put(",", TokenType.Comma);
-
+        tokens.put(".", TokenType.Dot);
+        tokens.put("=>", TokenType.DoubleArrow);
 
         tokens.put("true", TokenType.True);
         tokens.put("false", TokenType.False);
+
+        tokens.put("bool", TokenType.Bool);
+        tokens.put("char", TokenType.Char);
+        tokens.put("u8", TokenType.U8);
+        tokens.put("u16", TokenType.U16);
+        tokens.put("u32", TokenType.U32);
+        tokens.put("u64", TokenType.U64);
+        tokens.put("i8", TokenType.I8);
+        tokens.put("i16", TokenType.I16);
+        tokens.put("i32", TokenType.I32);
+        tokens.put("i64", TokenType.I64);
+        tokens.put("f32", TokenType.F32);
+        tokens.put("f64", TokenType.F64);
+
+        tokens.put("type", TokenType.TypeDef);
+        tokens.put("as", TokenType.As);
+
+        for (CharSequence cs : tokens.keySet()) maxTokenLen = Math.max(maxTokenLen, cs.length());
     }
 
-    private static void skipToChar(char c, CharacterIterator iterator){
-        //StringBuilder builder = new StringBuilder();
-        while(iterator.next() != c && iterator.current() != CharacterIterator.DONE){
-            //builder.append(iterator.current());
-        }
-        //return builder.toString();
-    }
+    private static final Pattern intPattern = Pattern.compile("((0x[0-9A-Fa-f]+)|(o[0-7]+)|([0-9]+))([ui](8|16|32|64)?)?");
+    private static final Pattern floatPattern = Pattern.compile("([0-9]+\\.[0-9]*)(f32|f64)?|([0-9]+(f32|f64))|([0-9]*\\.[0-9]*(f32|f64))");
+    private static final Pattern lineComment = Pattern.compile("//[^\\n]*");
+    private static final Pattern blockComment = Pattern.compile("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/");
+    private static final Pattern identifier = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
+    private static final Pattern string = Pattern.compile("\"([^\"\\\\]|\\\\.)*\"");
 
-    private String collectStr(CharacterIterator iterator){
-        StringBuilder builder = new StringBuilder();
+    private static final List<LexemeMatcher> lexemes = new ArrayList<>();
+    static {
+        lexemes.add((begin, code) -> {
+            Matcher m = lineComment.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.LineComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
 
-        iterator.next();
-        while(iterator.next() != str && iterator.current() != CharacterIterator.DONE){
-            if(iterator.current() == strEsc){
-                builder.append(switch (iterator.next()){
-                    case '\\': yield '\\';
-                    case 'n': yield '\n';
-                    case 't': yield '\t';
-                    case 'r': yield '\r';
-                    case 'f': yield '\f';
-                    case 'b': yield '\b';
-                    default: throw new Error("Invalid escape character: \\" + iterator.current() + " on line " + lineCounter);
-                });
+        lexemes.add((begin, code) -> {
+            Matcher m = blockComment.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.BlockComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            Matcher m = string.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.StringL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            for(int i = Math.min(maxTokenLen - 1, code.length() - begin); i > 0; i--){
+                CharSequence cs = code.subSequence(begin, begin + i);
+                if(tokens.containsKey(cs)) return new Pair<>(new Token(tokens.get(cs)), i);
             }
-            else {
-                builder.append(iterator.current());
-            }
-        }
+            return null;
+        });
 
-        return builder.toString();
+        lexemes.add((begin, code) -> {
+            Matcher m = floatPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.FloatL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            Matcher m = intPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.IntL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
+
+        lexemes.add((begin, code) -> {
+            Matcher m = identifier.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.Identifier, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            return null;
+        });
     }
 
-    public int getLineCounter(){
-        return lineCounter;
+    public ArrayList<Token> process(Object code_, LanguegPipeline<?, ?> pipeline) {
+        CharSequence code = ((CharSequence) code_);
+
+        ArrayList<Token> tokens = new ArrayList<>();
+
+        int offset = 0;
+        OUTER:
+        while (offset < code.length()){
+            if(Character.isWhitespace(code.charAt(offset))){
+                offset++;
+                continue;
+            }
+            for (LexemeMatcher lexeme : lexemes) {
+                Pair<Token, Integer> token_len = lexeme.getNext(offset, code);
+                if (token_len == null) continue;
+                if (token_len.left.tok != TokenType.LineComment && token_len.left.tok != TokenType.BlockComment) {
+                    token_len.left.offset = offset;
+                    tokens.add(token_len.left);
+                }
+                offset += token_len.right;
+                continue OUTER;
+            }
+            throw new Error("Lexical analysis failed at " + offset);
+        }
+
+        return tokens;
+    }
+
+    private interface LexemeMatcher{
+        Pair<Token, Integer> getNext(int begin, CharSequence code);
     }
 }

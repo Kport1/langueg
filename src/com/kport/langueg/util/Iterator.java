@@ -36,6 +36,10 @@ public class Iterator<T> {
         return get(index + 1);
     }
 
+    public T peek(int n){
+        return get(index + n);
+    }
+
     public T get(int i){
         return list.get(Math.max(Math.min(i, list.size() - 1), 0));
     }
