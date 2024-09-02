@@ -24,6 +24,8 @@ public enum Ops {
     JMP_IF_FALSE(0x10), //byte: u16, jmp_delta: i16
     JMP(0x11), //jmpDelta: i16
 
+    BRANCH(0x12), //index: u16, table: [u16]
+
     //-------------------------------------------
 
     ALLOC_HEAP(0x35), //to: u16, size: u16

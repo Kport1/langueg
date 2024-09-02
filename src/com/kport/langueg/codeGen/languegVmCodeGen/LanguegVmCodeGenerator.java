@@ -19,31 +19,14 @@ import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.SymbolTable;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Identifier;
+import com.kport.langueg.util.Pair;
 import com.sun.jdi.InvalidTypeException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class LanguegVmCodeGenerator implements CodeGenerator {
-    /*
-        Vm Architecture
-            Stack           - max 2^16 elements - 128 bit size
-            Local Variables - max 2^16 bytes
-
-        .LaLa file format
-
-        MAGIC
-
-        Constant Pool
-            32, 64 bit
-
-        Functions
-            id
-            returnType
-            amntLocals
-            maxStackDepth
-            LineInfo
-            Code
-     */
 
     private final OpCodeGenSupplier opCodeGenSupplier = new LanguegVmOpCodeGen();
 
@@ -266,6 +249,67 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                 gen(ifElse.elseBlock);
                 state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - elseJmpIndex), elseJmpIndex - 2);
+            }
+
+            case NMatch match -> {
+                UnionType matchValUnionType = (UnionType) symbolTable.tryInstantiateType(match.value.exprType);
+                short stackTop = state.nextUnallocatedByte();
+                short matchProducedValSize = (short) match.exprType.getSize();
+
+                gen(match.value);
+                state.writeOp(Ops.BRANCH, stackTop);
+
+                int branchTableBegin = state.getCurrentCodeIndex();
+                for(int i = 0; i < matchValUnionType.nameTypePairs.length; i++)
+                    state.generatingFns.peek().code.writeShort((short)0);
+
+                List<Integer> jmpEndPatchList = new ArrayList<>();
+
+                for (Pair<NMatch.Pattern, NExpr> branch : match.branches) {
+                    switch(branch.left) {
+                        case NMatch.Pattern.Union unionPattern -> {
+                            short jmpDelta = (short)(state.getCurrentCodeIndex() - branchTableBegin);
+                            state.generatingFns.peek().code.writeShort(
+                                    jmpDelta,
+                                    branchTableBegin + 2 * matchValUnionType.resolveElementIndex(unionPattern.element)
+                            );
+
+                            state.enterScope();
+                            Type elemType = matchValUnionType.resolveElementType(unionPattern.element);
+                            int elemSize = elemType.getSize();
+
+                            short elemVar = state.allocateLocal(
+                                    new Identifier(
+                                            branch.right.scope,
+                                            unionPattern.elementVarName
+                                    ),
+                                    elemSize
+                            );
+                            state.mov((short)elemSize, elemVar, (short)(stackTop + UnionType.UNION_TAG_BYTES), isOrContainsRef(elemType));
+
+                            short branchStackTop = state.nextUnallocatedByte();
+                            gen(branch.right);
+                            state.rewindLocalsTo(stackTop);
+
+                            state.mov(matchProducedValSize, state.nextUnallocatedByte(), branchStackTop, isOrContainsRef(match.exprType));
+                            state.exitScope();
+
+                            state.writeOp(Ops.JMP, (short)0);
+                            jmpEndPatchList.add(state.getCurrentCodeIndex());
+                        }
+
+                        case NMatch.Pattern.Default ignored -> {
+
+                        }
+
+                        default -> throw new IllegalStateException("Unexpected value: " + branch.left);
+                    }
+                }
+
+                for (Integer i : jmpEndPatchList) {
+                    short jmpDelta = (short)(state.getCurrentCodeIndex() - i);
+                    state.generatingFns.peek().code.writeShort(jmpDelta, i - 2);
+                }
             }
 
             case NNamedFn namedFn -> {
