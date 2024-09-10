@@ -184,7 +184,8 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NUnion union -> {
-                state.pushShort((short)((UnionType)symbolTable.tryInstantiateType(union.exprType)).resolveElementIndex(union.initializedElementPosition));
+                UnionType unionType = (UnionType)symbolTable.tryInstantiateType(union.exprType);
+                state.pushShort((short)unionType.resolveElementIndex(union.initializedElementPosition));
                 gen(union.initializedElement);
                 state.allocateAnonLocal(union.exprType.getSize() - 2 - union.initializedElement.exprType.getSize());
             }
@@ -238,12 +239,12 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 short stackTop = state.nextUnallocatedByte();
 
                 gen(ifElse.cond);
-                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short)0); //patch to jump over if block
+                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short)0);
                 state.popStack(ifElse.cond.exprType.getSize());
                 int jmpFalseIndex = state.getCurrentCodeIndex();
 
                 gen(ifElse.ifBlock);
-                state.writeOp(Ops.JMP, (short)0); //patch to jump over else block
+                state.writeOp(Ops.JMP, (short)0);
                 int elseJmpIndex = state.getCurrentCodeIndex();
                 state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - jmpFalseIndex), jmpFalseIndex - 2);
 
@@ -253,15 +254,18 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
             case NMatch match -> {
                 UnionType matchValUnionType = (UnionType) symbolTable.tryInstantiateType(match.value.exprType);
-                short stackTop = state.nextUnallocatedByte();
-                short matchProducedValSize = (short) match.exprType.getSize();
+                short matchedValIndex = state.nextUnallocatedByte();
+                short matchValSize = (short) match.exprType.getSize();
+                int numUnionElements = matchValUnionType.nameTypePairs.length;
 
                 gen(match.value);
-                state.writeOp(Ops.BRANCH, stackTop);
 
+                state.writeOp(Ops.BRANCH, matchedValIndex);
                 int branchTableBegin = state.getCurrentCodeIndex();
-                for(int i = 0; i < matchValUnionType.nameTypePairs.length; i++)
-                    state.generatingFns.peek().code.writeShort((short)0);
+                for(int i = 0; i < numUnionElements; i++) {
+                    state.generatingFns.peek().code.writeShort((short) 0);
+                }
+                short[] branchTable = new short[numUnionElements];
 
                 List<Integer> jmpEndPatchList = new ArrayList<>();
 
@@ -269,12 +273,10 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                     switch(branch.left) {
                         case NMatch.Pattern.Union unionPattern -> {
                             short jmpDelta = (short)(state.getCurrentCodeIndex() - branchTableBegin);
-                            state.generatingFns.peek().code.writeShort(
-                                    jmpDelta,
-                                    branchTableBegin + 2 * matchValUnionType.resolveElementIndex(unionPattern.element)
-                            );
+                            branchTable[matchValUnionType.resolveElementIndex(unionPattern.element)] = jmpDelta;
 
                             state.enterScope();
+
                             Type elemType = matchValUnionType.resolveElementType(unionPattern.element);
                             int elemSize = elemType.getSize();
 
@@ -285,13 +287,13 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                                     ),
                                     elemSize
                             );
-                            state.mov((short)elemSize, elemVar, (short)(stackTop + UnionType.UNION_TAG_BYTES), isOrContainsRef(elemType));
+                            state.mov((short)elemSize, elemVar, (short)(matchedValIndex + UnionType.UNION_TAG_BYTES), isOrContainsRef(elemType));
 
-                            short branchStackTop = state.nextUnallocatedByte();
+                            short branchValIndex = state.nextUnallocatedByte();
                             gen(branch.right);
-                            state.rewindLocalsTo(stackTop);
+                            state.rewindLocalsTo(matchedValIndex);
+                            state.mov(matchValSize, state.nextUnallocatedByte(), branchValIndex, isOrContainsRef(match.exprType));
 
-                            state.mov(matchProducedValSize, state.nextUnallocatedByte(), branchStackTop, isOrContainsRef(match.exprType));
                             state.exitScope();
 
                             state.writeOp(Ops.JMP, (short)0);
@@ -299,11 +301,29 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                         }
 
                         case NMatch.Pattern.Default ignored -> {
+                            short jmpDelta = (short)(state.getCurrentCodeIndex() - branchTableBegin);
+                            for (int i = 0; i < branchTable.length; i++) {
+                                if(branchTable[i] == 0){
+                                    branchTable[i] = jmpDelta;
+                                }
+                            }
 
+                            state.enterScope();
+
+                            short branchValIndex = state.nextUnallocatedByte();
+                            gen(branch.right);
+                            state.rewindLocalsTo(matchedValIndex);
+                            state.mov(matchValSize, state.nextUnallocatedByte(), branchValIndex, isOrContainsRef(match.exprType));
+
+                            state.exitScope();
                         }
 
                         default -> throw new IllegalStateException("Unexpected value: " + branch.left);
                     }
+                }
+
+                for (int i = 0; i < branchTable.length; i++) {
+                    state.generatingFns.peek().code.writeShort(branchTable[i], branchTableBegin + 2 * i);
                 }
 
                 for (Integer i : jmpEndPatchList) {

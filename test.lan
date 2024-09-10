@@ -11,6 +11,7 @@ type<T> Shape = {
     rect : (width : T, height : T),
     square : (sideLen : T)
 }
+
 /*fn fib((n: u64) -> u64){
     if(n == 0u64) return 0u64
     if(n == 1u64) return 1u64
@@ -18,8 +19,6 @@ type<T> Shape = {
 }
 
 fib(40u64)*/
-
-//DynMemObj { gc_mark: u8, refs : [&DynMemObj], data : [u8] }
 
 
 /*type<T> List = (
