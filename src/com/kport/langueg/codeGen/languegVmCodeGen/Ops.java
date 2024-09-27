@@ -3,63 +3,41 @@ package com.kport.langueg.codeGen.languegVmCodeGen;
 public enum Ops {
     NOP(0x00),
 
-    MOV(0x01), //bytes: u16, to: u16, from: u16
+    MOV(0x01), //bytes: u16, to: u16, from: u16, flags: u8(zero: u7, contains_ref: bool)
     MOV8(0x02), //to: u16, from: u16
     MOV16(0x03), //to: u16, from: u16
     MOV32(0x04), //to: u16, from: u16
     MOV64(0x05), //to: u16, from: u16
+    MOV_REF(0x06), //to: u16, from: u16
 
-    LOAD(0x06), //bytes: u16, to: u16, data: [u8]
-    LOAD8(0x07), //to: u16, data: u8
-    LOAD16(0x08), //to: u16, data: u16
-    LOAD32(0x09), //to: u16, data: u32
-    LOAD64(0x0A), //to: u16, data: u64
-    LOADP(0x0B), //to: u16, index: u16
+    LOAD(0x11), //bytes: u16, to: u16, data: [u8]
+    LOAD8(0x12), //to: u16, data: u8
+    LOAD16(0x13), //to: u16, data: u16
+    LOAD32(0x14), //to: u16, data: u32
+    LOAD64(0x15), //to: u16, data: u64
+    LOADP(0x16), //to: u16, index: u16
 
-    LOADFN(0x0C), //to: u16, fnIndex: u16
-    CALL(0x0D), //fn: u16, paramsBegin: u16, retBegin: u16
-    CALL_DIRECT(0x0E), //fnIndex: u16, paramsBegin: u16, retBegin: u16
-    RET(0x0F), //retBegin: u16
+    LOADFN(0x1A), //to: u16, fnIndex: u16
+    CALL(0x1B), //fn: u16, paramsBegin: u16, retBegin: u16
+    CALL_DIRECT(0x1C), //fnIndex: u16, paramsBegin: u16, retBegin: u16
+    RET(0x1D), //retBegin: u16
 
-    JMP_IF_FALSE(0x10), //byte: u16, jmp_delta: i16
-    JMP(0x11), //jmpDelta: i16
+    JMP_IF_FALSE(0x21), //byte: u16, jmp_delta: i16
+    JMP(0x22), //jmpDelta: i16
 
-    BRANCH(0x12), //index: u16, table: [u16]
+    BRANCH(0x23), //index: u16, table: [u16]
 
     //-------------------------------------------
 
-    ALLOC_HEAP(0x35), //to: u16, size: u16
-    ALLOC_HEAP_DIRECT(0x36), //to: u16, size: u32
+    ALLOC(0x31), //ref_index: u16, size_index: u16
+    ALLOC_DIRECT(0x32), //ref_index: u16, size: u32
 
-    MARK_HEAP_REF_USED(0x37), //ref: u16
-    MARK_HEAP_REF_UNUSED(0x38), //ref: u16
-
-    MOV_WITH_REF_MARK(0x39), //bytes: u16, to: u16, from: u16
-    MOV_REF(0x3A), //to: u16, from: u16
-
-    MOV_TO_ARR(0x40), //bytes: u16, to_ref: u16, from: u16, to_index: u16
-    MOV_TO_ARR8(0x41), //to_ref: u16, from: u16, to_index: u16
-    MOV_TO_ARR16(0x42), //to_ref: u16, from: u16, to_index: u16
-    MOV_TO_ARR32(0x43), //to_ref: u16, from: u16, to_index: u16
-    MOV_TO_ARR64(0x44), //to_ref: u16, from: u16, to_index: u16
-
-    MOV_FROM_ARR(0x45), //bytes: u16, from_ref: u16, to: u16, from_index: u16
-    MOV_FROM_ARR8(0x46), //from_ref: u16, to: u16, from_index: u16
-    MOV_FROM_ARR16(0x47), //from_ref: u16, to: u16, from_index: u16
-    MOV_FROM_ARR32(0x48), //from_ref: u16, to: u16, from_index: u16
-    MOV_FROM_ARR64(0x49), //from_ref: u16, to: u16, from_index: u16
-
-    MOV_TO_ARR_DIRECT(0x4A), //bytes: u16, to_ref: u16, from: u16, to_index: u32
-    MOV_TO_ARR_DIRECT8(0x4B), //to_ref: u16, from: u16, to_index: u32
-    MOV_TO_ARR_DIRECT16(0x4C), //to_ref: u16, from: u16, to_index: u32
-    MOV_TO_ARR_DIRECT32(0x4D), //to_ref: u16, from: u16, to_index: u32
-    MOV_TO_ARR_DIRECT64(0x4E), //to_ref: u16, from: u16, to_index: u32
-
-    MOV_FROM_ARR_DIRECT(0x4F), //bytes: u16, from_ref: u16, to: u32, from_index: u16
-    MOV_FROM_ARR_DIRECT8(0x50), //from_ref: u16, to: u32, from_index: u16
-    MOV_FROM_ARR_DIRECT16(0x51), //from_ref: u16, to: u32, from_index: u16
-    MOV_FROM_ARR_DIRECT32(0x52), //from_ref: u16, to: u32, from_index: u16
-    MOV_FROM_ARR_DIRECT64(0x53), //from_ref: u16, to: u32, from_index: u16
+    MOV_TO_HEAP(0x35), //bytes: u16, to_index: u16, from: u16, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
+    MOV_FROM_HEAP(0x36), //bytes: u16, to: u16, from_index: u16, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
+    MOV_TO_HEAP_DIRECT(0x37), //bytes: u16, to: u32, from: u16, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
+    MOV_FROM_HEAP_DIRECT(0x38), //bytes: u16, to: u16, from: u32, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
+    MOV_TO_HEAP_ZERO(0x39), //bytes: u16, from: u16, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
+    MOV_FROM_HEAP_ZERO(0x3A), //bytes: u16, to: u16, ref_index: u16, flags: u8(zero: u7, contains_ref: bool)
 
     //-------------------------------------------
 
@@ -147,28 +125,6 @@ public enum Ops {
     NOTEQ64(0xC0), //to: u16, op1: u16, op2: u16
 
     //-------------------------------------------
-
-    ADDF32(0x17),
-    SUBF32(0x18),
-    MULF32(0x19),
-    DIVF32(0x1A),
-    POWF32(0x1B),
-
-    GREATERF32(0x1C),
-    LESSF32(0x1D),
-    GREATEREQF32(0x1E),
-    LESSEQF32(0x1F),
-
-    ADDF64(0x20),
-    SUBF64(0x21),
-    MULF64(0x22),
-    DIVF64(0x23),
-    POWF64(0x24),
-
-    GREATERF64(0x25),
-    LESSF64(0x26),
-    GREATEREQF64(0x27),
-    LESSEQF64(0x28),
     ;
 
     public final int code;

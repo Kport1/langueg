@@ -100,7 +100,7 @@ public class CodeGenState {
     }
 
     public void pushAllocDirect(int size){
-        writeOp(Ops.ALLOC_HEAP_DIRECT, allocateAnonLocal(RefType.REF_BYTES), size);
+        writeOp(Ops.ALLOC_DIRECT, allocateAnonLocal(RefType.REF_BYTES), size);
     }
 
     public final SequencedMap<byte[], Integer> constIndices = new LinkedHashMap<>();
@@ -114,17 +114,19 @@ public class CodeGenState {
 
     private void load(short to, byte[] val){
         if(to + val.length > LanguegVmCodeGenerator.LOCALS_MAX_SIZE) throw new Error();
-        val = Util.trimByteArr(val);
+        //val = Util.trimByteArr(val);
         short size = (short)val.length;
+        //long l = val[0] | val[1] << 8L | val[2] << 16L | val[3] << 24L | (long)val[4] << 32L | (long)val[5] << 40L | (long)val[6] << 48L | (long)val[7] << 56L;
+        //System.out.println(l);
 
         if(size == 1)
             writeOp(Ops.LOAD8, to, val[0]);
         else if(size == 2)
-            writeOp(Ops.LOAD16, to, (short)(val[0] | val[1] << 8));
+            writeOp(Ops.LOAD16, to, Util.fromBytesS(val));
         else if(size == 4)
-            writeOp(Ops.LOAD32, to, val[0] | val[1] << 8 | val[2] << 16 | val[3] << 24);
+            writeOp(Ops.LOAD32, to, Util.fromBytesI(val));
         else if(size == 8)
-            writeOp(Ops.LOAD64, to, val[0] | val[1] << 8L | val[2] << 16L | val[3] << 24L | (long)val[4] << 32L | (long)val[5] << 40L | (long)val[6] << 48L | (long)val[7] << 56L);
+            writeOp(Ops.LOAD64, to, Util.fromBytesL(val));
         else
             writeOp(Ops.LOADP, to, registerConst(val));
     }
@@ -136,29 +138,29 @@ public class CodeGenState {
     public void loadShort(short to, short val){
         load(to, new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
+                (byte)((val >>> 8) & 0xFF),
         });
     }
 
     public void loadInt(short to, int val){
         load(to, new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
-                (byte)((val >> 16) & 0xFF),
-                (byte)((val >> 24) & 0xFF)
+                (byte)((val >>> 8) & 0xFF),
+                (byte)((val >>> 16) & 0xFF),
+                (byte)((val >>> 24) & 0xFF)
         });
     }
 
     public void loadLong(short to, long val){
         load(to, new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
-                (byte)((val >> 16) & 0xFF),
-                (byte)((val >> 24) & 0xFF),
-                (byte)((val >> 32) & 0xFF),
-                (byte)((val >> 40) & 0xFF),
-                (byte)((val >> 48) & 0xFF),
-                (byte)((val >> 56) & 0xFF)
+                (byte)((val >>> 8) & 0xFF),
+                (byte)((val >>> 16) & 0xFF),
+                (byte)((val >>> 24) & 0xFF),
+                (byte)((val >>> 32) & 0xFF),
+                (byte)((val >>> 40) & 0xFF),
+                (byte)((val >>> 48) & 0xFF),
+                (byte)((val >>> 56) & 0xFF)
         });
     }
 
@@ -175,40 +177,36 @@ public class CodeGenState {
     public void pushShort(short val){
         push(new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
+                (byte)((val >>> 8) & 0xFF),
         });
     }
 
     public void pushInt(int val){
         push(new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
-                (byte)((val >> 16) & 0xFF),
-                (byte)((val >> 24) & 0xFF)
+                (byte)((val >>> 8) & 0xFF),
+                (byte)((val >>> 16) & 0xFF),
+                (byte)((val >>> 24) & 0xFF)
         });
     }
 
     public void pushLong(long val){
         push(new byte[]{
                 (byte)(val & 0xFF),
-                (byte)((val >> 8) & 0xFF),
-                (byte)((val >> 16) & 0xFF),
-                (byte)((val >> 24) & 0xFF),
-                (byte)((val >> 32) & 0xFF),
-                (byte)((val >> 40) & 0xFF),
-                (byte)((val >> 48) & 0xFF),
-                (byte)((val >> 56) & 0xFF)
+                (byte)((val >>> 8) & 0xFF),
+                (byte)((val >>> 16) & 0xFF),
+                (byte)((val >>> 24) & 0xFF),
+                (byte)((val >>> 32) & 0xFF),
+                (byte)((val >>> 40) & 0xFF),
+                (byte)((val >>> 48) & 0xFF),
+                (byte)((val >>> 56) & 0xFF)
         });
     }
 
     public void mov(short bytes, short to, short from, boolean typeContainsRefs){
         if(bytes == 0) return;
-        if(typeContainsRefs) {
-            if(bytes == RefType.REF_BYTES){
-                writeOp(Ops.MOV_REF, to, from);
-                return;
-            }
-            writeOp(Ops.MOV_WITH_REF_MARK, bytes, to, from);
+        if(bytes == RefType.REF_BYTES && typeContainsRefs){
+            writeOp(Ops.MOV_REF, to, from);
             return;
         }
 
@@ -217,48 +215,26 @@ public class CodeGenState {
             case 2 -> writeOp(Ops.MOV16, to, from);
             case 4 -> writeOp(Ops.MOV32, to, from);
             case 8 -> writeOp(Ops.MOV64, to, from);
-            default -> writeOp(Ops.MOV, bytes, to, from);
+            default -> writeOp(Ops.MOV, bytes, to, from, (byte)(typeContainsRefs? 1 : 0));
         }
     }
 
-    public void movToArr(short bytes, short toRef, short from, short toIndex){
-        switch (bytes){
-            case 1 -> writeOp(Ops.MOV_TO_ARR8, toRef, from, toIndex);
-            case 2 -> writeOp(Ops.MOV_TO_ARR16, toRef, from, toIndex);
-            case 4 -> writeOp(Ops.MOV_TO_ARR32, toRef, from, toIndex);
-            case 8 -> writeOp(Ops.MOV_TO_ARR64, toRef, from, toIndex);
-            default -> writeOp(Ops.MOV_TO_ARR, bytes, toRef, from, toIndex);
+    public void movToHeapDirect(short bytes, int to, short from, short refIndex, boolean typeContainsRefs){
+        if(bytes == 0) return;
+        if(to == 0) {
+            writeOp(Ops.MOV_TO_HEAP_ZERO, bytes, from, refIndex, (byte) (typeContainsRefs ? 1 : 0));
+            return;
         }
+        writeOp(Ops.MOV_TO_HEAP_DIRECT, bytes, to, from, refIndex, (byte) (typeContainsRefs ? 1 : 0));
     }
 
-    public void movFromArr(short bytes, short fromRef, short to, short fromIndex){
-        switch (bytes){
-            case 1 -> writeOp(Ops.MOV_FROM_ARR8, fromRef, to, fromIndex);
-            case 2 -> writeOp(Ops.MOV_FROM_ARR16, fromRef, to, fromIndex);
-            case 4 -> writeOp(Ops.MOV_FROM_ARR32, fromRef, to, fromIndex);
-            case 8 -> writeOp(Ops.MOV_FROM_ARR64, fromRef, to, fromIndex);
-            default -> writeOp(Ops.MOV_FROM_ARR, bytes, fromRef, to, fromIndex);
+    public void movFromHeapDirect(short bytes, short to, int from, short refIndex, boolean typeContainsRefs){
+        if(bytes == 0) return;
+        if(from == 0) {
+            writeOp(Ops.MOV_FROM_HEAP_ZERO, bytes, to, refIndex, (byte) (typeContainsRefs ? 1 : 0));
+            return;
         }
-    }
-
-    public void movToArrDirect(short bytes, short toRef, short from, int toIndex){
-        switch (bytes){
-            case 1 -> writeOp(Ops.MOV_TO_ARR_DIRECT8, toRef, from, toIndex);
-            case 2 -> writeOp(Ops.MOV_TO_ARR_DIRECT16, toRef, from, toIndex);
-            case 4 -> writeOp(Ops.MOV_TO_ARR_DIRECT32, toRef, from, toIndex);
-            case 8 -> writeOp(Ops.MOV_TO_ARR_DIRECT64, toRef, from, toIndex);
-            default -> writeOp(Ops.MOV_TO_ARR_DIRECT, bytes, toRef, from, toIndex);
-        }
-    }
-
-    public void movFromArrDirect(short bytes, short fromRef, short to, int fromIndex){
-        switch (bytes){
-            case 1 -> writeOp(Ops.MOV_FROM_ARR_DIRECT8, fromRef, to, fromIndex);
-            case 2 -> writeOp(Ops.MOV_FROM_ARR_DIRECT16, fromRef, to, fromIndex);
-            case 4 -> writeOp(Ops.MOV_FROM_ARR_DIRECT32, fromRef, to, fromIndex);
-            case 8 -> writeOp(Ops.MOV_FROM_ARR_DIRECT64, fromRef, to, fromIndex);
-            default -> writeOp(Ops.MOV_FROM_ARR_DIRECT, bytes, fromRef, to, fromIndex);
-        }
+        writeOp(Ops.MOV_FROM_HEAP_DIRECT, bytes, to, from, refIndex, (byte) (typeContainsRefs ? 1 : 0));
     }
 
     public void writeOp(Ops op){
@@ -319,6 +295,26 @@ public class CodeGenState {
         fn.code.writeInt(i);
     }
 
+    public void writeOp(Ops op, short s, int i, short s2, short s3, byte b){
+        FnData fn = generatingFns.peek();
+        fn.code.write(op.code);
+        fn.code.writeShort(s);
+        fn.code.writeInt(i);
+        fn.code.writeShort(s2);
+        fn.code.writeShort(s3);
+        fn.code.write(b);
+    }
+
+    public void writeOp(Ops op, short s, short s2, int i, short s3, byte b){
+        FnData fn = generatingFns.peek();
+        fn.code.write(op.code);
+        fn.code.writeShort(s);
+        fn.code.writeShort(s2);
+        fn.code.writeInt(i);
+        fn.code.writeShort(s3);
+        fn.code.write(b);
+    }
+
     public void writeOp(Ops op, short s, long l){
         FnData fn = generatingFns.peek();
         fn.code.write(op.code);
@@ -332,6 +328,15 @@ public class CodeGenState {
         fn.code.writeShort(s1);
         fn.code.writeShort(s2);
         fn.code.writeShort(s3);
+    }
+
+    public void writeOp(Ops op, short s1, short s2, short s3, byte b){
+        FnData fn = generatingFns.peek();
+        fn.code.write(op.code);
+        fn.code.writeShort(s1);
+        fn.code.writeShort(s2);
+        fn.code.writeShort(s3);
+        fn.code.write(b);
     }
 
     public void writeOp(Ops op, short s1, short s2, short s3, short s4){

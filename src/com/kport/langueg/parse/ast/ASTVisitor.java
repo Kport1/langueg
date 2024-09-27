@@ -3,6 +3,7 @@ package com.kport.langueg.parse.ast;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.integer.*;
@@ -26,8 +27,11 @@ public interface ASTVisitor {
 
 
     default void visit(NAssignable assignable, VisitorContext context){}
+    default void visit(NDeRef deRef, VisitorContext context){
+        deRef.reference.accept(this, VisitorContext.clone(context));
+    }
     default void visit(NDotAccess access, VisitorContext context){
-        access.accessed.accept(this, context);
+        access.accessed.accept(this, VisitorContext.clone(context));
     }
     default void visit(NIdent ident, VisitorContext context){}
 
@@ -98,7 +102,7 @@ public interface ASTVisitor {
         }
     }
     default void visit(NRef ref, VisitorContext context){
-        ref.right.accept(this, VisitorContext.clone(context));
+        ref.referent.accept(this, VisitorContext.clone(context));
     }
     default void visit(NReturn return_, VisitorContext context){
         return_.expr.accept(this, VisitorContext.clone(context));

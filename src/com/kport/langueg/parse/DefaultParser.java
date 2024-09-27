@@ -8,6 +8,7 @@ import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.integer.*;
@@ -204,6 +205,11 @@ public class DefaultParser implements Parser{
             case And -> {
                 iterator.inc();
                 return new NRef(cur.offset, parseUnaryOp(parseDotAccess(parseCall(parseAtom()))));
+            }
+
+            case Mul -> {
+                iterator.inc();
+                return new NDeRef(cur.offset, parseUnaryOp(parseDotAccess(parseCall(parseAtom()))));
             }
         }
 

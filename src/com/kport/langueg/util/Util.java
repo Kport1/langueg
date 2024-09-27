@@ -31,4 +31,32 @@ public abstract class Util {
         System.arraycopy(arr, 0, res, 0, trimTo);
         return res;
     }
+
+    public static short zeroExtendS(byte b){
+        return (short) ((short)b & ((short)0xFF));
+    }
+
+    public static int zeroExtendI(byte b){
+        return b & 0xFF;
+    }
+
+    public static long zeroExtendL(byte b){
+        return b & 0xFFL;
+    }
+
+    public static short fromBytesS(byte[] bytes){
+        return (short) (zeroExtendS(bytes[0]) | zeroExtendS(bytes[1]) << ((short)8));
+    }
+
+    public static int fromBytesI(byte[] bytes){
+        return zeroExtendI(bytes[0]) | zeroExtendI(bytes[1]) << 8 |
+                zeroExtendI(bytes[2]) << 16 | zeroExtendI(bytes[3]) << 24;
+    }
+
+    public static long fromBytesL(byte[] bytes){
+        return zeroExtendL(bytes[0]) | zeroExtendL(bytes[1]) << 8L |
+               zeroExtendL(bytes[2]) << 16L | zeroExtendL(bytes[3]) << 24L |
+               zeroExtendL(bytes[4]) << 32L | zeroExtendL(bytes[5]) << 40L |
+               zeroExtendL(bytes[6]) << 48L | zeroExtendL(bytes[7]) << 56L;
+    }
 }

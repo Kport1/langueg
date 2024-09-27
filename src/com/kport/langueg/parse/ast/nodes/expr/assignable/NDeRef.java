@@ -1,21 +1,22 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.assignable;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Either;
 
-public class NRef extends NExpr {
-    public NExpr referent;
+public class NDeRef extends NAssignable {
+    public NExpr reference;
 
-    public NRef(int offset_, NExpr right_){
-        super(offset_, right_);
-        referent = right_;
+    public NDeRef(int offset_, NExpr reference_){
+        super(offset_);
+        reference = reference_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{referent};
+        return new AST[]{reference};
     }
 
     @Override
@@ -24,7 +25,7 @@ public class NRef extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    protected String nToString() {
         return "";
     }
 
@@ -36,7 +37,7 @@ public class NRef extends NExpr {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NRef a)) return false;
-        return referent.equals(a.referent);
+        if(!(o instanceof NDeRef a)) return false;
+        return reference.equals(a.reference);
     }
 }

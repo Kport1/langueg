@@ -9,6 +9,7 @@ import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.integer.*;
@@ -129,13 +130,21 @@ public class DefaultTypeChecker implements TypeChecker {
         ast.accept(new ASTVisitor() {
             private void setLValueRec(NAssignable assignable){
                 assignable.isLValue = true;
-                if (assignable instanceof NIdent) return;
-                if (assignable instanceof NDotAccess dotAccess){
-                    if(!(dotAccess.accessed instanceof NAssignable dotAssignable)) throw new Error();
-                    setLValueRec(dotAssignable);
-                    return;
+                switch (assignable) {
+                    case NIdent ignored -> {}
+
+                    case NDotAccess dotAccess -> {
+                        if (!(dotAccess.accessed instanceof NAssignable dotAssignable)) throw new Error();
+                        setLValueRec(dotAssignable);
+                    }
+
+                    case NDeRef deRef -> {
+                        if (!(deRef.reference instanceof NAssignable deRefAssignable)) throw new Error();
+                        setLValueRec(deRefAssignable);
+                    }
+
+                    default -> throw new Error();
                 }
-                throw new Error();
             }
 
             @Override
@@ -428,7 +437,7 @@ public class DefaultTypeChecker implements TypeChecker {
 
             case NRef ref -> {
                 if(!(symbolTable.tryInstantiateType(type) instanceof RefType refType)) yield false;
-                yield checkType(ref.right, refType.referentType());
+                yield checkType(ref.referent, refType.referentType());
             }
 
             case NExpr exp -> {
@@ -669,7 +678,14 @@ public class DefaultTypeChecker implements TypeChecker {
                 };
             }
 
-            case NRef ref -> new RefType(synthesizeType(ref.right));
+            case NRef ref -> new RefType(synthesizeType(ref.referent));
+
+            case NDeRef deRef -> {
+                if(!(synthesizeType(deRef.reference) instanceof RefType refType))
+                    throw new Error("Trying to dereference value of non reference type");
+
+                yield refType.referentType;
+            }
 
             case NDotAccess dotAccess -> {
                 Type accessedType_ = synthesizeType(dotAccess.accessed);

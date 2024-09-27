@@ -11,6 +11,7 @@ import com.kport.langueg.parse.ast.nodes.NNamedFn;
 import com.kport.langueg.parse.ast.nodes.NProg;
 import com.kport.langueg.parse.ast.nodes.expr.*;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.integer.*;
@@ -191,16 +192,30 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NRef ref -> {
-                short size = (short) ref.right.exprType.getSize();
+                short size = (short) ref.referent.exprType.getSize();
 
                 short refIndex = state.nextUnallocatedByte();
                 state.pushAllocDirect(size);
 
                 short valIndex = state.nextUnallocatedByte();
-                gen(ref.right);
+                gen(ref.referent);
 
-                state.movToArrDirect(size, refIndex, valIndex, (short)0);
+                state.movToHeapDirect(size, (short)0, valIndex, refIndex, isOrContainsRef(ref.referent.exprType));
                 state.rewindLocalsTo(valIndex);
+            }
+
+            case NDeRef deRef -> {
+                Type referentType = ((RefType)deRef.reference.exprType).referentType;
+                short size = (short) referentType.getSize();
+
+                short valIndex = state.nextUnallocatedByte();
+                state.allocateAnonLocal(size);
+
+                short refIndex = state.nextUnallocatedByte();
+                gen(deRef.reference);
+
+                state.movFromHeapDirect(size, valIndex, (short) 0, refIndex, isOrContainsRef(referentType));
+                state.rewindLocalsTo(refIndex);
             }
 
             case NBlock block -> {
@@ -253,11 +268,12 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             }
 
             case NMatch match -> {
-                UnionType matchValUnionType = (UnionType) symbolTable.tryInstantiateType(match.value.exprType);
-                short matchedValIndex = state.nextUnallocatedByte();
                 short matchValSize = (short) match.exprType.getSize();
+
+                UnionType matchValUnionType = (UnionType) symbolTable.tryInstantiateType(match.value.exprType);
                 int numUnionElements = matchValUnionType.nameTypePairs.length;
 
+                short matchedValIndex = state.nextUnallocatedByte();
                 gen(match.value);
 
                 state.writeOp(Ops.BRANCH, matchedValIndex);
@@ -291,8 +307,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                             short branchValIndex = state.nextUnallocatedByte();
                             gen(branch.right);
-                            state.rewindLocalsTo(matchedValIndex);
-                            state.mov(matchValSize, state.nextUnallocatedByte(), branchValIndex, isOrContainsRef(match.exprType));
+                            state.mov(matchValSize, matchedValIndex, branchValIndex, isOrContainsRef(match.exprType));
 
                             state.exitScope();
 
@@ -312,8 +327,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                             short branchValIndex = state.nextUnallocatedByte();
                             gen(branch.right);
-                            state.rewindLocalsTo(matchedValIndex);
-                            state.mov(matchValSize, state.nextUnallocatedByte(), branchValIndex, isOrContainsRef(match.exprType));
+                            state.mov(matchValSize, matchedValIndex, branchValIndex, isOrContainsRef(match.exprType));
 
                             state.exitScope();
                         }
@@ -330,6 +344,8 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                     short jmpDelta = (short)(state.getCurrentCodeIndex() - i);
                     state.generatingFns.peek().code.writeShort(jmpDelta, i - 2);
                 }
+
+                state.rewindLocalsTo(matchedValIndex + matchValSize);
             }
 
             case NNamedFn namedFn -> {
@@ -375,32 +391,35 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
     private void genAssign(NAssignable assignable){
         short size = (short)assignable.exprType.getSize();
-        short stackTop = (short)(state.nextUnallocatedByte() - size);
+        short valueIndex = (short)(state.nextUnallocatedByte() - size);
 
-        short valOffset = genAssignAlgebraic(assignable);
-        state.mov(size, valOffset, stackTop, isOrContainsRef(assignable.exprType));
-    }
+        int offset = 0;
+        while(true){
+            switch (assignable){
+                case NIdent ident -> {
+                    offset += state.getLocalOffset(new Identifier(ident.scope, ident.identifier));
+                    state.mov(size, (short)offset, valueIndex, isOrContainsRef(assignable.exprType));
+                    return;
+                }
 
-    private short genAssignAlgebraic(NAssignable assignable){
-        return switch (assignable){
-            case NIdent ident -> state.getLocalOffset(new Identifier(ident.scope, ident.identifier));
-            case NDotAccess dotAccess -> {
-                short baseOffset = genAssignAlgebraic((NAssignable) dotAccess.accessed);
-                yield switch (symbolTable.tryInstantiateType(dotAccess.accessed.exprType)) {
-                    case TupleType tupleType ->
-                            (short)(baseOffset + tupleType.getStride(tupleType.resolveElementIndex(dotAccess.accessor)));
+                case NDotAccess dotAccess -> {
+                    TupleType tupleType = (TupleType) symbolTable.tryInstantiateType(dotAccess.accessed.exprType);
+                    offset += (short) tupleType.getStride(tupleType.resolveElementIndex(dotAccess.accessor));
+                    assignable = (NAssignable) dotAccess.accessed;
+                }
 
-                    /*case UnionType unionType -> {
-                        state.loadShort(baseOffset, unionType.resolveElementIndex(dotAccess.accessed));
-                        yield (short)(2 + baseOffset);
-                    }*/
+                case NDeRef deRef -> {
+                    short refIndex = state.nextUnallocatedByte();
+                    gen(deRef.reference);
+                    state.movToHeapDirect(size, offset, valueIndex, refIndex, isOrContainsRef(assignable.exprType));
+                    state.rewindLocalsTo(refIndex);
+                    return;
+                }
 
-                    default -> throw new IllegalStateException("Unexpected value: " + dotAccess.accessed.exprType);
-                };
+                default -> throw new IllegalStateException("Unexpected value: " + assignable);
             }
+        }
 
-            default -> throw new IllegalStateException("Unexpected value: " + assignable);
-        };
     }
 
     private boolean isOrContainsRef(Type t){
@@ -410,8 +429,8 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NamedType namedType -> isOrContainsRef(symbolTable.instantiateType(namedType));
             case PrimitiveType ignored -> false;
             case RefType ignored -> true;
-            case TupleType tupleType -> tupleType.tupleTypes().length != 0 && Arrays.stream(tupleType.tupleTypes()).allMatch(this::isOrContainsRef);
-            case UnionType unionType -> unionType.unionTypes().length != 0 && Arrays.stream(unionType.unionTypes()).allMatch(this::isOrContainsRef);
+            case TupleType tupleType -> tupleType.tupleTypes().length != 0 && Arrays.stream(tupleType.tupleTypes()).anyMatch(this::isOrContainsRef);
+            case UnionType unionType -> unionType.unionTypes().length != 0 && Arrays.stream(unionType.unionTypes()).anyMatch(this::isOrContainsRef);
         };
     }
 
