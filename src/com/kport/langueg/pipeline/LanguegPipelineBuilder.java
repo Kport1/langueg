@@ -1,7 +1,5 @@
 package com.kport.langueg.pipeline;
 
-import com.kport.langueg.error.DefaultErrorHandler;
-import com.kport.langueg.error.ErrorHandler;
 import com.sun.jdi.InvalidTypeException;
 
 import java.util.ArrayList;
@@ -15,11 +13,11 @@ public class LanguegPipelineBuilder<O> {
     private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> beforeProcess_ = new ArrayList<>();
     private final ArrayList<BiConsumer<Object, LanguegPipeline<String, O>>> afterProcess_ = new ArrayList<>();
 
-    public LanguegPipelineBuilder(){
+    public LanguegPipelineBuilder() {
 
     }
 
-    public LanguegPipelineBuilder<O> addComponent(LanguegComponent component, BiConsumer<Object, LanguegPipeline<String, O>> before, BiConsumer<Object, LanguegPipeline<String, O>> after){
+    public LanguegPipelineBuilder<O> addComponent(LanguegComponent component, BiConsumer<Object, LanguegPipeline<String, O>> before, BiConsumer<Object, LanguegPipeline<String, O>> after) {
         components_.add(component);
         beforeProcess_.add(before);
         afterProcess_.add(after);
@@ -27,7 +25,7 @@ public class LanguegPipelineBuilder<O> {
         return this;
     }
 
-    public LanguegPipeline<String, O> get(){
+    public LanguegPipeline<String, O> get() {
         return new LanguegPipeline<>() {
             private final ArrayList<LanguegComponent> components = components_;
 
@@ -36,13 +34,12 @@ public class LanguegPipelineBuilder<O> {
 
             private final HashMap<String, Object> additionalData = new HashMap<>();
 
-            private ErrorHandler errorHandler;
+            private CharSequence source;
 
             @Override
             @SuppressWarnings("unchecked")
             public O evaluate(String input) {
-                errorHandler = new DefaultErrorHandler(input);
-
+                source = input;
                 Object previousRepresentation = input;
                 for (int i = 0; i < components.size(); i++) {
                     beforeProcess.get(i).accept(previousRepresentation, this);
@@ -70,8 +67,8 @@ public class LanguegPipelineBuilder<O> {
             }
 
             @Override
-            public ErrorHandler getErrorHandler() {
-                return errorHandler;
+            public CharSequence getSource() {
+                return source;
             }
         };
     }

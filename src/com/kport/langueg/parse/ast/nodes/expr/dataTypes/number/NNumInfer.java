@@ -1,33 +1,34 @@
-package com.kport.langueg.parse.ast.nodes;
+package com.kport.langueg.parse.ast.nodes.expr.dataTypes.number;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 
-import java.util.Arrays;
+import java.util.Objects;
 
-public class NProg extends AST {
+public class NNumInfer extends NExpr {
 
-    public AST[] statements;
+    public String valString;
 
-    public NProg(int offset_, AST... children) {
-        super(offset_, children);
-        statements = children;
+    public NNumInfer(int offset_, String valString_) {
+        super(offset_);
+        valString = valString_;
     }
 
     @Override
     public AST[] getChildren() {
-        return statements;
+        return null;
     }
 
     @Override
     public boolean hasChildren() {
-        return true;
+        return false;
     }
 
     @Override
     protected String nToString() {
-        return "";
+        return valString;
     }
 
     @Override
@@ -38,7 +39,8 @@ public class NProg extends AST {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NProg a)) return false;
-        return Arrays.deepEquals(statements, a.statements);
+        if(!(o instanceof NNumInfer a)) return false;
+        return Objects.equals(valString, a.valString);
     }
 }
+

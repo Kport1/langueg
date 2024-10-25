@@ -2,7 +2,6 @@ package com.kport.langueg.parse.ast.nodes;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
-import com.kport.langueg.parse.ast.nodes.expr.integer.NInt8;
 
 public class NUse extends AST {
 

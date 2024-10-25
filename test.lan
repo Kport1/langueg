@@ -1,3 +1,4 @@
+var x : ({x:u32,y:(u16,u16)},u8) = ({.y=(1u8,2u16)},3u8);
 /*var s : Shape<u32> = {.circle = (.rad = 6u32)}
 
 var r = match(s)
@@ -14,10 +15,29 @@ type<T> Shape = {
     square : (sideLen : T)
 }*/
 
-var x = (1u8, 2u8)
+/*var x = (1u8, 2u8)
 var y = (3u8, &x)
 var z = &y;
 (*(*z).1).0 = 4u8
+
+var a = (1000u64, 2000u64)*/
+
+/*var i = 0u32;
+while(i < 10u32) {
+    var x = &i;
+    i += 1u32;
+}*/
+
+/*fn x((a : i32) -> i32 -> i32){
+    return fn((b : i32) -> i32) a+b;
+}
+
+x(5)(3)*/
+
+/*var x = (1u8,2u8,(3u8,4u8))
+x.2.0=5*/
+
+
 
 /*fn fib((n: u64) -> u64){
     if(n == 0u64) return 0u64

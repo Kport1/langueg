@@ -2,60 +2,87 @@ package com.kport.langueg.error;
 
 public enum Errors {
 
-    PARSE_IF_CONDITION_EMPTY(                   "Condition of if statement cannot be empty! Line: %d",
-                                                "Add an expression between the parentheses"),
-    PARSE_IF_CONDITION_TUPLE(                   "Condition of if statement cannot be a tuple! Line: %d",
-                                                "Remove all top level commas"),
-
-    PARSE_WHILE_CONDITION_EMPTY(                "Condition of while loop cannot be empty! Line: %d",
-                                                "Add an expression between the parentheses"),
-    PARSE_WHILE_CONDITION_TUPLE(                "Condition of while loop cannot be a tuple! Line: %d",
-                                                "Remove all top level commas"),
-
-    PARSE_FOR_HEAD_EMPTY(                       "Head of for loop cannot be empty! Line: %d",
-                                                "Add three statements as initialization, loop condition and increment, all separated by semicolons"),
-    PARSE_FOR_HEAD_MALFORMED(                   "Head of for loop doesn't contain exactly 3 statements! Line: %d",
-                                                "Make sure you have three statements for initialization, loop condition and increment, all separated by semicolons"),
-
     PARSE_BLOCK_NOT_CLOSED(                     "Block opened on line %1$d isn't ever closed!",
                                                 "Add a closing curly bracket or remove the opening one"),
 
-    PARSE_VAR_EXPECTED_IDENTIFIER(              "Expected a name for the variable being declared! Line: %d",
-                                                "Variable declarations must follow the pattern: var/type name"),
-    PARSE_VAR_DESTRUCT_EXPECTED_IDENTIFIER(     "Expected identifier in destructuring assignment! Line: %d",
-                                                "Variable declaration with destructuring assignment must follow the pattern: var (name1, name2, ...) = ..."),
-    PARSE_VAR_DESTRUCT_CANNOT_INFER_TYPE(       "Cannot infer type of variables, without assignment after declaration! Line: %d",
-                                                "Variable declaration with destructuring assignment must follow the pattern: var (name1, name2, ...) = ..."),
-
-    PARSE_INT_INVALID(                          "\"%2$s\" is not a valid integer! Line: %1$d",
-                                                ""),
-    PARSE_FLOAT_INVALID(                        "\"%2$s\" is not a valid float! Line: %1$d",
-                                                ""),
-
     PARSE_ATOM_REACHED_EOF(                     "Reached EOF whilst parsing atom!",
                                                 ""),
-    PARSE_ATOM_UNEXPECTED_TOKEN(                "Unexpected token \"%2$s\"! Line: %1$d",
+    PARSE_ATOM_UNEXPECTED_TOKEN(                "Unexpected token \"%1$s\"",
                                                 ""),
 
-    PARSE_DELIM_EXPECTED_START(                 "Expected token \"%2$s\"! Line: %1$d",
+    PARSE_DELIM_EXPECTED_START(                 "Expected token \"%1$s\"",
                                                 ""),
-    PARSE_DELIM_EXPECTED_SEPARATOR(             "Expected token \"%2$s\"! Line: %1$d",
+    PARSE_DELIM_EXPECTED_SEPARATOR(             "Expected token \"%1$s\"",
                                                 ""),
 
 
+    CHECK_SYNTHESIZE_UNION(                     "Cannot synthesize type of union constructor",
+                                                "Use this in a context, where a type is expected."),
+    CHECK_SYNTHESIZE_NUM_INFER(                 "Cannot synthesize type of number, without explicit annotation",
+                                                "Annotate the type of this number or use it in a context, where a type is expected"),
+    CHECK_SYNTHESIZE_VAR_INIT(                  "Cannot synthesize type of expression used to initialize variable",
+                                                "Annotate the type of this variable or make the type of expression synthesizeable"),
+    CHECK_SYNTHESIZE_IF_ELSE_FIRST_IF(          "If-else expression's if branch's type cannot be synthesized",
+                                                ""),
 
-    CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS(        "Function \"%2$s\" doesn't return a value on all paths! Line: %1$d",
+
+    CHECK_CHECK_GENERIC(                        "Expression can't be made to have type %1$s, because synthesized type %2$s doesn't match",
                                                 ""),
-    CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON(   "Anonymous function doesn't return a value on all paths! Line: %d",
+
+    CHECK_CHECK_TUPLE(                          "Tuple can't be made to have type %1$s",
                                                 ""),
-    CHECK_FN_RETURN_TYPE_MISMATCH(              "Function \"%2$s\" should return \"%3$s\", but returns \"%4$s\" instead! Line: %1$d",
+    CHECK_CHECK_TUPLE_NO_INDEX(                 "Element with index %1$s doesn't exist in type expected of this tuple constructor",
                                                 ""),
-    CHECK_FN_RETURN_TYPE_MISMATCH_VOID(         "Function \"%2$s\" should return \"%3$s\", but returns nothing instead! Line: %1$d",
+    CHECK_CHECK_TUPLE_NO_NAME(                  "Element with name %1$s doesn't exist in type expected of this tuple constructor",
                                                 ""),
-    CHECK_FN_RETURN_TYPE_MISMATCH_ANON(         "Anonymous function should return \"%2$s\", but returns \"%3$s\" instead! Line: %1$d",
+    CHECK_CHECK_TUPLE_ALREADY_INIT(             "Element is initialized multiple times in tuple constructor",
                                                 ""),
-    CHECK_FN_RETURN_TYPE_MISMATCH_VOID_ANON(    "Anonymous function should return \"%2$s\", but returns nothing instead! Line: %1$d",
+
+    CHECK_CHECK_UNION(                          "Union can't be made to have type %1$s",
                                                 ""),
+    CHECK_CHECK_UNION_NO_INDEX(                 "Element with index %1$s doesn't exist in type expected of this union constructor",
+                                                ""),
+    CHECK_CHECK_UNION_NO_NAME(                  "Element with name %1$s doesn't exist in type expected of this union constructor",
+                                                ""),
+
+    CHECK_CHECK_IF_COND(                        "Condition of if expression can't be made to have type boolean",
+                                                ""),
+
+    CHECK_CHECK_IF_ELSE_COND(                   "Condition of if-else expression can't be made to have type boolean",
+                                                ""),
+    CHECK_CHECK_IF_ELSE_IF(                     "If-else expression's if branch can't be made to have type %1$s",
+                                                ""),
+    CHECK_CHECK_IF_ELSE_ELSE(                   "If-else expression's else branch can't be made to have type %1$s",
+                                                ""),
+    CHECK_CHECK_IF_ELSE_ELSE_SYN_FROM_IF(       "If-else expression's else branch can't be made to have type %1$s, expected by if branch",
+                                                ""),
+
+    CHECK_CHECK_WHILE_COND(                     "Condition of while loop can't be made to have type boolean",
+                                                ""),
+    CHECK_CHECK_WHILE_BODY(                     "Body of while loop can't be made to have unit type",
+                                                ""),
+
+    CHECK_CHECK_MATCH(                          "Branch of match expression cant be made to have type %1$s, expected by first branch",
+                                                ""),
+
+    CHECK_CHECK_FN_ARG(                         "Function argument can't be made to have type %1$s",
+                                                ""),
+
+    CHECK_CHECK_RETURN(                         "Returned value can't be made to have type %1$s",
+                                                ""),
+
+    CHECK_CHECK_ASSIGN(                         "Cannot assign to location expecting %1$s",
+                                                ""),
+
+    CHECK_CHECK_REF(                            "Ref can't be made to have type %1$s",
+                                                ""),
+
+    CHECK_CHECK_NUM_INFER(                      "Number can't be made to have type %1$s",
+                                                ""),
+
+    CHECK_CHECK_VAR_INIT(                       "Variable initializer can't be made to have type %1$s",
+                                                ""),
+
 
     PLACEHOLDER(                                "Fix this error",
                                                 "pls");
@@ -63,8 +90,22 @@ public enum Errors {
     public final String format;
     public final String suggestion;
 
-    Errors(String format_, String suggestion_){
+    Errors(String format_, String suggestion_) {
         format = format_;
         suggestion = suggestion_;
+    }
+
+    public static String formatError(String formatStr, CharSequence source, int offset, Object... args) {
+        String errorString = String.format(formatStr, args);
+
+        //%%CL Code line
+        int indexOfPrevNewline = offset;
+        while (source.charAt(indexOfPrevNewline) != '\n' && indexOfPrevNewline > 0) indexOfPrevNewline--;
+        int indexOfNextNewline = offset;
+        while (source.charAt(indexOfNextNewline) != '\n' && indexOfNextNewline < source.length()) indexOfNextNewline++;
+        String line = source.subSequence(indexOfPrevNewline + 1, indexOfNextNewline).toString();
+
+        errorString = errorString.replaceAll("%CL", line);
+        return errorString;
     }
 }

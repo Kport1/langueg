@@ -1,33 +1,32 @@
-package com.kport.langueg.parse.ast.nodes;
+package com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NExpr;
 
-import java.util.Arrays;
+public class NUInt16 extends NExpr {
 
-public class NProg extends AST {
+    public short val;
 
-    public AST[] statements;
-
-    public NProg(int offset_, AST... children) {
-        super(offset_, children);
-        statements = children;
+    public NUInt16(int offset_, short val_) {
+        super(offset_);
+        val = val_;
     }
 
     @Override
     public AST[] getChildren() {
-        return statements;
+        return null;
     }
 
     @Override
     public boolean hasChildren() {
-        return true;
+        return false;
     }
 
     @Override
     protected String nToString() {
-        return "";
+        return String.valueOf(Short.toUnsignedInt(val));
     }
 
     @Override
@@ -38,7 +37,7 @@ public class NProg extends AST {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NProg a)) return false;
-        return Arrays.deepEquals(statements, a.statements);
+        if(!(o instanceof NUInt16 a)) return false;
+        return val == a.val;
     }
 }

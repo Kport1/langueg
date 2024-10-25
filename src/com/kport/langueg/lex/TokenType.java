@@ -107,9 +107,10 @@ public enum TokenType {
     //----------------
 
     //Literals----------
-        StringL,
-        IntL,
-        FloatL,
+        String,
+        //IntL,
+        //FloatL,
+        Number,
         Identifier,
         True,
         False,
@@ -221,9 +222,10 @@ public enum TokenType {
         expandedNames.put(Dot, "dot");
         expandedNames.put(DoubleArrow, "double arrow");
 
-        expandedNames.put(StringL, "string");
-        expandedNames.put(IntL, "integer");
-        expandedNames.put(FloatL, "floating point number");
+        expandedNames.put(String, "string");
+        //expandedNames.put(IntL, "integer");
+        //expandedNames.put(FloatL, "floating point number");
+        expandedNames.put(Number, "number");
         expandedNames.put(Identifier, "identifier");
         expandedNames.put(True, "true");
         expandedNames.put(False, "false");

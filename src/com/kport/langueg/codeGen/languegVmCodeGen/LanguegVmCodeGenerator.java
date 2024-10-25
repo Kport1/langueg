@@ -14,7 +14,16 @@ import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
-import com.kport.langueg.parse.ast.nodes.expr.integer.*;
+import com.kport.langueg.parse.ast.nodes.expr.controlFlow.*;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NBool;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NTuple;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NUnion;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat32;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
+import com.kport.langueg.parse.ast.nodes.expr.operators.NAssignCompound;
+import com.kport.langueg.parse.ast.nodes.expr.operators.NBinOp;
+import com.kport.langueg.parse.ast.nodes.expr.operators.NRef;
 import com.kport.langueg.parse.ast.nodes.statement.*;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.SymbolTable;
@@ -374,8 +383,9 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
             case NWhile while_ -> {
                 int jmpBackIndex = state.getCurrentCodeIndex();
+                short condValIndex = state.nextUnallocatedByte();
                 gen(while_.cond);
-                state.writeOp(Ops.JMP_IF_FALSE, (short)0);
+                state.writeOp(Ops.JMP_IF_FALSE, condValIndex, (short)0);
                 int jmpFalseIndex = state.getCurrentCodeIndex();
                 gen(while_.block);
                 state.writeOp(Ops.JMP, (short)(jmpBackIndex - state.getCurrentCodeIndex() - 3));

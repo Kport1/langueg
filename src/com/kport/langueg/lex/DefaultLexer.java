@@ -105,8 +105,7 @@ public class DefaultLexer implements Lexer{
         for (CharSequence cs : tokens.keySet()) maxTokenLen = Math.max(maxTokenLen, cs.length());
     }
 
-    private static final Pattern intPattern = Pattern.compile("((0x[0-9A-Fa-f]+)|(o[0-7]+)|([0-9]+))([ui](8|16|32|64)?)?");
-    private static final Pattern floatPattern = Pattern.compile("([0-9]+\\.[0-9]*)(f32|f64)?|([0-9]+(f32|f64))|([0-9]*\\.[0-9]*(f32|f64))");
+    private static final Pattern integerPattern = Pattern.compile("[0-9]+");
     private static final Pattern lineComment = Pattern.compile("//[^\\n]*");
     private static final Pattern blockComment = Pattern.compile("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/");
     private static final Pattern identifier = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*");
@@ -128,7 +127,7 @@ public class DefaultLexer implements Lexer{
 
         lexemes.add((begin, code) -> {
             Matcher m = string.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.StringL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.String, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
@@ -141,14 +140,8 @@ public class DefaultLexer implements Lexer{
         });
 
         lexemes.add((begin, code) -> {
-            Matcher m = floatPattern.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.FloatL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
-            return null;
-        });
-
-        lexemes.add((begin, code) -> {
-            Matcher m = intPattern.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.IntL, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            Matcher m = integerPattern.matcher(code).region(begin, code.length());
+            if(m.lookingAt()) return new Pair<>(new Token(TokenType.Number, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 

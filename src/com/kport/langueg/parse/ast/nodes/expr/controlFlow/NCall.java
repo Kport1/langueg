@@ -1,24 +1,26 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.controlFlow;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.util.Util;
 
-public class NAssign extends NExpr {
-    public NAssignable left;
-    public NExpr right;
+import java.util.Arrays;
 
-    public NAssign(int offset_, NAssignable left_, NExpr right_){
-        super(offset_, left_, right_);
-        left = left_;
-        right = right_;
+public class NCall extends NExpr {
+    public NExpr callee;
+    public NExpr[] args;
+
+    public NCall(int offset_, NExpr callee_, NExpr... args_){
+        super(offset_, Util.concatArrays(new AST[]{callee_}, args_, AST[].class));
+        callee = callee_;
+        args = args_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{left, right};
+        return Util.concatArrays(new AST[]{callee}, args, AST[].class);
     }
 
     @Override
@@ -39,7 +41,7 @@ public class NAssign extends NExpr {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NAssign a)) return false;
-        return left.equals(a.left) && right.equals(a.right);
+        if(!(o instanceof NCall a)) return false;
+        return callee.equals(a.callee) && Arrays.deepEquals(args, a.args);
     }
 }

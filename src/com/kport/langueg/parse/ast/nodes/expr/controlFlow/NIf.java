@@ -1,24 +1,24 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.controlFlow;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 
-public class NAssign extends NExpr {
-    public NAssignable left;
-    public NExpr right;
+public class NIf extends NExpr {
 
-    public NAssign(int offset_, NAssignable left_, NExpr right_){
-        super(offset_, left_, right_);
-        left = left_;
-        right = right_;
+    public NExpr cond;
+    public NExpr ifBlock;
+
+    public NIf(int offset_, NExpr cond_, NExpr ifBlock_){
+        super(offset_, cond_, ifBlock_);
+        cond = cond_;
+        ifBlock = ifBlock_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{left, right};
+        return new AST[]{cond, ifBlock};
     }
 
     @Override
@@ -39,7 +39,7 @@ public class NAssign extends NExpr {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NAssign a)) return false;
-        return left.equals(a.left) && right.equals(a.right);
+        if(!(o instanceof NIf a)) return false;
+        return cond.equals(a.cond) && ifBlock.equals(a.ifBlock);
     }
 }

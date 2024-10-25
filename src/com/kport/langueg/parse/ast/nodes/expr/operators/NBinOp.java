@@ -1,19 +1,21 @@
-package com.kport.langueg.parse.ast.nodes.expr;
+package com.kport.langueg.parse.ast.nodes.expr.operators;
 
+import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 
-public class NAssign extends NExpr {
-    public NAssignable left;
-    public NExpr right;
+public class NBinOp extends NExpr {
+    public NExpr left, right;
+    public BinOp op;
 
-    public NAssign(int offset_, NAssignable left_, NExpr right_){
+    public NBinOp(int offset_, NExpr left_, NExpr right_, TokenType op_){
         super(offset_, left_, right_);
         left = left_;
         right = right_;
+        op = BinOp.fromTokenType(op_);
     }
 
     @Override
@@ -28,7 +30,7 @@ public class NAssign extends NExpr {
 
     @Override
     public String nToString(){
-        return "";
+        return op.name();
     }
 
     @Override
@@ -39,7 +41,7 @@ public class NAssign extends NExpr {
 
     @Override
     public boolean equals(Object o){
-        if(!(o instanceof NAssign a)) return false;
-        return left.equals(a.left) && right.equals(a.right);
+        if(!(o instanceof NBinOp a)) return false;
+        return left.equals(a.left) && right.equals(a.right) && op == a.op;
     }
 }

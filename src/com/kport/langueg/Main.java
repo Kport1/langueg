@@ -44,13 +44,13 @@ public class Main {
             System.exit(1);
         }
 
-        if(cmd.hasOption('h')){
+        if (cmd.hasOption('h')) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp(cmdLineWidth, "guegc [OPTIONS...] <input-file>\nOPTIONS:", separator, cliOptions, separator);
             System.exit(0);
         }
 
-        if(cmd.getArgs().length != 1){
+        if (cmd.getArgs().length != 1) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp(cmdLineWidth, "guegc [OPTIONS...] <input-file>\nOPTIONS:", separator, cliOptions, separator);
             System.exit(1);
@@ -59,68 +59,68 @@ public class Main {
         Path inputPath = Path.of(cmd.getArgs()[0]);
         Path outputPath = Path.of(cmd.getOptionValue('o', "./" + inputPath.getFileName().toString().replaceFirst("(\\..*)|$", ".gueg")));
 
-        if(cmd.hasOption("v"))
+        if (cmd.hasOption("v"))
             System.out.println("Reading " + inputPath);
 
         String code = Files.readString(inputPath);
 
-        if(cmd.hasOption("v"))
-            System.out.println("Compiling...");
+        if (cmd.hasOption("v"))
+            System.out.println("Compiling...\n");
 
         AtomicLong time = new AtomicLong();
         LanguegPipelineBuilder<Void> pipelineBuilder = new LanguegPipelineBuilder<>();
         pipelineBuilder.addComponent(new DefaultLexer(),
                         (o, p) -> time.set(System.nanoTime()),
-                        (o, p) ->   {
-                                        System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                        if(cmd.hasOption("print-tokens"))
-                                            System.out.println("Tokens:\n" + o);
-                                    })
+                        (o, p) -> {
+                            System.out.println("lex time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                            if (cmd.hasOption("print-tokens"))
+                                System.out.println("Tokens:\n" + o + "\n");
+                        })
                 .addComponent(new DefaultParser(),
                         (o, p) -> time.set(System.nanoTime()),
-                        (o, p) ->   {
-                                        System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                        if(cmd.hasOption("print-ast"))
-                                            System.out.println("AST:\n" + o);
-                                    })
+                        (o, p) -> {
+                            System.out.println("parse time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                            if (cmd.hasOption("print-ast"))
+                                System.out.println("AST:\n" + o + "\n");
+                        })
                 .addComponent(new DefaultDesugarer(),
                         (o, p) -> time.set(System.nanoTime()),
-                        (o, p) ->   {
-                                        System.out.println("desugar time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                        //System.out.println("desugared AST: " + o);
-                                    })
+                        (o, p) -> {
+                            System.out.println("desugar time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                            System.out.println("desugared AST:\n" + o + "\n");
+                        })
                 .addComponent(new DefaultTypeChecker(),
                         (o, p) -> time.set(System.nanoTime()),
-                        (o, p) ->   {
-                                        System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                        if(cmd.hasOption("print-aast"))
-                                            System.out.println("annotated AST:\n" + o);
-                                    })
+                        (o, p) -> {
+                            System.out.println("type check time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                            if (cmd.hasOption("print-aast"))
+                                System.out.println("annotated AST:\n" + o + "\n");
+                        })
                 .addComponent(new LanguegVmCodeGenerator(),
                         (o, p) -> time.set(System.nanoTime()),
-                        (o, p) ->   {
-                                        System.out.println("code gen time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                        if(cmd.hasOption("print-fn-code"))
-                                            try {
-                                                CodeGenState state = p.getAdditionalData("State", CodeGenState.class);
-                                                for (FnData fn : state.generatedFns) {
-                                                    System.out.println(fn);
-                                                    System.out.println();
-                                                }
-                                            } catch (InvalidTypeException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                    })
+                        (o, p) -> {
+                            System.out.println("code gen time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                            if (cmd.hasOption("print-fn-code"))
+                                try {
+                                    CodeGenState state = p.getAdditionalData("State", CodeGenState.class);
+                                    for (FnData fn : state.generatedFns) {
+                                        System.out.println(fn);
+                                        System.out.println();
+                                    }
+                                } catch (InvalidTypeException e) {
+                                    throw new RuntimeException(e);
+                                }
+                        })
                 .addComponent(new DefaultFileWriter(outputPath),
-                        (o, p) ->   {
-                                        if(cmd.hasOption("v"))
-                                            System.out.println("Writing to " + outputPath);
+                        (o, p) -> {
+                            if (cmd.hasOption("v"))
+                                System.out.println("Writing to " + outputPath);
 
-                                        time.set(System.nanoTime());
-                                    },
-                        (o, p) ->   {
-                                        System.out.println("file write time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
-                                    });
+                            time.set(System.nanoTime());
+                        },
+                        (o, p) -> {
+                            System.out.println("file write time: " + ((System.nanoTime() - time.get()) / 1_000_000_000f));
+                        });
 
         LanguegPipeline<String, Void> pipeline = pipelineBuilder.get();
         pipeline.evaluate(code);

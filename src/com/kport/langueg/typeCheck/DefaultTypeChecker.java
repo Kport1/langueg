@@ -1,19 +1,31 @@
 package com.kport.langueg.typeCheck;
 
-import com.kport.langueg.error.ErrorHandler;
 import com.kport.langueg.error.Errors;
+import com.kport.langueg.error.stage.typecheck.TypeCheckException;
+import com.kport.langueg.error.stage.typecheck.TypeSynthesisException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.*;
-import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.NAssign;
+import com.kport.langueg.parse.ast.nodes.expr.NBlock;
+import com.kport.langueg.parse.ast.nodes.expr.NBlockYielding;
+import com.kport.langueg.parse.ast.nodes.expr.NCast;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
-import com.kport.langueg.parse.ast.nodes.expr.integer.*;
-import com.kport.langueg.parse.ast.nodes.statement.*;
+import com.kport.langueg.parse.ast.nodes.expr.controlFlow.*;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.*;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.NNumInfer;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat32;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
+import com.kport.langueg.parse.ast.nodes.expr.operators.*;
+import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
+import com.kport.langueg.parse.ast.nodes.statement.NVar;
+import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.cast.CastAllowlist;
 import com.kport.langueg.typeCheck.cast.DefaultCastAllowlist;
@@ -35,14 +47,14 @@ public class DefaultTypeChecker implements TypeChecker {
     private final OpTypeMappingSupplier opTypeMappings = new DefaultOpTypeMappings();
     private final CastAllowlist castAllowlist = new DefaultCastAllowlist();
 
+    private LanguegPipeline<?, ?> pipeline;
+
     private final SymbolTable symbolTable = new SymbolTable();
 
-    private ErrorHandler errorHandler;
-
     @Override
-    public AST process(Object ast_, LanguegPipeline<?, ?> pipeline) {
+    public AST process(Object ast_, LanguegPipeline<?, ?> pipeline_) {
         AST ast = (AST) ast_;
-        errorHandler = pipeline.getErrorHandler();
+        pipeline = pipeline_;
 
         //Annotate scope
         ast.accept(new ASTVisitor() {
@@ -86,7 +98,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NMatch match, VisitorContext context){
+            public void visit(NMatch match, VisitorContext context) {
                 match.value.accept(this, VisitorContext.clone(context));
                 Scope oldScope = (Scope) context.get("scope");
                 for (Pair<NMatch.Pattern, NExpr> branch : match.branches) {
@@ -128,10 +140,11 @@ public class DefaultTypeChecker implements TypeChecker {
 
         //Annotate LValues
         ast.accept(new ASTVisitor() {
-            private void setLValueRec(NAssignable assignable){
+            private void setLValueRec(NAssignable assignable) {
                 assignable.isLValue = true;
                 switch (assignable) {
-                    case NIdent ignored -> {}
+                    case NIdent ignored -> {
+                    }
 
                     case NDotAccess dotAccess -> {
                         if (!(dotAccess.accessed instanceof NAssignable dotAssignable)) throw new Error();
@@ -187,7 +200,7 @@ public class DefaultTypeChecker implements TypeChecker {
         ast.accept(new ASTVisitor() {
             @Override
             public void visit(NVar var, VisitorContext context) {
-                if(!varIsInitializedBeforeUse(var.scope.scopeOpeningNode, new Identifier(var.scope, var.name)))
+                if (!varIsInitializedBeforeUse(var.scope.scopeOpeningNode, new Identifier(var.scope, var.name)))
                     throw new Error("Variable " + var.name + " is not initialized before use");
 
                 ASTVisitor.super.visit(var, context);
@@ -222,7 +235,7 @@ public class DefaultTypeChecker implements TypeChecker {
         }, null);
 
         //Verify return of functions
-        ast.accept(new ASTVisitor() {
+        /*ast.accept(new ASTVisitor() {
             @Override
             public void visit(NAnonFn anonFn, VisitorContext context) {
                 if (!fnReturnsOnAllPaths(anonFn.body, anonFn.header.returnType, null))
@@ -238,27 +251,11 @@ public class DefaultTypeChecker implements TypeChecker {
 
                 ASTVisitor.super.visit(fn, context);
             }
-        }, null);
+        }, null);*/
 
         pipeline.putAdditionalData("SymbolTable", symbolTable);
 
         return ast;
-    }
-
-    private boolean fnReturnsOnAllPaths(AST ast, Type returnType, String name) {
-        return propertyHoldsInAllBranches(ast, dep -> {
-            if (!(dep instanceof NReturn ret)) return false;
-
-            if (!castAllowlist.allowCastImplicit(ret.expr.exprType, returnType, symbolTable) && name != null) {
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH, dep.codeOffset(), name, returnType, ret.expr.exprType);
-            }
-
-            if (!castAllowlist.allowCastImplicit(ret.expr.exprType, returnType, symbolTable) && name == null) {
-                errorHandler.error(Errors.CHECK_FN_RETURN_TYPE_MISMATCH_ANON, dep.codeOffset(), returnType, ret.expr.exprType);
-            }
-
-            return true;
-        });
     }
 
     private boolean varIsInitializedBeforeUse(AST ast, Identifier id) {
@@ -267,23 +264,25 @@ public class DefaultTypeChecker implements TypeChecker {
         Type.InitTracker initTracker = Type.InitTracker.getInitTracker(varType);
 
         linearCodeScan(ast, node -> {
-            if(used[0]) return;
+            if (used[0]) return;
 
-            if(node instanceof NIdent ident && !ident.isLValue &&
-                    symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id)) used[0] = true;
+            if (node instanceof NIdent ident && !ident.isLValue &&
+                    symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id))
+                used[0] = true;
 
-            if(node instanceof NAssign || node instanceof NAssignCompound){
+            if (node instanceof NAssign || node instanceof NAssignCompound) {
                 Stack<Integer> dotAccessIndices = new Stack<>();
-                NAssignable assignable = node instanceof NAssign assign? assign.left : ((NAssignCompound)node).left;
-                do{
-                    switch (assignable){
+                NAssignable assignable = node instanceof NAssign assign ? assign.left : ((NAssignCompound) node).left;
+                do {
+                    switch (assignable) {
                         case NIdent ident -> {
-                            if(!symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id)) return;
+                            if (!symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id))
+                                return;
                         }
 
                         case NDotAccess dotAccess -> {
                             dotAccessIndices.push(dotAccess.accessor.match(i -> i, str ->
-                                    switch (symbolTable.tryInstantiateType(dotAccess.accessed.exprType)){
+                                    switch (symbolTable.tryInstantiateType(dotAccess.accessed.exprType)) {
                                         case TupleType tupleType -> tupleType.indexByName(str);
                                         case UnionType unionType -> unionType.indexByName(str);
                                         default -> throw new Error();
@@ -293,10 +292,10 @@ public class DefaultTypeChecker implements TypeChecker {
 
                         default -> throw new Error();
                     }
-                } while(!(assignable instanceof NIdent));
+                } while (!(assignable instanceof NIdent));
 
                 Type.InitTracker initTrackerTmp = initTracker;
-                while (!dotAccessIndices.empty()){
+                while (!dotAccessIndices.empty()) {
                     if (initTrackerTmp instanceof Type.InitTracker.TupleInitTracker tupleInitTracker)
                         initTrackerTmp = tupleInitTracker.getElement(dotAccessIndices.pop());
                     else throw new Error();
@@ -305,7 +304,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
         });
 
-        if(!used[0]) return true;
+        if (!used[0]) return true;
         return initTracker.isInit();
     }
 
@@ -313,29 +312,29 @@ public class DefaultTypeChecker implements TypeChecker {
     private void linearCodeScan(AST ast, Consumer<AST> consumer) {
         consumer.accept(ast);
 
-        if(ast instanceof NFn) return;
-        if(ast instanceof NIfElse ifElse) linearCodeScan(ifElse.cond, consumer);
-        if(ast instanceof NIf if_) linearCodeScan(if_.cond, consumer);
-        if(ast instanceof NWhile while_) linearCodeScan(while_.cond, consumer);
+        if (ast instanceof NFn) return;
+        if (ast instanceof NIfElse ifElse) linearCodeScan(ifElse.cond, consumer);
+        if (ast instanceof NIf if_) linearCodeScan(if_.cond, consumer);
+        if (ast instanceof NWhile while_) linearCodeScan(while_.cond, consumer);
 
-        if(!ast.hasChildren()) return;
+        if (!ast.hasChildren()) return;
         for (AST child : ast.getChildren()) {
             linearCodeScan(child, consumer);
         }
     }
 
     private boolean propertyHoldsInAllBranches(AST ast, Predicate<AST> prop) {
-        if(prop.test(ast)) return true;
+        if (prop.test(ast)) return true;
 
-        if(ast instanceof NIfElse ifElse) {
+        if (ast instanceof NIfElse ifElse) {
             return propertyHoldsInAllBranches(ifElse.ifBlock, prop) && propertyHoldsInAllBranches(ifElse.elseBlock, prop) || propertyHoldsInAllBranches(ifElse.cond, prop);
         }
 
-        if(ast instanceof NIf if_) return propertyHoldsInAllBranches(if_.cond, prop);
-        if(ast instanceof NWhile while_) return propertyHoldsInAllBranches(while_.cond, prop);
-        if(ast instanceof NFn) return false;
+        if (ast instanceof NIf if_) return propertyHoldsInAllBranches(if_.cond, prop);
+        if (ast instanceof NWhile while_) return propertyHoldsInAllBranches(while_.cond, prop);
+        if (ast instanceof NFn) return false;
 
-        if(!ast.hasChildren()) return false;
+        if (!ast.hasChildren()) return false;
         for (AST child : ast.getChildren()) {
             if (propertyHoldsInAllBranches(child, prop)) return true;
         }
@@ -343,111 +342,224 @@ public class DefaultTypeChecker implements TypeChecker {
         return false;
     }
 
-    private void annotateTypes(AST ast){
-        switch (ast){
-            case NProg prog -> {
-                for(AST statement : prog.statements){
-                    annotateTypes(statement);
-                }
-            }
-
-            case NVar var -> {
-                if (var.type == null)
-                    throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
-
-                if (!symbolTable.registerVar(new Identifier(var.scope, var.name), var.type))
-                    throw new Error("Duplicate name " + var.name + " in the same scope");
-            }
-
-            case NVarInit varInit -> {
-                if(varInit.type == null) {
-                    Type synthesizedType = synthesizeType(varInit.init);
-                    if(synthesizedType == null){
-                        throw new Error("Can't infer type of expression used to initialize variable " + varInit.name);
-                    }
-                    varInit.type = synthesizedType;
-                }
-                else {
-                    if(!checkType(varInit.init, varInit.type)){
-                        throw new Error("Variable initializer can't be made to have type " + varInit.type);
+    private void annotateTypes(AST ast) {
+        try {
+            switch (ast) {
+                case NProg prog -> {
+                    for (AST statement : prog.statements) {
+                        annotateTypes(statement);
                     }
                 }
 
-                if (!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type)) {
-                    throw new Error("Duplicate name " + varInit.name + " in the same scope");
+                case NVar var -> {
+                    if (var.type == null)
+                        throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
+
+                    if (!symbolTable.registerVar(new Identifier(var.scope, var.name), var.type))
+                        throw new Error("Duplicate name " + var.name + " in the same scope");
+                }
+
+                case NVarInit varInit -> {
+                    if (varInit.type == null) {
+                        try {
+                            varInit.type = synthesizeType(varInit.init);
+                        } catch (TypeSynthesisException reason) {
+                            throw new TypeSynthesisException(
+                                    Errors.CHECK_SYNTHESIZE_VAR_INIT,
+                                    reason,
+                                    varInit.codeOffset(), pipeline.getSource(), varInit.name
+                            );
+                        }
+                    } else {
+                        try {
+                            checkType(varInit.init, varInit.type);
+                        } catch (TypeCheckException reason) {
+                            throw new TypeCheckException(
+                                    Errors.CHECK_CHECK_VAR_INIT,
+                                    reason,
+                                    varInit.codeOffset(), pipeline.getSource(), varInit.type
+                            );
+                        }
+                    }
+
+                    if (!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type)) {
+                        throw new Error("Duplicate name " + varInit.name + " in the same scope");
+                    }
+                }
+
+                case NNamedFn namedFn -> annotateTypes(namedFn.body);
+
+                case NExpr expr -> {
+                    synthesizeType(expr);
+                    expr.isExprStmnt = true;
+                }
+
+                default -> {
                 }
             }
-
-            case NNamedFn namedFn -> annotateTypes(namedFn.body);
-
-            case NExpr expr -> {
-                synthesizeType(expr);
-                expr.isExprStmnt = true;
-            }
-
-            default -> {}
+        } catch (TypeCheckException exception) {
+            System.err.println(exception.format());
+            System.exit(1);
+        } catch (TypeSynthesisException exception) {
+            System.err.println(exception.format());
+            System.exit(1);
         }
     }
 
-    private boolean checkType(NExpr expr, Type type){
+    private void checkType(NExpr expr, Type type) throws TypeCheckException {
         expr.exprType = type;
-        return switch (expr){
+        switch (expr) {
             case NTuple tuple -> {
-                if(!(symbolTable.tryInstantiateType(type) instanceof TupleType tupleType)) yield false;
-                if(tuple.elements.length != tupleType.nameTypePairs().length) yield false;
+                if (!(symbolTable.tryInstantiateType(type) instanceof TupleType tupleType))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.codeOffset(), pipeline.getSource(), type);
+                if (tuple.elements.length != tupleType.nameTypePairs().length)
+                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.codeOffset(), pipeline.getSource(), tupleType);
 
-                boolean allElemOk = true;
                 boolean[] elemIsSet = new boolean[tupleType.nameTypePairs().length];
                 for (int i = 0; i < tuple.elements.length; i++) {
                     Pair<Either<Integer, String>, NExpr> element = tuple.elements[i];
 
                     int tupleTypeIndex = i;
-                    if(element.left != null) {
-                        if(!tupleType.hasElement(element.left)){
-                            allElemOk = false;
-                            continue;
+                    if (element.left != null) {
+                        if (!tupleType.hasElement(element.left)) {
+                            if (element.left instanceof Either.Left<Integer, String> index) {
+                                throw new TypeCheckException(
+                                        Errors.CHECK_CHECK_TUPLE,
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index),
+                                        tuple.codeOffset(), pipeline.getSource(), tupleType
+                                );
+                            }
+                            if (element.left instanceof Either.Right<Integer, String> string) {
+                                throw new TypeCheckException(
+                                        Errors.CHECK_CHECK_TUPLE,
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), string),
+                                        tuple.codeOffset(), pipeline.getSource(), tupleType
+                                );
+                            }
                         }
                         tupleTypeIndex = tupleType.resolveElementIndex(element.left);
                     }
 
-                    if(elemIsSet[tupleTypeIndex]) allElemOk = false;
-                    allElemOk &= checkType(element.right, tupleType.tupleTypes()[tupleTypeIndex]);
+                    if (elemIsSet[tupleTypeIndex]) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_TUPLE,
+                                new TypeCheckException(Errors.CHECK_CHECK_TUPLE_ALREADY_INIT, element.right.codeOffset(), pipeline.getSource()),
+                                tuple.codeOffset(), pipeline.getSource(), tupleType
+                        );
+                    }
+
+                    try {
+                        checkType(element.right, tupleType.tupleTypes()[tupleTypeIndex]);
+                    } catch (TypeCheckException reason) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_TUPLE,
+                                reason,
+                                tuple.codeOffset(), pipeline.getSource(), tupleType
+                        );
+                    }
                     elemIsSet[tupleTypeIndex] = true;
                 }
-
-                yield allElemOk;
             }
 
             case NUnion union -> {
-                if(!(symbolTable.tryInstantiateType(type) instanceof UnionType unionType)) yield false;
-                if(!unionType.hasElement(union.initializedElementPosition)) yield false;
+                if (!(symbolTable.tryInstantiateType(type) instanceof UnionType unionType))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_UNION, union.codeOffset(), pipeline.getSource(), type);
+                if (!unionType.hasElement(union.initializedElementPosition)) {
+                    if (union.initializedElementPosition instanceof Either.Left<Integer, String> integer) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_UNION,
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), integer),
+                                union.codeOffset(), pipeline.getSource(), unionType
+                        );
+                    }
+                    if (union.initializedElementPosition instanceof Either.Right<Integer, String> string) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_UNION,
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), string),
+                                union.codeOffset(), pipeline.getSource(), unionType
+                        );
+                    }
+                }
 
                 Type expectedType = unionType.resolveElementType(union.initializedElementPosition);
-                yield checkType(union.initializedElement, expectedType);
+                try {
+                    checkType(union.initializedElement, expectedType);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_UNION,
+                            reason,
+                            union.codeOffset(), pipeline.getSource(), unionType
+                    );
+                }
             }
 
             case NIfElse ifElse -> {
-                boolean allOk = true;
-                allOk &= checkType(ifElse.cond, PrimitiveType.Bool);
-                allOk &= checkType(ifElse.ifBlock, type);
-                allOk &= checkType(ifElse.elseBlock, type);
+                try {
+                    checkType(ifElse.cond, PrimitiveType.Bool);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_IF_ELSE_COND,
+                            reason,
+                            ifElse.cond.codeOffset(), pipeline.getSource()
+                    );
+                }
 
-                yield allOk;
+                try {
+                    checkType(ifElse.ifBlock, type);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_IF_ELSE_IF,
+                            reason,
+                            ifElse.ifBlock.codeOffset(), pipeline.getSource(), type
+                    );
+                }
+
+                try {
+                    checkType(ifElse.elseBlock, type);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_IF_ELSE_ELSE,
+                            reason,
+                            ifElse.elseBlock.codeOffset(), pipeline.getSource(), type
+                    );
+                }
             }
 
             case NRef ref -> {
-                if(!(symbolTable.tryInstantiateType(type) instanceof RefType refType)) yield false;
-                yield checkType(ref.referent, refType.referentType());
+                if (!(symbolTable.tryInstantiateType(type) instanceof RefType refType))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_REF, ref.codeOffset(), pipeline.getSource(), type);
+                try {
+                    checkType(ref.referent, refType.referentType());
+                } catch (TypeCheckException exception) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_REF,
+                            exception,
+                            ref.codeOffset(), pipeline.getSource(), type
+                    );
+                }
+            }
+
+            case NNumInfer numInfer -> {
+                if (!(symbolTable.tryInstantiateType(type) instanceof PrimitiveType primitiveType && primitiveType.isNumeric()))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_NUM_INFER, numInfer.codeOffset(), pipeline.getSource(), type);
+
             }
 
             case NExpr exp -> {
-                Type synthesizedType = synthesizeType(exp);
-                yield castAllowlist.allowCastImplicit(synthesizedType, type, symbolTable);
+                try {
+                    Type synthesizedType = synthesizeType(exp);
+                    if (!castAllowlist.allowCastImplicit(synthesizedType, type, symbolTable)) {
+                        throw new TypeCheckException(Errors.CHECK_CHECK_GENERIC, exp.codeOffset(), pipeline.getSource(), type, synthesizedType);
+                    }
+                } catch (TypeSynthesisException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        };
+        }
+        ;
     }
 
-    private Type synthesizeType(NExpr expr) {
+    private Type synthesizeType(NExpr expr) throws TypeSynthesisException, TypeCheckException {
         Type synthesizedType = switch (expr) {
 
             case NStr ignored -> new NamedType("String");
@@ -485,42 +597,88 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new Error("Cannot call value of type " + calledExprType);
 
                 for (int i = 0; i < call.args.length; i++) {
-                    if(!checkType(call.args[i], fnType.fnParams()[i]))
-                        throw new Error("Invalid argument type for function expecting " + Arrays.toString(fnType.fnParams()));
+                    try {
+                        checkType(call.args[i], fnType.fnParams()[i]);
+                    } catch (TypeCheckException reason) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_FN_ARG,
+                                reason,
+                                call.args[i].codeOffset(), pipeline.getSource(), fnType.fnParams()[i]
+                        );
+                    }
                 }
 
                 yield fnType.fnReturn();
             }
 
             case NIf if_ -> {
-                if(!checkType(if_.cond, PrimitiveType.Bool)){
-                    throw new Error("Condition of if expression can't be made to have boolean type");
+                try {
+                    checkType(if_.cond, PrimitiveType.Bool);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_IF_COND,
+                            reason,
+                            if_.cond.codeOffset(), pipeline.getSource()
+                    );
                 }
+
                 annotateTypes(if_.ifBlock);
 
                 yield Type.UNIT;
             }
 
             case NIfElse ifElse -> {
-                if(!checkType(ifElse.cond, PrimitiveType.Bool)){
-                    throw new Error("Condition of if-else expression can't be made to have boolean type");
+                try {
+                    checkType(ifElse.cond, PrimitiveType.Bool);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_IF_ELSE_COND,
+                            reason,
+                            ifElse.cond.codeOffset(), pipeline.getSource()
+                    );
                 }
 
-                Type ifType = synthesizeType(ifElse.ifBlock);
-                if(!checkType(ifElse.elseBlock, ifType)){
-                    throw new Error("If-else returns a value of type " + ifType + " in if branch, but else branch can't be made to return the same type");
-                }
+                try {
+                    Type ifType = synthesizeType(ifElse.ifBlock);
+                    try {
+                        checkType(ifElse.elseBlock, ifType);
+                    } catch (TypeCheckException reason) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_IF_ELSE_ELSE_SYN_FROM_IF,
+                                reason,
+                                ifElse.elseBlock.codeOffset(), pipeline.getSource(), ifType
+                        );
+                    }
 
-                yield ifType;
+                    yield ifType;
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_IF_ELSE_FIRST_IF,
+                            reason,
+                            ifElse.ifBlock.codeOffset(), pipeline.getSource()
+                    );
+                }
             }
 
             case NWhile while_ -> {
-                if(!checkType(while_.cond, PrimitiveType.Bool)){
-                    throw new Error("Condition of while-loop can't be made to have boolean type");
+                try {
+                    checkType(while_.cond, PrimitiveType.Bool);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_WHILE_COND,
+                            reason,
+                            while_.cond.codeOffset(), pipeline.getSource()
+                    );
                 }
 
-                if(!checkType(while_.block, Type.UNIT)) {
-                    throw new Error("Loop block of while-loop can't be made to to have unit type");
+                try {
+                    checkType(while_.block, Type.UNIT);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_WHILE_BODY,
+                            reason,
+                            while_.block.codeOffset(), pipeline.getSource()
+                    );
                 }
 
                 yield Type.UNIT;
@@ -528,12 +686,13 @@ public class DefaultTypeChecker implements TypeChecker {
 
             case NMatch match -> {
                 Type valType = synthesizeType(match.value);
-                if(!(symbolTable.tryInstantiateType(valType) instanceof UnionType unionType)) throw new Error("Cannot match value of non union type " + valType);
+                if (!(symbolTable.tryInstantiateType(valType) instanceof UnionType unionType))
+                    throw new Error("Cannot match value of non union type " + valType);
 
                 boolean[] casesCovered = new boolean[unionType.unionTypes().length];
                 Type expectedBranchType = null;
                 for (int i = 0; i < match.branches.length; i++) {
-                    switch (match.branches[i].left){
+                    switch (match.branches[i].left) {
                         case NMatch.Pattern.Union unionPattern -> {
                             int unionTypeElementIndex = unionType.resolveElementIndex(unionPattern.element);
 
@@ -551,17 +710,23 @@ public class DefaultTypeChecker implements TypeChecker {
                         default -> throw new IllegalStateException("Unexpected value: " + match.branches[i].left);
                     }
 
-                    if(expectedBranchType == null){
+                    if (expectedBranchType == null) {
                         expectedBranchType = synthesizeType(match.branches[i].right);
                     }
 
-                    if(!checkType(match.branches[i].right, expectedBranchType)){
-                        throw new Error("Branch of match expression cant be made to have type " + expectedBranchType + " expected by first branch");
+                    try {
+                        checkType(match.branches[i].right, expectedBranchType);
+                    } catch (TypeCheckException reason) {
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_MATCH,
+                                reason,
+                                match.branches[i].right.codeOffset(), pipeline.getSource(), expectedBranchType
+                        );
                     }
                 }
 
                 for (int i = 0; i < casesCovered.length; i++) {
-                    if(!casesCovered[i]) throw new Error("Match doesn't cover case " + i);
+                    if (!casesCovered[i]) throw new Error("Match doesn't cover case " + i);
                 }
 
                 yield expectedBranchType;
@@ -576,8 +741,14 @@ public class DefaultTypeChecker implements TypeChecker {
                 NFn enclosingFn = (NFn) return_.scope.enclosingFnScope().scopeOpeningNode;
 
                 Type expectedType = enclosingFn.getFnHeader().returnType;
-                if(!checkType(return_.expr, expectedType)){
-                    throw new Error("Returned value can't be made to have type " + expectedType);
+                try {
+                    checkType(return_.expr, expectedType);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_RETURN,
+                            reason,
+                            return_.expr.codeOffset(), pipeline.getSource(), expectedType
+                    );
                 }
 
                 yield Type.UNIT;
@@ -586,8 +757,14 @@ public class DefaultTypeChecker implements TypeChecker {
             case NAssign assign -> {
                 Type leftExpectedType = synthesizeType(assign.left);
 
-                if (!checkType(assign.right, leftExpectedType)) {
-                    throw new Error("Cannot assign to location expecting " + leftExpectedType);
+                try {
+                    checkType(assign.right, leftExpectedType);
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_ASSIGN,
+                            reason,
+                            assign.right.codeOffset(), pipeline.getSource(), leftExpectedType
+                    );
                 }
 
                 yield leftExpectedType;
@@ -599,27 +776,32 @@ public class DefaultTypeChecker implements TypeChecker {
                 for (int i = 0; i < tup.elements.length; i++) {
                     Pair<Either<Integer, String>, NExpr> element = tup.elements[i];
 
-                    int index = i;
-                    if(element.left instanceof Either.Left<Integer, String> ind){
-                        index = ind.value();
-                    }
+                    int finalI = i;
+                    int index = element.left == null ? i : element.left.match(integer -> integer, ignored -> finalI);
 
-                    if(nameTypePairs[index] != null) yield null;
-                    nameTypePairs[index] = new NameTypePair(synthesizeType(element.right), element.left == null? null : element.left.match(i_ -> null, str -> str));
+                    if (nameTypePairs[index] != null) yield null;
+                    Type elemType = synthesizeType(element.right);
+                    nameTypePairs[index] = new NameTypePair(elemType, element.left == null ? null : element.left.match(i_ -> null, str -> str));
                 }
 
                 yield new TupleType(nameTypePairs);
             }
 
-            case NUnion ignored -> null;
+            case NUnion union ->
+                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_UNION, union.codeOffset(), pipeline.getSource());
+
+            case NNumInfer numInfer ->
+                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_NUM_INFER, numInfer.codeOffset(), pipeline.getSource());
 
             case NCast cast -> {
-                if(checkType(cast.expr, cast.type) ||
-                        castAllowlist.allowCastExplicit(
-                                synthesizeType(cast.expr),
-                                cast.type, symbolTable)
-                ) yield cast.type;
-                throw new Error("Cannot cast expr to " + cast.type);
+                try {
+                    checkType(cast.expr, cast.type);
+                    yield cast.type;
+                } catch (TypeCheckException reason) {
+                    if (castAllowlist.allowCastExplicit(synthesizeType(cast.expr), cast.type, symbolTable))
+                        yield cast.type;
+                    throw new Error("Cannot cast expr to " + cast.type);
+                }
             }
 
             case NBinOp binOp -> {
@@ -681,7 +863,7 @@ public class DefaultTypeChecker implements TypeChecker {
             case NRef ref -> new RefType(synthesizeType(ref.referent));
 
             case NDeRef deRef -> {
-                if(!(synthesizeType(deRef.reference) instanceof RefType refType))
+                if (!(synthesizeType(deRef.reference) instanceof RefType refType))
                     throw new Error("Trying to dereference value of non reference type");
 
                 yield refType.referentType;
