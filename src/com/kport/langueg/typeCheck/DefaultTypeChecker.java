@@ -779,8 +779,23 @@ public class DefaultTypeChecker implements TypeChecker {
                     int finalI = i;
                     int index = element.left == null ? i : element.left.match(integer -> integer, ignored -> finalI);
 
-                    if (nameTypePairs[index] != null) yield null;
-                    Type elemType = synthesizeType(element.right);
+                    if (nameTypePairs[index] != null){
+                        throw new TypeSynthesisException(
+                                Errors.CHECK_SYNTHESIZE_TUPLE_MULTI_INIT,
+                                element.right.codeOffset(), pipeline.getSource()
+                        );
+                    }
+
+                    Type elemType;
+                    try {
+                        elemType = synthesizeType(element.right);
+                    } catch (TypeSynthesisException reason) {
+                        throw new TypeSynthesisException(
+                                Errors.CHECK_SYNTHESIZE_TUPLE_ELEM,
+                                reason,
+                                element.right.codeOffset(), pipeline.getSource()
+                        );
+                    }
                     nameTypePairs[index] = new NameTypePair(elemType, element.left == null ? null : element.left.match(i_ -> null, str -> str));
                 }
 

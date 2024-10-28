@@ -24,6 +24,10 @@ public enum Errors {
                                                 "Annotate the type of this variable or make the type of expression synthesizeable"),
     CHECK_SYNTHESIZE_IF_ELSE_FIRST_IF(          "If-else expression's if branch's type cannot be synthesized",
                                                 ""),
+    CHECK_SYNTHESIZE_TUPLE_MULTI_INIT(          "Element of tuple is initialized multiple times",
+                                                ""),
+    CHECK_SYNTHESIZE_TUPLE_ELEM(                "Cannot synthesize type of tuple element %%CL",
+                                                ""),
 
 
     CHECK_CHECK_GENERIC(                        "Expression can't be made to have type %1$s, because synthesized type %2$s doesn't match",

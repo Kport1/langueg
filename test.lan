@@ -1,4 +1,3 @@
-var x : ({x:u32,y:(u16,u16)},u8) = ({.y=(1u8,2u16)},3u8);
 /*var s : Shape<u32> = {.circle = (.rad = 6u32)}
 
 var r = match(s)
@@ -14,6 +13,8 @@ type<T> Shape = {
     rect : (width : T, height : T),
     square : (sideLen : T)
 }*/
+
+var x = ((1.333, 6u8),5u8);
 
 /*var x = (1u8, 2u8)
 var y = (3u8, &x)

@@ -22,10 +22,9 @@ import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NStr;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NTuple;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NUnion;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.NNumInfer;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.NUInt16;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.NUInt32;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.NUInt64;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.NUInt8;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat32;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.*;
 import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
 import com.kport.langueg.parse.ast.nodes.statement.NVar;
@@ -37,6 +36,7 @@ import com.kport.langueg.util.Iterator;
 import com.kport.langueg.util.Pair;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -651,6 +651,54 @@ public class DefaultParser implements Parser {
                     throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
                 iterator.inc();
                 return new NUInt64(cur.offset, integerPart.longValue());
+            }
+
+            case I8 -> {
+                if (!decimalPartString.isEmpty())
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128})) != -1)
+                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+                iterator.inc();
+                return new NInt8(cur.offset, integerPart.byteValue());
+            }
+
+            case I16 -> {
+                if (!decimalPartString.isEmpty())
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0})) != -1)
+                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+                iterator.inc();
+                return new NInt16(cur.offset, integerPart.shortValue());
+            }
+
+            case I32 -> {
+                if (!decimalPartString.isEmpty())
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0})) != -1)
+                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+                iterator.inc();
+                return new NInt32(cur.offset, integerPart.intValue());
+            }
+
+            case I64 -> {
+                if (!decimalPartString.isEmpty())
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0, 0, 0, 0, 0})) != -1)
+                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+                iterator.inc();
+                return new NInt64(cur.offset, integerPart.longValue());
+            }
+
+            case F32 -> {
+                BigDecimal decimal = new BigDecimal(integerPartString + "." + decimalPartString);
+                iterator.inc();
+                return new NFloat32(cur.offset, decimal.floatValue());
+            }
+
+            case F64 -> {
+                BigDecimal decimal = new BigDecimal(integerPartString + "." + decimalPartString);
+                iterator.inc();
+                return new NFloat64(cur.offset, decimal.doubleValue());
             }
         }
 
