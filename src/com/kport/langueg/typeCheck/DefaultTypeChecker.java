@@ -40,7 +40,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Stack;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public class DefaultTypeChecker implements TypeChecker {
 
@@ -234,25 +233,6 @@ public class DefaultTypeChecker implements TypeChecker {
             }
         }, null);
 
-        //Verify return of functions
-        /*ast.accept(new ASTVisitor() {
-            @Override
-            public void visit(NAnonFn anonFn, VisitorContext context) {
-                if (!fnReturnsOnAllPaths(anonFn.body, anonFn.header.returnType, null))
-                    errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS_ANON, anonFn.codeOffset());
-
-                ASTVisitor.super.visit(anonFn, context);
-            }
-
-            @Override
-            public void visit(NNamedFn fn, VisitorContext context) {
-                if (!fnReturnsOnAllPaths(fn.body, fn.header.returnType, fn.name))
-                    errorHandler.error(Errors.CHECK_FN_DOESNT_RETURN_ON_ALL_PATHS, fn.codeOffset(), fn.name);
-
-                ASTVisitor.super.visit(fn, context);
-            }
-        }, null);*/
-
         pipeline.putAdditionalData("SymbolTable", symbolTable);
 
         return ast;
@@ -308,7 +288,6 @@ public class DefaultTypeChecker implements TypeChecker {
         return initTracker.isInit();
     }
 
-    //Don't enter functions or control flow structures
     private void linearCodeScan(AST ast, Consumer<AST> consumer) {
         consumer.accept(ast);
 
@@ -321,25 +300,6 @@ public class DefaultTypeChecker implements TypeChecker {
         for (AST child : ast.getChildren()) {
             linearCodeScan(child, consumer);
         }
-    }
-
-    private boolean propertyHoldsInAllBranches(AST ast, Predicate<AST> prop) {
-        if (prop.test(ast)) return true;
-
-        if (ast instanceof NIfElse ifElse) {
-            return propertyHoldsInAllBranches(ifElse.ifBlock, prop) && propertyHoldsInAllBranches(ifElse.elseBlock, prop) || propertyHoldsInAllBranches(ifElse.cond, prop);
-        }
-
-        if (ast instanceof NIf if_) return propertyHoldsInAllBranches(if_.cond, prop);
-        if (ast instanceof NWhile while_) return propertyHoldsInAllBranches(while_.cond, prop);
-        if (ast instanceof NFn) return false;
-
-        if (!ast.hasChildren()) return false;
-        for (AST child : ast.getChildren()) {
-            if (propertyHoldsInAllBranches(child, prop)) return true;
-        }
-
-        return false;
     }
 
     private void annotateTypes(AST ast) {
@@ -390,7 +350,15 @@ public class DefaultTypeChecker implements TypeChecker {
                 case NNamedFn namedFn -> annotateTypes(namedFn.body);
 
                 case NExpr expr -> {
-                    synthesizeType(expr);
+                    try {
+                        synthesizeType(expr);
+                    } catch(TypeSynthesisException reason){
+                        throw new TypeSynthesisException(
+                                Errors.CHECK_SYNTHESIZE_EXPR_STMNT,
+                                reason,
+                                expr.codeOffset(), pipeline.getSource()
+                        );
+                    }
                     expr.isExprStmnt = true;
                 }
 
@@ -556,7 +524,6 @@ public class DefaultTypeChecker implements TypeChecker {
                 }
             }
         }
-        ;
     }
 
     private Type synthesizeType(NExpr expr) throws TypeSynthesisException, TypeCheckException {
@@ -588,11 +555,28 @@ public class DefaultTypeChecker implements TypeChecker {
                 for (AST statement : block.statements) {
                     annotateTypes(statement);
                 }
-                yield synthesizeType(block.value);
+                try {
+                    yield synthesizeType(block.value);
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_BLOCK_VAL,
+                            reason,
+                            block.value.codeOffset(), pipeline.getSource()
+                    );
+                }
             }
 
             case NCall call -> {
-                Type calledExprType = synthesizeType(call.callee);
+                Type calledExprType;
+                try {
+                    calledExprType = synthesizeType(call.callee);
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_CALLED,
+                            reason,
+                            call.codeOffset(), pipeline.getSource()
+                    );
+                }
                 if (!(calledExprType instanceof FnType fnType))
                     throw new Error("Cannot call value of type " + calledExprType);
 
@@ -685,7 +669,16 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             case NMatch match -> {
-                Type valType = synthesizeType(match.value);
+                Type valType;
+                try {
+                    valType = synthesizeType(match.value);
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_MATCHED_VAL,
+                            reason,
+                            match.value.codeOffset(), pipeline.getSource()
+                    );
+                }
                 if (!(symbolTable.tryInstantiateType(valType) instanceof UnionType unionType))
                     throw new Error("Cannot match value of non union type " + valType);
 
@@ -711,7 +704,15 @@ public class DefaultTypeChecker implements TypeChecker {
                     }
 
                     if (expectedBranchType == null) {
-                        expectedBranchType = synthesizeType(match.branches[i].right);
+                        try {
+                            expectedBranchType = synthesizeType(match.branches[i].right);
+                        } catch (TypeSynthesisException reason) {
+                            throw new TypeSynthesisException(
+                                    Errors.CHECK_SYNTHESIZE_MATCH_BRANCH,
+                                    reason,
+                                    match.branches[i].right.codeOffset(), pipeline.getSource()
+                            );
+                        }
                     }
 
                     try {
@@ -755,7 +756,16 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             case NAssign assign -> {
-                Type leftExpectedType = synthesizeType(assign.left);
+                Type leftExpectedType;
+                try {
+                    leftExpectedType = synthesizeType(assign.left);
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_ASSIGN_LEFT,
+                            reason,
+                            assign.left.codeOffset(), pipeline.getSource()
+                    );
+                }
 
                 try {
                     checkType(assign.right, leftExpectedType);
@@ -875,10 +885,31 @@ public class DefaultTypeChecker implements TypeChecker {
                 };
             }
 
-            case NRef ref -> new RefType(synthesizeType(ref.referent));
+            case NRef ref -> {
+                try {
+                    yield new RefType(synthesizeType(ref.referent));
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_REF_REFERENT,
+                            reason,
+                            ref.referent.codeOffset(), pipeline.getSource()
+                    );
+                }
+            }
 
             case NDeRef deRef -> {
-                if (!(synthesizeType(deRef.reference) instanceof RefType refType))
+                Type deRefType;
+                try {
+                    deRefType = synthesizeType(deRef.reference);
+                } catch (TypeSynthesisException reason) {
+                    throw new TypeSynthesisException(
+                            Errors.CHECK_SYNTHESIZE_DEREF_REF,
+                            reason,
+                            deRef.reference.codeOffset(), pipeline.getSource()
+                    );
+                }
+
+                if (!(deRefType instanceof RefType refType))
                     throw new Error("Trying to dereference value of non reference type");
 
                 yield refType.referentType;
