@@ -179,14 +179,6 @@ public class DefaultParser implements Parser {
                 return parseNumber();
             }
 
-            /*case IntL -> {
-                return parseInt();
-            }
-
-            case FloatL -> {
-                return parseFloat();
-            }*/
-
             case Identifier -> {
                 iterator.inc();
                 return new NIdent(cur.offset, cur.val);
@@ -281,7 +273,6 @@ public class DefaultParser implements Parser {
         iterator.inc();
 
         Either<Integer, String> accessor = parseDotAccessor();
-        iterator.inc();
         if (accessor == null) throw new ParseException(Errors.PLACEHOLDER, cur.offset + 1, pipeline.getSource());
 
         return parseDotAccess(new NDotAccess(cur.offset, left, accessor));
