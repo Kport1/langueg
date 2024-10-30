@@ -8,13 +8,15 @@ public class TypeSynthesisException extends Exception {
 
     public TypeSynthesisException(Errors error_, int offset_, CharSequence source, Object... args) {
         super();
-        error = Errors.formatError(error_.format, source, offset_, args);
+        error = Errors.formatError(error_.format, source, offset_, args) +
+                (error_.suggestion.isEmpty()? "" : "\nSuggestion: " + error_.suggestion);
         reason = null;
     }
 
     public TypeSynthesisException(Errors error_, TypeSynthesisException reason_, int offset_, CharSequence source, Object... args) {
         super();
-        error = Errors.formatError(error_.format, source, offset_, args);
+        error = Errors.formatError(error_.format, source, offset_, args) +
+                (error_.suggestion.isEmpty()? "" : "\nSuggestion: " + error_.suggestion);
         reason = reason_;
     }
 
@@ -26,7 +28,10 @@ public class TypeSynthesisException extends Exception {
         int i = 1;
         while (reason != null) {
             str.append("| ".repeat(i)).append("Reason:\n");
-            str.append("| ".repeat(i)).append(reason.error).append("\n");
+            String[] lines = reason.error.split("\n");
+            for(String l : lines){
+                str.append("| ".repeat(i)).append(l).append("\n");
+            }
             reason = reason.reason;
             i++;
         }
