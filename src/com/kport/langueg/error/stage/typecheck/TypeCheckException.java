@@ -23,7 +23,7 @@ public class TypeCheckException extends Exception {
         str.append(error).append("\n");
 
         TypeCheckException reason = this.reason;
-        int i = 0;
+        int i = 1;
         while (reason != null) {
             str.append("| ".repeat(i)).append("Reason:\n");
             str.append("| ".repeat(i)).append(reason.error).append("\n");
