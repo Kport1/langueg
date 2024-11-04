@@ -115,17 +115,34 @@ public enum Errors {
         suggestion = suggestion_;
     }
 
-    public static String formatError(String formatStr, CharSequence source, int offset, Object... args) {
-        String errorString = String.format(formatStr, args);
-
-        //%%CL Code line
+    public static String grabCodeLinePointer(CharSequence source, int offset){
         int indexOfPrevNewline = offset;
-        while (source.charAt(indexOfPrevNewline) != '\n' && indexOfPrevNewline > 0) indexOfPrevNewline--;
-        int indexOfNextNewline = offset;
-        while (source.charAt(indexOfNextNewline) != '\n' && indexOfNextNewline < source.length()) indexOfNextNewline++;
-        String line = source.subSequence(indexOfPrevNewline + 1, indexOfNextNewline).toString();
+        while (indexOfPrevNewline >= 0 && source.charAt(indexOfPrevNewline) != '\n')
+            indexOfPrevNewline--;
 
-        errorString = errorString.replaceAll("%CL", line);
-        return errorString;
+        int indexOfNextNewline = offset;
+        while (indexOfNextNewline < source.length() && source.charAt(indexOfNextNewline) != '\n')
+            indexOfNextNewline++;
+
+        String line = source.subSequence(indexOfPrevNewline + 1, indexOfNextNewline).toString();
+        line += "\n" +
+                " ".repeat(offset - indexOfPrevNewline - 1) +
+                "^" +
+                "_".repeat(indexOfNextNewline - offset - 1);
+        return line;
+    }
+
+    public static String formatError(Errors error, CharSequence source, int offset, Object... args) {
+        String formattedErrMsg = String.format(error.format, args);
+        String suggestion = "Suggestion: " + error.suggestion;
+        String cLPointer = Errors.grabCodeLinePointer(source, offset);
+        String cLPointerPad = " ".repeat(formattedErrMsg.length() / 2 - cLPointer.length() / 4);
+
+        return formattedErrMsg +
+                "\n" +
+                "\n" + cLPointerPad + cLPointer
+                .replace("\n", "\n" + cLPointerPad) +
+                "\n " +
+                "\n" + (error.suggestion.isEmpty()? "" : suggestion);
     }
 }

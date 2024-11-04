@@ -436,14 +436,14 @@ public class DefaultTypeChecker implements TypeChecker {
                     if (union.initializedElementPosition instanceof Either.Left<Integer, String> integer) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), integer),
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), integer.value()),
                                 union.codeOffset(), pipeline.getSource(), unionType
                         );
                     }
                     if (union.initializedElementPosition instanceof Either.Right<Integer, String> string) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), string),
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), string.value()),
                                 union.codeOffset(), pipeline.getSource(), unionType
                         );
                     }
