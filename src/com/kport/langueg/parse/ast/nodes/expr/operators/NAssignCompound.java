@@ -1,6 +1,5 @@
 package com.kport.langueg.parse.ast.nodes.expr.operators;
 
-import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.*;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
@@ -8,13 +7,13 @@ import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 public class NAssignCompound extends NExpr {
     public NAssignable left;
     public NExpr right;
-    public CompoundAssign op;
+    public BinOp op;
 
-    public NAssignCompound(int offset_, NAssignable left_, NExpr right_, TokenType op_){
+    public NAssignCompound(int offset_, NAssignable left_, NExpr right_, BinOp op_){
         super(offset_, left_, right_);
         left = left_;
         right = right_;
-        op = CompoundAssign.fromTokenType(op_);
+        op = op_;
     }
 
     @Override

@@ -14,47 +14,26 @@ public enum TokenType {
     //Binary Ops----------
         //Num
         Plus,
-        PlusAssign,
         Minus,
-        MinusAssign,
         Mul,
-        MulAssign,
         Div,
-        DivAssign,
         Mod,
-        ModAssign,
         Pow,
-        PowAssign,
-
-        //Bit shift
-        ShiftR,
-        ShiftRAssign,
-        ShiftL,
-        ShiftLAssign,
 
         //Bitwise
         BitAnd,
-        BitAndAssign,
         BitOr,
-        BitOrAssign,
         BitXOr,
-        BitXOrAssign,
 
         //Comparison
         Greater,
         Less,
-        GreaterEq,
-        LessEq,
-        Eq,
         NotEq,
 
         //Bool
         And,
-        AndAssign,
         Or,
-        OrAssign,
         XOr,
-        XOrAssign,
     //--------------------
 
     //Unary Ops----------
@@ -108,8 +87,6 @@ public enum TokenType {
 
     //Literals----------
         String,
-        //IntL,
-        //FloatL,
         Number,
         Identifier,
         True,
@@ -151,43 +128,23 @@ public enum TokenType {
         expandedNames.put(Var, "var");
 
         expandedNames.put(Plus, "plus");
-        expandedNames.put(PlusAssign, "plus assign");
         expandedNames.put(Minus, "minus");
-        expandedNames.put(MinusAssign, "minus assign");
         expandedNames.put(Mul, "multiply");
-        expandedNames.put(MulAssign, "multiply assign");
         expandedNames.put(Div, "divide");
-        expandedNames.put(DivAssign, "divide assign");
         expandedNames.put(Mod, "modulo");
-        expandedNames.put(ModAssign, "modulo assign");
         expandedNames.put(Pow, "power");
-        expandedNames.put(PowAssign, "power assign");
-
-        expandedNames.put(ShiftR, "right shift");
-        expandedNames.put(ShiftRAssign, "right shift assign");
-        expandedNames.put(ShiftL, "left shift");
-        expandedNames.put(ShiftLAssign, "left shift assign");
 
         expandedNames.put(BitAnd, "bitwise and");
-        expandedNames.put(BitAndAssign, "bitwise and assign");
-        expandedNames.put(BitOr, "bitwise or assign");
-        expandedNames.put(BitOrAssign, "bitwise and");
-        expandedNames.put(BitXOr, "bitwise xor assign");
-        expandedNames.put(BitXOrAssign, "bitwise and");
+        expandedNames.put(BitOr, "bitwise or");
+        expandedNames.put(BitXOr, "bitwise xor");
 
         expandedNames.put(Greater, "greater than");
         expandedNames.put(Less, "less than");
-        expandedNames.put(GreaterEq, "greater than or equals");
-        expandedNames.put(LessEq, "less than or equals");
-        expandedNames.put(Eq, "equals");
         expandedNames.put(NotEq, "not equals");
 
         expandedNames.put(And, "and");
-        expandedNames.put(AndAssign, "and assign");
         expandedNames.put(Or, "or");
-        expandedNames.put(OrAssign, "or assign");
         expandedNames.put(XOr, "xor");
-        expandedNames.put(XOrAssign, "xor assign");
 
         expandedNames.put(Inc, "increment");
         expandedNames.put(Dec, "decrement");
@@ -223,8 +180,6 @@ public enum TokenType {
         expandedNames.put(DoubleArrow, "double arrow");
 
         expandedNames.put(String, "string");
-        //expandedNames.put(IntL, "integer");
-        //expandedNames.put(FloatL, "floating point number");
         expandedNames.put(Number, "number");
         expandedNames.put(Identifier, "identifier");
         expandedNames.put(True, "true");

@@ -108,7 +108,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 gen(assignCompound.left);
                 short op2 = state.nextUnallocatedByte();
                 gen(assignCompound.right);
-                opCodeGenSupplier.binOpCodeGen(BinOp.fromCompoundAssign(assignCompound.op), assignCompound.left.exprType, assignCompound.right.exprType)
+                opCodeGenSupplier.binOpCodeGen(assignCompound.op, assignCompound.left.exprType, assignCompound.right.exprType)
                         .gen(state, op1, op1, op2);
 
                 state.rewindLocalsTo(op1 + assignCompound.exprType.getSize());

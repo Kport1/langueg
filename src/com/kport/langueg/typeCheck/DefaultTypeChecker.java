@@ -393,14 +393,14 @@ public class DefaultTypeChecker implements TypeChecker {
                             if (element.left instanceof Either.Left<Integer, String> index) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index),
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index.value()),
                                         tuple.codeOffset(), pipeline.getSource(), tupleType
                                 );
                             }
                             if (element.left instanceof Either.Right<Integer, String> string) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), string),
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), string.value()),
                                         tuple.codeOffset(), pipeline.getSource(), tupleType
                                 );
                             }
@@ -844,7 +844,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 Type left = synthesizeType(assignCompound.left);
                 Type right = synthesizeType(assignCompound.right);
 
-                BinOpTypeMap map = opTypeMappings.binOpTypeMap(BinOp.fromCompoundAssign(assignCompound.op));
+                BinOpTypeMap map = opTypeMappings.binOpTypeMap(assignCompound.op);
                 if (map == null)
                     throw new Error("Cannot apply operator" + assignCompound.op + " to " + left + " and " + right);
 

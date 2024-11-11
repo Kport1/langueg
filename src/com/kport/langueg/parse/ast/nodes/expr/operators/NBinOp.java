@@ -1,6 +1,5 @@
 package com.kport.langueg.parse.ast.nodes.expr.operators;
 
-import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.BinOp;
@@ -11,11 +10,11 @@ public class NBinOp extends NExpr {
     public NExpr left, right;
     public BinOp op;
 
-    public NBinOp(int offset_, NExpr left_, NExpr right_, TokenType op_){
+    public NBinOp(int offset_, NExpr left_, NExpr right_, BinOp op_){
         super(offset_, left_, right_);
         left = left_;
         right = right_;
-        op = BinOp.fromTokenType(op_);
+        op = op_;
     }
 
     @Override

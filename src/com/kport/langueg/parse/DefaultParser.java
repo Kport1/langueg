@@ -6,7 +6,6 @@ import com.kport.langueg.lex.Token;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.BinOp;
-import com.kport.langueg.parse.ast.CompoundAssign;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.NAssign;
 import com.kport.langueg.parse.ast.nodes.expr.NBlock;
@@ -48,50 +47,33 @@ public class DefaultParser implements Parser {
     private LanguegPipeline<?, ?> pipeline;
 
     private Iterator<Token> iterator;
-    private static final HashMap<TokenType, Integer> opPrecedence = new HashMap<>();
+    private static final HashMap<BinOp, Integer> opPrecedence = new HashMap<>();
 
     static {
-        opPrecedence.put(TokenType.Assign, 0);
+        opPrecedence.put(BinOp.And, 1);
+        opPrecedence.put(BinOp.Or, 1);
+        opPrecedence.put(BinOp.XOr, 1);
 
-        opPrecedence.put(TokenType.PlusAssign, 0);
-        opPrecedence.put(TokenType.MinusAssign, 0);
-        opPrecedence.put(TokenType.MulAssign, 0);
-        opPrecedence.put(TokenType.DivAssign, 0);
-        opPrecedence.put(TokenType.ModAssign, 0);
-        opPrecedence.put(TokenType.PowAssign, 0);
-        opPrecedence.put(TokenType.ShiftRAssign, 0);
-        opPrecedence.put(TokenType.ShiftLAssign, 0);
-        opPrecedence.put(TokenType.AndAssign, 0);
-        opPrecedence.put(TokenType.OrAssign, 0);
-        opPrecedence.put(TokenType.XOrAssign, 0);
-        opPrecedence.put(TokenType.BitAndAssign, 0);
-        opPrecedence.put(TokenType.BitOrAssign, 0);
-        opPrecedence.put(TokenType.BitXOrAssign, 0);
+        opPrecedence.put(BinOp.Greater, 2);
+        opPrecedence.put(BinOp.Less, 2);
+        opPrecedence.put(BinOp.GreaterEq, 2);
+        opPrecedence.put(BinOp.LessEq, 2);
+        opPrecedence.put(BinOp.Eq, 2);
+        opPrecedence.put(BinOp.NotEq, 2);
 
-        opPrecedence.put(TokenType.And, 1);
-        opPrecedence.put(TokenType.Or, 1);
-        opPrecedence.put(TokenType.XOr, 1);
+        opPrecedence.put(BinOp.Plus, 3);
+        opPrecedence.put(BinOp.Minus, 3);
+        opPrecedence.put(BinOp.Mul, 4);
+        opPrecedence.put(BinOp.Div, 4);
+        opPrecedence.put(BinOp.Mod, 4);
+        opPrecedence.put(BinOp.Pow, 5);
 
-        opPrecedence.put(TokenType.Greater, 2);
-        opPrecedence.put(TokenType.Less, 2);
-        opPrecedence.put(TokenType.GreaterEq, 2);
-        opPrecedence.put(TokenType.LessEq, 2);
-        opPrecedence.put(TokenType.Eq, 2);
-        opPrecedence.put(TokenType.NotEq, 2);
+        opPrecedence.put(BinOp.BitAnd, 6);
+        opPrecedence.put(BinOp.BitOr, 6);
+        opPrecedence.put(BinOp.BitXOr, 6);
 
-        opPrecedence.put(TokenType.Plus, 3);
-        opPrecedence.put(TokenType.Minus, 3);
-        opPrecedence.put(TokenType.Mul, 4);
-        opPrecedence.put(TokenType.Div, 4);
-        opPrecedence.put(TokenType.Mod, 4);
-        opPrecedence.put(TokenType.Pow, 5);
-
-        opPrecedence.put(TokenType.BitAnd, 6);
-        opPrecedence.put(TokenType.BitOr, 6);
-        opPrecedence.put(TokenType.BitXOr, 6);
-
-        opPrecedence.put(TokenType.ShiftR, 7);
-        opPrecedence.put(TokenType.ShiftL, 7);
+        opPrecedence.put(BinOp.ShiftR, 7);
+        opPrecedence.put(BinOp.ShiftL, 7);
     }
 
     @Override
@@ -139,7 +121,7 @@ public class DefaultParser implements Parser {
             return new NBlock(iterator.current().offset);
         }
 
-        return parseBinaryOp(
+        return parseBinOpRec(
                 parseCast(
                         parseUnaryOp(
                                 parseDotAccess(
@@ -234,29 +216,66 @@ public class DefaultParser implements Parser {
         throw new ParseException(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.offset, pipeline.getSource(), cur.tok.expandedName());
     }
 
-    private NExpr parseBinaryOp(NExpr left, int lastPrec) throws ParseException {
+    private BinOp parseBinOp(){
         Token cur = iterator.current();
-        if (!(BinOp.isBinOp(cur.tok) || CompoundAssign.isCompoundAssign(cur.tok) || cur.tok == TokenType.Assign))
+        System.out.println(cur);
+        iterator.inc();
+        if(cur.tok == TokenType.Less && iterator.current().tok == TokenType.Less) {
+            iterator.inc();
+            return BinOp.ShiftR;
+        }
+        if(cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Greater) {
+            iterator.inc();
+            return BinOp.ShiftL;
+        }
+        if(cur.tok == TokenType.Less && iterator.current().tok == TokenType.Assign) {
+            iterator.inc();
+            return BinOp.LessEq;
+        }
+        if(cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Assign) {
+            iterator.inc();
+            return BinOp.GreaterEq;
+        }
+        return BinOp.fromTokenType(cur.tok);
+    }
+
+    private NExpr parseBinOpRec(NExpr left, int lastPrec) throws ParseException {
+        Token cur = iterator.current();
+        if(cur.tok == TokenType.Assign)
+            return parseAssign(left);
+        if (!BinOp.isBinOp(cur.tok))
             return left;
 
-        int currentPrec = opPrecedence.get(cur.tok);
-        if (currentPrec <= lastPrec) return left;
+        int iterIndex = iterator.getIndex();
+        BinOp op = parseBinOp();
+        if(iterator.current().tok == TokenType.Assign)
+            return parseCompoundAssign(left, op);
+        int currentPrec = opPrecedence.get(op);
+        if (currentPrec <= lastPrec){
+            iterator.setIndex(iterIndex);
+            return left;
+        }
 
+        NExpr right = parseBinOpRec(parseCast(parseUnaryOp(parseDotAccess(parseCall(parseAtom())))), currentPrec);
+        return parseBinOpRec(new NBinOp(cur.offset, left, right, op), lastPrec);
+    }
+
+    private NExpr parseAssign(NExpr left) throws ParseException {
+        if(!(left instanceof NAssignable leftAssignable)) {
+            throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
+        }
+        Token cur = iterator.current();
         iterator.inc();
-        NExpr right = parseBinaryOp(parseCast(parseUnaryOp(parseDotAccess(parseCall(parseAtom())))), currentPrec);
+        return new NAssign(cur.offset, leftAssignable, parseExpr());
+    }
 
-        if (cur.tok == TokenType.Assign) {
-            if (!(left instanceof NAssignable assignable)) throw new Error("Cannot assign a value to:\n" + left);
-            return parseBinaryOp(new NAssign(cur.offset, assignable, right), lastPrec);
+    private NExpr parseCompoundAssign(NExpr left, BinOp op) throws ParseException {
+        if(!(left instanceof NAssignable leftAssignable)) {
+            throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
         }
-        if (CompoundAssign.isCompoundAssign(cur.tok)) {
-            if (!(left instanceof NAssignable assignable)) throw new Error("Cannot assign a value to:\n" + left);
-            return parseBinaryOp(new NAssignCompound(cur.offset, assignable, right, cur.tok), lastPrec);
-        }
-        if (BinOp.isBinOp(cur.tok)) {
-            return parseBinaryOp(new NBinOp(cur.offset, left, right, cur.tok), lastPrec);
-        }
-        throw new Error();
+        Token cur = iterator.current();
+        iterator.inc();
+        return new NAssignCompound(cur.offset, leftAssignable, parseExpr(), op);
     }
 
     private NExpr parseUnaryOp(NExpr left) {

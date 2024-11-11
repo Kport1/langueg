@@ -20,29 +20,9 @@ public class DefaultLexer implements Lexer{
         tokens.put("/", TokenType.Div);
         tokens.put("%", TokenType.Mod);
         tokens.put("**", TokenType.Pow);
-        tokens.put(">>", TokenType.ShiftR);
-        tokens.put("<<", TokenType.ShiftL);
-
-        tokens.put("+=", TokenType.PlusAssign);
-        tokens.put("-=", TokenType.MinusAssign);
-        tokens.put("*=", TokenType.MulAssign);
-        tokens.put("/=", TokenType.DivAssign);
-        tokens.put("%=", TokenType.ModAssign);
-        tokens.put("**=", TokenType.PowAssign);
-        tokens.put(">>=", TokenType.ShiftRAssign);
-        tokens.put("<<=", TokenType.ShiftLAssign);
-        tokens.put("&=", TokenType.AndAssign);
-        tokens.put("&&=", TokenType.BitAndAssign);
-        tokens.put("|=", TokenType.OrAssign);
-        tokens.put("||=", TokenType.BitOrAssign);
-        tokens.put("^=", TokenType.XOrAssign);
-        tokens.put("^^=", TokenType.BitXOrAssign);
 
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);
-        tokens.put("<=", TokenType.GreaterEq);
-        tokens.put(">=", TokenType.LessEq);
-        tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
         tokens.put("&&", TokenType.BitAnd);
         tokens.put("&", TokenType.And);

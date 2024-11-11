@@ -3,6 +3,7 @@ package com.kport.langueg.parse;
 import com.kport.langueg.lex.DefaultLexer;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
+import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.NBinOp;
 import com.kport.langueg.parse.ast.nodes.expr.controlFlow.NCall;
@@ -42,7 +43,7 @@ class DefaultParserTest {
 
     @Test
     public void test2(){
-        AST actual = pipeline.evaluate("var b:i32 -> f32 = fn((a: i32)-> f32) a \n\n\n;\t");
+        AST actual = pipeline.evaluate("var b:i32 -> f32 = fn((a: i32)-> f32) a \n\n\t\n");
         AST expect = new NProg(0,
                 new NVarInit(0,
                         new FnType(PrimitiveType.F32, PrimitiveType.I32),
@@ -60,15 +61,15 @@ class DefaultParserTest {
     public void test3(){
         AST actual = pipeline.evaluate("""
                 fn f((i : u64) -> u64){
-                    if(i == 0u64) return 1u64;
-                    return i * f(i - 1u64);
+                    if(i == 0u64) return 1u64
+                    return i * f(i - 1u64)
                 }
                 """);
         AST expect =    new NProg(0,
                             new NNamedFn(0, "f", new FnHeader(new NameTypePair[]{new NameTypePair(PrimitiveType.U64, "i")}, PrimitiveType.U64),
                                 new NBlock(22,
                                     new NIf(28,
-                                        new NBinOp(33, new NIdent(31, "i"), new NUInt64(36, 0), TokenType.Eq),
+                                        new NBinOp(33, new NIdent(31, "i"), new NUInt64(36, 0), BinOp.Eq),
                                         new NReturn(42, new NUInt64(49, 1))
                                     ),
                                     new NReturn(59,
@@ -76,9 +77,9 @@ class DefaultParserTest {
                                             new NIdent(66, "i"),
                                             new NCall(71,
                                                 new NIdent(70, "f"),
-                                                new NBinOp(74, new NIdent(72, "i"), new NUInt64(76, 1), TokenType.Minus)
+                                                new NBinOp(74, new NIdent(72, "i"), new NUInt64(76, 1), BinOp.Minus)
                                             ),
-                                            TokenType.Mul
+                                            BinOp.Mul
                                         )
                                     )
                                 )
