@@ -117,6 +117,11 @@ public interface ASTVisitor {
             element.accept(this, VisitorContext.clone(context));
         }
     }
+    default void visit(NArray array, VisitorContext context){
+        for (NExpr element : array.elements) {
+            element.accept(this, VisitorContext.clone(context));
+        }
+    }
     default void visit(NUnaryOpPost unaryOpPost, VisitorContext context){
         unaryOpPost.operand.accept(this, VisitorContext.clone(context));
     }

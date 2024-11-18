@@ -65,6 +65,9 @@ public enum Errors {
     CHECK_CHECK_UNION_NO_NAME(                  "Element with name %1$s doesn't exist in type expected of this union constructor",
                                                 ""),
 
+    CHECK_CHECK_ARRAY(                          "Array can't be made to have type %1$s",
+                                                ""),
+
     CHECK_CHECK_IF_COND(                        "Condition of if expression can't be made to have type boolean",
                                                 ""),
 
@@ -136,7 +139,7 @@ public enum Errors {
         String formattedErrMsg = String.format(error.format, args);
         String suggestion = "Suggestion: " + error.suggestion;
         String cLPointer = Errors.grabCodeLinePointer(source, offset);
-        String cLPointerPad = " ".repeat(formattedErrMsg.length() / 2 - cLPointer.length() / 4);
+        String cLPointerPad = " ".repeat(Math.max(formattedErrMsg.length() / 2 - cLPointer.length() / 4, 0));
 
         return formattedErrMsg +
                 "\n" +

@@ -513,6 +513,22 @@ public class DefaultTypeChecker implements TypeChecker {
 
             }
 
+            case NArray array -> {
+                if (!(symbolTable.tryInstantiateType(type) instanceof ArrayType arrayType))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_ARRAY, array.codeOffset(), pipeline.getSource(), type);
+                for (NExpr element : array.elements) {
+                    try {
+                        checkType(element, arrayType.type);
+                    } catch (TypeCheckException reason){
+                        throw new TypeCheckException(
+                                Errors.CHECK_CHECK_ARRAY,
+                                reason,
+                                array.codeOffset(), pipeline.getSource(), arrayType
+                        );
+                    }
+                }
+            }
+
             case NExpr exp -> {
                 try {
                     Type synthesizedType = synthesizeType(exp);

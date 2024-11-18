@@ -16,10 +16,7 @@ import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.controlFlow.*;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NBool;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NStr;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NTuple;
-import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NUnion;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.*;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.NNumInfer;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat32;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64;
@@ -150,6 +147,10 @@ public class DefaultParser implements Parser {
                     return parseUnion();
 
                 return parseBlock();
+            }
+
+            case LBrack -> {
+                return parseArray();
             }
 
             case String -> {
@@ -402,6 +403,12 @@ public class DefaultParser implements Parser {
         iterator.inc();
 
         return new NUnion(cur.offset, expr, position);
+    }
+
+    private NArray parseArray() throws ParseException {
+        Token cur = iterator.current();
+        NExpr[] elems = parseDelim(TokenType.LBrack, TokenType.RBrack, TokenType.Comma);
+        return new NArray(cur.offset, elems);
     }
 
     private NExpr parseIf() throws ParseException {
