@@ -219,7 +219,6 @@ public class DefaultParser implements Parser {
 
     private BinOp parseBinOp(){
         Token cur = iterator.current();
-        System.out.println(cur);
         iterator.inc();
         if(cur.tok == TokenType.Less && iterator.current().tok == TokenType.Less) {
             iterator.inc();

@@ -15,6 +15,7 @@ import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.controlFlow.*;
+import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NArray;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NBool;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NTuple;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.NUnion;
@@ -178,6 +179,21 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NUInt16 uint16 -> state.pushShort(uint16.val);
             case NUInt32 uint32 -> state.pushInt(uint32.val);
             case NUInt64 uint64 -> state.pushLong(uint64.val);
+
+            case NArray array -> {
+                ArrayType arrayType = ((ArrayType)symbolTable.tryInstantiateType(array.exprType));
+                int elemSize = arrayType.type.getSize();
+
+                short refIndex = state.nextUnallocatedByte();
+                state.pushAllocDirect(elemSize * array.elements.length);
+
+                short elemIndex = state.nextUnallocatedByte();
+                for(int i = 0; i < array.elements.length; i++){
+                    gen(array.elements[i]);
+                    state.movToHeapDirect((short)elemSize, i * elemSize, elemIndex, refIndex, isOrContainsRef(arrayType.type));
+                    state.rewindLocalsTo(elemIndex);
+                }
+            }
 
             case NTuple tuple -> {
                 TupleType tupleType = ((TupleType)symbolTable.tryInstantiateType(tuple.exprType));

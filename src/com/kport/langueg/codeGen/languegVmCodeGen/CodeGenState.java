@@ -117,10 +117,7 @@ public class CodeGenState {
 
     private void load(short to, byte[] val) {
         if (to + val.length > LanguegVmCodeGenerator.LOCALS_MAX_SIZE) throw new Error();
-        //val = Util.trimByteArr(val);
         short size = (short) val.length;
-        //long l = val[0] | val[1] << 8L | val[2] << 16L | val[3] << 24L | (long)val[4] << 32L | (long)val[5] << 40L | (long)val[6] << 48L | (long)val[7] << 56L;
-        //System.out.println(l);
 
         if (size == 1)
             writeOp(Ops.LOAD8, to, val[0]);

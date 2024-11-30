@@ -5,7 +5,6 @@ import com.kport.langueg.error.stage.typecheck.TypeCheckException;
 import com.kport.langueg.error.stage.typecheck.TypeSynthesisException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
-import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.*;
 import com.kport.langueg.parse.ast.nodes.expr.NAssign;
@@ -390,17 +389,17 @@ public class DefaultTypeChecker implements TypeChecker {
                     int tupleTypeIndex = i;
                     if (element.left != null) {
                         if (!tupleType.hasElement(element.left)) {
-                            if (element.left instanceof Either.Left<Integer, String> index) {
+                            if (element.left instanceof Either.Left<Integer, String>(Integer index)) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index.value()),
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index),
                                         tuple.codeOffset(), pipeline.getSource(), tupleType
                                 );
                             }
-                            if (element.left instanceof Either.Right<Integer, String> string) {
+                            if (element.left instanceof Either.Right<Integer, String>(String name)) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), string.value()),
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), name),
                                         tuple.codeOffset(), pipeline.getSource(), tupleType
                                 );
                             }
@@ -433,17 +432,17 @@ public class DefaultTypeChecker implements TypeChecker {
                 if (!(symbolTable.tryInstantiateType(type) instanceof UnionType unionType))
                     throw new TypeCheckException(Errors.CHECK_CHECK_UNION, union.codeOffset(), pipeline.getSource(), type);
                 if (!unionType.hasElement(union.initializedElementPosition)) {
-                    if (union.initializedElementPosition instanceof Either.Left<Integer, String> integer) {
+                    if (union.initializedElementPosition instanceof Either.Left<Integer, String>(Integer index)) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), integer.value()),
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), index),
                                 union.codeOffset(), pipeline.getSource(), unionType
                         );
                     }
-                    if (union.initializedElementPosition instanceof Either.Right<Integer, String> string) {
+                    if (union.initializedElementPosition instanceof Either.Right<Integer, String>(String name)) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), string.value()),
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), name),
                                 union.codeOffset(), pipeline.getSource(), unionType
                         );
                     }
