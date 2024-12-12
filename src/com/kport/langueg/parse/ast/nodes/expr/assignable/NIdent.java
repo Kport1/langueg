@@ -5,7 +5,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 
-public class NIdent extends NAssignable {
+public final class NIdent extends NAssignable {
 
     public String identifier;
 

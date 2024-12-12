@@ -6,7 +6,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 
-public abstract class NAssignable extends NExpr {
+public abstract sealed class NAssignable extends NExpr permits NDeRef, NDotAccess, NIdent {
     public NAssignable(int offset_, AST... children) {
         super(offset_, children);
     }

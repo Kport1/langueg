@@ -6,7 +6,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 
-public class NDeRef extends NAssignable {
+public final class NDeRef extends NAssignable {
     public NExpr reference;
 
     public NDeRef(int offset_, NExpr reference_){

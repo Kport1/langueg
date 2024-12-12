@@ -136,6 +136,9 @@ public enum Errors {
     CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME(     "Tuple has no element with name %1$s",
                                                 ""),
 
+    CHECK_SEMANTIC_NOT_ASSIGNABLE(              "Not a valid location to assign to",
+                                                ""),
+
     PLACEHOLDER(                                "Fix this error",
                                                 "pls");
 

@@ -13,6 +13,7 @@ import com.kport.langueg.parse.ast.nodes.expr.NAssign;
 import com.kport.langueg.parse.ast.nodes.expr.NBlock;
 import com.kport.langueg.parse.ast.nodes.expr.NBlockYielding;
 import com.kport.langueg.parse.ast.nodes.expr.NCast;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
@@ -677,6 +678,8 @@ public class DefaultTypeChecker implements TypeChecker {
                     );
                 }
 
+                checkAssignableRec(assign.left);
+
                 yield leftExpectedType;
             }
 
@@ -836,5 +839,23 @@ public class DefaultTypeChecker implements TypeChecker {
 
         expr.exprType = synthesizedType;
         return synthesizedType;
+    }
+
+    private void checkAssignableRec(NAssignable assignable) throws SemanticException {
+        switch(assignable){
+            case NIdent ignore -> {}
+            case NDotAccess dotAccess -> {
+                if(!(dotAccess.accessed instanceof NAssignable accessedAssignable))
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, dotAccess.accessed.codeOffset(), pipeline.getSource());
+
+                checkAssignableRec(accessedAssignable);
+            }
+            case NDeRef deRef -> {
+                if (!(deRef.reference instanceof NAssignable dereferencedAssignable))
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, deRef.reference.codeOffset(), pipeline.getSource());
+
+                checkAssignableRec(dereferencedAssignable);
+            }
+        }
     }
 }

@@ -7,7 +7,7 @@ import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.Either;
 
-public class NDotAccess extends NAssignable {
+public final class NDotAccess extends NAssignable {
     public NExpr accessed;
     public Either<Integer, String> accessor;
 
