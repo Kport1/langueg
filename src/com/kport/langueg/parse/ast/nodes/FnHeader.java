@@ -1,20 +1,24 @@
 package com.kport.langueg.parse.ast.nodes;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.ASTVisitor;
+import com.kport.langueg.parse.ast.CodeLocatable;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.typeCheck.types.Type;
 
 import java.util.Arrays;
 
-public final class FnHeader implements Visitable {
+public final class FnHeader implements Visitable, CodeLocatable {
     public NameTypePair[] params;
     public Type returnType;
+    private final int offset;
 
-    public FnHeader(NameTypePair[] params_, Type returnType_){
+    public FnHeader(NameTypePair[] params_, Type returnType_, int offset_){
         params = params_;
         returnType = returnType_;
+        offset = offset_;
     }
 
     public FnType getFnType(){
@@ -45,7 +49,12 @@ public final class FnHeader implements Visitable {
     }
 
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context) {
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         visitor.visit(this, context);
+    }
+
+    @Override
+    public int codeOffset() {
+        return offset;
     }
 }

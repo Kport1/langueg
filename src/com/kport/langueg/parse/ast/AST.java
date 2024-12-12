@@ -1,5 +1,6 @@
 package com.kport.langueg.parse.ast;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.Scope;
@@ -33,7 +34,7 @@ public abstract class AST implements Visitable, CodeLocatable {
         Calls all applicable visitor.visit methods in the order of superclasses, then interfaces and last the class of this object itself.
      */
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context){
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         visitor.visit(this, context);
     }
 

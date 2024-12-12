@@ -28,6 +28,7 @@ public enum TokenType {
         //Comparison
         Greater,
         Less,
+        Eq,
         NotEq,
 
         //Bool

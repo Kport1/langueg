@@ -1,5 +1,6 @@
 package com.kport.langueg.parse.ast.nodes;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
@@ -28,7 +29,7 @@ public final class NameTypePair implements Visitable {
     }
 
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context) {
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         visitor.visit(this, context);
     }
 }

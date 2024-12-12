@@ -4,12 +4,13 @@ import com.kport.langueg.codeGen.CodeGenerator;
 import com.kport.langueg.codeGen.languegVmCodeGen.op.LanguegVmOpCodeGen;
 import com.kport.langueg.codeGen.languegVmCodeGen.op.OpCodeGenSupplier;
 import com.kport.langueg.parse.ast.AST;
-import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.nodes.NAnonFn;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NNamedFn;
 import com.kport.langueg.parse.ast.nodes.NProg;
-import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.NAssign;
+import com.kport.langueg.parse.ast.nodes.expr.NBlock;
+import com.kport.langueg.parse.ast.nodes.expr.NBlockYielding;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
@@ -25,7 +26,8 @@ import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.NAssignCompound;
 import com.kport.langueg.parse.ast.nodes.expr.operators.NBinOp;
 import com.kport.langueg.parse.ast.nodes.expr.operators.NRef;
-import com.kport.langueg.parse.ast.nodes.statement.*;
+import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
+import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.SymbolTable;
 import com.kport.langueg.typeCheck.types.*;
@@ -385,9 +387,6 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 state.writeOp(Ops.RET, stackTop);
                 state.popStack(return_.expr.exprType.getSize());
             }
-
-            case NVar var ->
-                state.allocateLocal(new Identifier(var.scope, var.name), (byte)var.type.getSize());
 
             case NVarInit var -> {
                 gen(var.init);

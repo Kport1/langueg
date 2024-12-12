@@ -1,6 +1,8 @@
 package com.kport.langueg.typeCheck;
 
 import com.kport.langueg.error.Errors;
+import com.kport.langueg.error.LanguegException;
+import com.kport.langueg.error.stage.typecheck.SemanticException;
 import com.kport.langueg.error.stage.typecheck.TypeCheckException;
 import com.kport.langueg.error.stage.typecheck.TypeSynthesisException;
 import com.kport.langueg.parse.ast.AST;
@@ -11,7 +13,6 @@ import com.kport.langueg.parse.ast.nodes.expr.NAssign;
 import com.kport.langueg.parse.ast.nodes.expr.NBlock;
 import com.kport.langueg.parse.ast.nodes.expr.NBlockYielding;
 import com.kport.langueg.parse.ast.nodes.expr.NCast;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
@@ -23,7 +24,6 @@ import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.*;
 import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
-import com.kport.langueg.parse.ast.nodes.statement.NVar;
 import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.cast.CastAllowlist;
@@ -37,8 +37,6 @@ import com.kport.langueg.util.Scope;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Stack;
-import java.util.function.Consumer;
 
 public class DefaultTypeChecker implements TypeChecker {
 
@@ -50,26 +48,34 @@ public class DefaultTypeChecker implements TypeChecker {
     private final SymbolTable symbolTable = new SymbolTable();
 
     @Override
-    public AST process(Object ast_, LanguegPipeline<?, ?> pipeline_) {
-        AST ast = (AST) ast_;
-        pipeline = pipeline_;
+    public AST process(Object ast, LanguegPipeline<?, ?> pipeline){
+        this.pipeline = pipeline;
+        try {
+            return analyze((AST) ast);
+        } catch (LanguegException e){
+            System.err.println(e.format());
+            System.exit(1);
+            return null;
+        }
+    }
 
+    private AST analyze(AST ast) throws LanguegException {
         //Annotate scope
         ast.accept(new ASTVisitor() {
             @Override
-            public void visit(AST ast, VisitorContext context) {
+            public void visit(AST ast, VisitorContext context) throws LanguegException {
                 ast.scope = (Scope) context.get("scope");
                 ASTVisitor.super.visit(ast, context);
             }
 
             @Override
-            public void visit(NamedType namedType, VisitorContext context) {
+            public void visit(NamedType namedType, VisitorContext context) throws LanguegException {
                 namedType.scope = (Scope) context.get("scope");
                 ASTVisitor.super.visit(namedType, context);
             }
 
             @Override
-            public void visit(NTypeDef typeDef, VisitorContext context) {
+            public void visit(NTypeDef typeDef, VisitorContext context) throws LanguegException {
                 typeDef.definition.accept(new ASTVisitor() {
                     @Override
                     public void visit(NamedType namedType, VisitorContext context_) {
@@ -80,7 +86,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NBlock block, VisitorContext context) {
+            public void visit(NBlock block, VisitorContext context) throws LanguegException {
                 Scope oldScope = (Scope) context.get("scope");
                 Scope newScope = new Scope(oldScope, block, false);
                 context.put("scope", newScope);
@@ -88,7 +94,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NBlockYielding blockYielding, VisitorContext context) {
+            public void visit(NBlockYielding blockYielding, VisitorContext context) throws LanguegException {
                 Scope oldScope = (Scope) context.get("scope");
                 Scope newScope = new Scope(oldScope, blockYielding, false);
                 context.put("scope", newScope);
@@ -96,7 +102,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NMatch match, VisitorContext context) {
+            public void visit(NMatch match, VisitorContext context) throws LanguegException {
                 match.value.accept(this, VisitorContext.clone(context));
                 Scope oldScope = (Scope) context.get("scope");
                 for (Pair<NMatch.Pattern, NExpr> branch : match.branches) {
@@ -107,7 +113,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NFn fn, VisitorContext context) {
+            public void visit(NFn fn, VisitorContext context) throws LanguegException {
                 Scope oldScope = (Scope) context.get("scope");
                 Scope newScope = new Scope(oldScope, (AST) fn, true);
                 context.put("scope", newScope);
@@ -120,9 +126,9 @@ public class DefaultTypeChecker implements TypeChecker {
         //Register types
         ast.accept(new ASTVisitor() {
             @Override
-            public void visit(NTypeDef typeDef, VisitorContext context) {
+            public void visit(NTypeDef typeDef, VisitorContext context) throws LanguegException {
                 if (!symbolTable.registerType(new Identifier(typeDef.scope, typeDef.name), typeDef))
-                    throw new Error("Duplicate name " + typeDef.name + " in the same scope");
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, typeDef.codeOffset(), pipeline.getSource(), typeDef.name);
                 ASTVisitor.super.visit(typeDef, context);
             }
         }, null);
@@ -130,62 +136,27 @@ public class DefaultTypeChecker implements TypeChecker {
         //Resolve Type Sizes
         ast.accept(new ASTVisitor() {
             @Override
-            public void visit(NamedType namedType, VisitorContext context) {
+            public void visit(NamedType namedType, VisitorContext context) throws LanguegException {
                 namedType.size = symbolTable.getNamedTypeSize(namedType);
                 ASTVisitor.super.visit(namedType, context);
-            }
-        }, null);
-
-        //Annotate LValues
-        ast.accept(new ASTVisitor() {
-            private void setLValueRec(NAssignable assignable) {
-                assignable.isLValue = true;
-                switch (assignable) {
-                    case NIdent ignored -> {
-                    }
-
-                    case NDotAccess dotAccess -> {
-                        if (!(dotAccess.accessed instanceof NAssignable dotAssignable)) throw new Error();
-                        setLValueRec(dotAssignable);
-                    }
-
-                    case NDeRef deRef -> {
-                        if (!(deRef.reference instanceof NAssignable deRefAssignable)) throw new Error();
-                        setLValueRec(deRefAssignable);
-                    }
-
-                    default -> throw new Error();
-                }
-            }
-
-            @Override
-            public void visit(NAssign assign, VisitorContext context) {
-                setLValueRec(assign.left);
-                ASTVisitor.super.visit(assign, context);
-            }
-
-            @Override
-            public void visit(NAssignCompound assignCompound, VisitorContext context) {
-                setLValueRec(assignCompound.left);
-                ASTVisitor.super.visit(assignCompound, context);
             }
         }, null);
 
         //Register named functions and function parameters
         ast.accept(new ASTVisitor() {
             @Override
-            public void visit(NNamedFn namedFn, VisitorContext context) {
+            public void visit(NNamedFn namedFn, VisitorContext context) throws LanguegException {
                 if (!symbolTable.registerFn(new Identifier(namedFn.scope, namedFn.name), namedFn.header))
-                    throw new Error("Duplicate name " + namedFn.name + " in the same scope");
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, namedFn.codeOffset(), pipeline.getSource(), namedFn.name);
 
                 ASTVisitor.super.visit(namedFn, context);
             }
 
             @Override
-            public void visit(NFn fn, VisitorContext context) {
+            public void visit(NFn fn, VisitorContext context) throws LanguegException {
                 for (NameTypePair param : fn.getFnHeader().params) {
                     if (!symbolTable.registerVar(new Identifier(fn.getBodyScope(), param.name), param.type))
-                        throw new Error("Duplicate name " + param.name + " in the same scope");
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, fn.getFnHeader().codeOffset(), pipeline.getSource(), param.name);
                 }
                 ASTVisitor.super.visit(fn, context);
             }
@@ -194,21 +165,10 @@ public class DefaultTypeChecker implements TypeChecker {
         //Check and annotate expr types / register vars
         annotateTypes(ast);
 
-        //Verify variables are initialized before use
-        ast.accept(new ASTVisitor() {
-            @Override
-            public void visit(NVar var, VisitorContext context) {
-                if (!varIsInitializedBeforeUse(var.scope.scopeOpeningNode, new Identifier(var.scope, var.name)))
-                    throw new Error("Variable " + var.name + " is not initialized before use");
-
-                ASTVisitor.super.visit(var, context);
-            }
-        }, null);
-
         //Find expression statements
         ast.accept(new ASTVisitor() {
             @Override
-            public void visit(NProg prog, VisitorContext context) {
+            public void visit(NProg prog, VisitorContext context) throws LanguegException {
                 for (AST stmnt : prog.statements) {
                     if (stmnt instanceof NExpr expr) expr.isExprStmnt = true;
                 }
@@ -216,7 +176,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NBlock block, VisitorContext context) {
+            public void visit(NBlock block, VisitorContext context) throws LanguegException {
                 for (AST stmnt : block.statements) {
                     if (stmnt instanceof NExpr expr) expr.isExprStmnt = true;
                 }
@@ -224,7 +184,7 @@ public class DefaultTypeChecker implements TypeChecker {
             }
 
             @Override
-            public void visit(NBlockYielding blockYielding, VisitorContext context) {
+            public void visit(NBlockYielding blockYielding, VisitorContext context) throws LanguegException {
                 for (AST stmnt : blockYielding.statements) {
                     if (stmnt instanceof NExpr expr) expr.isExprStmnt = true;
                 }
@@ -237,70 +197,6 @@ public class DefaultTypeChecker implements TypeChecker {
         return ast;
     }
 
-    private boolean varIsInitializedBeforeUse(AST ast, Identifier id) {
-        final boolean[] used = {false};
-        Type varType = symbolTable.tryInstantiateType(((SymbolTable.Identifiable.Variable) symbolTable.getById(id)).varType);
-        Type.InitTracker initTracker = Type.InitTracker.getInitTracker(varType);
-
-        linearCodeScan(ast, node -> {
-            if (used[0]) return;
-
-            if (node instanceof NIdent ident && !ident.isLValue &&
-                    symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id))
-                used[0] = true;
-
-            if (node instanceof NAssign || node instanceof NAssignCompound) {
-                Stack<Integer> dotAccessIndices = new Stack<>();
-                NAssignable assignable = node instanceof NAssign assign ? assign.left : ((NAssignCompound) node).left;
-                do {
-                    switch (assignable) {
-                        case NIdent ident -> {
-                            if (!symbolTable.identifiersReferToSameThing(new Identifier(ident.scope, ident.identifier), id))
-                                return;
-                        }
-
-                        case NDotAccess dotAccess -> {
-                            dotAccessIndices.push(dotAccess.accessor.match(i -> i, str ->
-                                    switch (symbolTable.tryInstantiateType(dotAccess.accessed.exprType)) {
-                                        case TupleType tupleType -> tupleType.indexByName(str);
-                                        case UnionType unionType -> unionType.indexByName(str);
-                                        default -> throw new Error();
-                                    }));
-                            assignable = (NAssignable) dotAccess.accessed;
-                        }
-
-                        default -> throw new Error();
-                    }
-                } while (!(assignable instanceof NIdent));
-
-                Type.InitTracker initTrackerTmp = initTracker;
-                while (!dotAccessIndices.empty()) {
-                    if (initTrackerTmp instanceof Type.InitTracker.TupleInitTracker tupleInitTracker)
-                        initTrackerTmp = tupleInitTracker.getElement(dotAccessIndices.pop());
-                    else throw new Error();
-                }
-                initTrackerTmp.init();
-            }
-        });
-
-        if (!used[0]) return true;
-        return initTracker.isInit();
-    }
-
-    private void linearCodeScan(AST ast, Consumer<AST> consumer) {
-        consumer.accept(ast);
-
-        if (ast instanceof NFn) return;
-        if (ast instanceof NIfElse ifElse) linearCodeScan(ifElse.cond, consumer);
-        if (ast instanceof NIf if_) linearCodeScan(if_.cond, consumer);
-        if (ast instanceof NWhile while_) linearCodeScan(while_.cond, consumer);
-
-        if (!ast.hasChildren()) return;
-        for (AST child : ast.getChildren()) {
-            linearCodeScan(child, consumer);
-        }
-    }
-
     private void annotateTypes(AST ast) {
         try {
             switch (ast) {
@@ -308,14 +204,6 @@ public class DefaultTypeChecker implements TypeChecker {
                     for (AST statement : prog.statements) {
                         annotateTypes(statement);
                     }
-                }
-
-                case NVar var -> {
-                    if (var.type == null)
-                        throw new Error("Can't infer type of variable " + var.name + ", because it is not initialized");
-
-                    if (!symbolTable.registerVar(new Identifier(var.scope, var.name), var.type))
-                        throw new Error("Duplicate name " + var.name + " in the same scope");
                 }
 
                 case NVarInit varInit -> {
@@ -341,9 +229,8 @@ public class DefaultTypeChecker implements TypeChecker {
                         }
                     }
 
-                    if (!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type)) {
-                        throw new Error("Duplicate name " + varInit.name + " in the same scope");
-                    }
+                    if (!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type))
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, varInit.codeOffset(), pipeline.getSource(), varInit.name);
                 }
 
                 case NNamedFn namedFn -> annotateTypes(namedFn.body);
@@ -351,7 +238,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 case NExpr expr -> {
                     try {
                         synthesizeType(expr);
-                    } catch(TypeSynthesisException reason){
+                    } catch (TypeSynthesisException reason) {
                         throw new TypeSynthesisException(
                                 Errors.CHECK_SYNTHESIZE_EXPR_STMNT,
                                 reason,
@@ -364,16 +251,13 @@ public class DefaultTypeChecker implements TypeChecker {
                 default -> {
                 }
             }
-        } catch (TypeCheckException exception) {
-            System.err.println(exception.format());
-            System.exit(1);
-        } catch (TypeSynthesisException exception) {
+        } catch (LanguegException exception) {
             System.err.println(exception.format());
             System.exit(1);
         }
     }
 
-    private void checkType(NExpr expr, Type type) throws TypeCheckException {
+    private void checkType(NExpr expr, Type type) throws TypeCheckException, SemanticException {
         expr.exprType = type;
         switch (expr) {
             case NTuple tuple -> {
@@ -518,7 +402,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 for (NExpr element : array.elements) {
                     try {
                         checkType(element, arrayType.type);
-                    } catch (TypeCheckException reason){
+                    } catch (TypeCheckException reason) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_ARRAY,
                                 reason,
@@ -535,13 +419,13 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeCheckException(Errors.CHECK_CHECK_GENERIC, exp.codeOffset(), pipeline.getSource(), type, synthesizedType);
                     }
                 } catch (TypeSynthesisException e) {
-                    throw new RuntimeException(e);
+                    throw new RuntimeException(exp.toString());
                 }
             }
         }
     }
 
-    private Type synthesizeType(NExpr expr) throws TypeSynthesisException, TypeCheckException {
+    private Type synthesizeType(NExpr expr) throws TypeSynthesisException, TypeCheckException, SemanticException {
         Type synthesizedType = switch (expr) {
 
             case NStr ignored -> new NamedType("String");
@@ -593,7 +477,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     );
                 }
                 if (!(calledExprType instanceof FnType fnType))
-                    throw new Error("Cannot call value of type " + calledExprType);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_FN_CALLEE, call.callee.codeOffset(), pipeline.getSource());
 
                 for (int i = 0; i < call.args.length; i++) {
                     try {
@@ -695,7 +579,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     );
                 }
                 if (!(symbolTable.tryInstantiateType(valType) instanceof UnionType unionType))
-                    throw new Error("Cannot match value of non union type " + valType);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_MATCH_VAL, match.value.codeOffset(), pipeline.getSource());
 
                 boolean[] casesCovered = new boolean[unionType.unionTypes().length];
                 Type expectedBranchType = null;
@@ -707,9 +591,9 @@ public class DefaultTypeChecker implements TypeChecker {
                             Type unionElementType = unionType.unionTypes()[unionTypeElementIndex];
                             symbolTable.registerVar(new Identifier(match.branches[i].right.scope, unionPattern.elementVarName), unionElementType);
 
-                            if (casesCovered[unionTypeElementIndex]) {
-                                throw new Error("Case already covered");
-                            }
+                            if (casesCovered[unionTypeElementIndex])
+                                throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_MULTI_COVER, match.branches[i].right.codeOffset(), pipeline.getSource());
+
                             casesCovered[unionTypeElementIndex] = true;
                         }
 
@@ -734,7 +618,7 @@ public class DefaultTypeChecker implements TypeChecker {
                         checkType(match.branches[i].right, expectedBranchType);
                     } catch (TypeCheckException reason) {
                         throw new TypeCheckException(
-                                Errors.CHECK_CHECK_MATCH,
+                                Errors.CHECK_CHECK_MATCH_BRANCH,
                                 reason,
                                 match.branches[i].right.codeOffset(), pipeline.getSource(), expectedBranchType
                         );
@@ -742,7 +626,8 @@ public class DefaultTypeChecker implements TypeChecker {
                 }
 
                 for (int i = 0; i < casesCovered.length; i++) {
-                    if (!casesCovered[i]) throw new Error("Match doesn't cover case " + i);
+                    if (!casesCovered[i])
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_UNCOVERED, match.codeOffset(), pipeline.getSource(), i, unionType.nameTypePairs()[i].name);
                 }
 
                 yield expectedBranchType;
@@ -804,7 +689,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     int finalI = i;
                     int index = element.left == null ? i : element.left.match(integer -> integer, ignored -> finalI);
 
-                    if (nameTypePairs[index] != null){
+                    if (nameTypePairs[index] != null) {
                         throw new TypeSynthesisException(
                                 Errors.CHECK_SYNTHESIZE_TUPLE_MULTI_INIT,
                                 element.right.codeOffset(), pipeline.getSource()
@@ -840,7 +725,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 } catch (TypeCheckException reason) {
                     if (castAllowlist.allowCastExplicit(synthesizeType(cast.expr), cast.type, symbolTable))
                         yield cast.type;
-                    throw new Error("Cannot cast expr to " + cast.type);
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_CAST, cast.codeOffset(), pipeline.getSource(), cast.type);
                 }
             }
 
@@ -889,14 +774,14 @@ public class DefaultTypeChecker implements TypeChecker {
             case NIdent ident -> {
                 Identifier id = new Identifier(ident.scope, ident.identifier);
                 if (!symbolTable.anyExists(id))
-                    throw new Error("Nothing with the name " + id.name() + " exists in scope " + id.scope());
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_UNKNOWN_SYMBOL, ident.codeOffset(), pipeline.getSource(), id.name());
 
                 SymbolTable.Identifiable identifiable = symbolTable.getById(id);
                 yield switch (identifiable) {
                     case SymbolTable.Identifiable.Function fn -> fn.fnHeader.getFnType();
                     case SymbolTable.Identifiable.Variable var -> var.varType;
                     case SymbolTable.Identifiable.NamedType ignored ->
-                            throw new Error(ident.identifier + " refers to a type in this scope and cannot be used as a value");
+                            throw new SemanticException(Errors.CHECK_SEMANTIC_TYPE_AS_VAL, ident.codeOffset(), pipeline.getSource(), ident.identifier);
                 };
             }
 
@@ -925,33 +810,25 @@ public class DefaultTypeChecker implements TypeChecker {
                 }
 
                 if (!(deRefType instanceof RefType refType))
-                    throw new Error("Trying to dereference value of non reference type");
+                    throw new TypeCheckException(Errors.CHECK_CHECK_DEREF, deRef.codeOffset(), pipeline.getSource());
 
                 yield refType.referentType;
             }
 
             case NDotAccess dotAccess -> {
-                Type accessedType_ = synthesizeType(dotAccess.accessed);
-                Type accessedType = symbolTable.tryInstantiateType(accessedType_);
+                Type accessedType = synthesizeType(dotAccess.accessed);
 
-                if (!(accessedType instanceof TupleType tupleType))
-                    throw new Error("The dot access operator cannot be applied to this type: " + accessedType);
+                if (!(symbolTable.tryInstantiateType(accessedType) instanceof TupleType tupleType))
+                    throw new TypeCheckException(Errors.CHECK_CHECK_DOT_ACCESS, dotAccess.codeOffset(), pipeline.getSource());
 
-                yield dotAccess.accessor.match(
-                        (uint) -> {
-                            if (Integer.compareUnsigned(uint, tupleType.tupleTypes().length) >= 0) {
-                                throw new Error("The tuple being accessed has no element at this index");
-                            }
-                            return tupleType.tupleTypes()[uint];
-                        },
-                        (ident) -> {
-                            Type t = tupleType.typeByName(ident);
-                            if (t == null) {
-                                throw new Error("The tuple being accessed has no element with this name");
-                            }
-                            return t;
-                        }
-                );
+                if(!tupleType.hasElement(dotAccess.accessor)){
+                    if(dotAccess.accessor instanceof Either.Left<Integer, String>(Integer index))
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_INDEX, dotAccess.codeOffset(), pipeline.getSource(), index);
+                    if(dotAccess.accessor instanceof Either.Right<Integer, String>(String name))
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME, dotAccess.codeOffset(), pipeline.getSource(), name);
+                }
+
+                yield tupleType.resolveElementType(dotAccess.accessor);
             }
 
             default -> throw new IllegalStateException("Unexpected value: " + expr);

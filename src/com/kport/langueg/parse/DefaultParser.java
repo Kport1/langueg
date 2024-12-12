@@ -23,7 +23,6 @@ import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.*;
 import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
-import com.kport.langueg.parse.ast.nodes.statement.NVar;
 import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.typeCheck.types.*;
@@ -505,6 +504,7 @@ public class DefaultParser implements Parser {
     }
 
     private FnHeader parseFnHeader() throws ParseException {
+        int offset = iterator.current().offset;
         return parseEnclosedAs(TokenType.LParen, TokenType.RParen, (v) -> {
             NameTypePair[] params = parseFnParams();
 
@@ -512,7 +512,7 @@ public class DefaultParser implements Parser {
                 throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
             iterator.inc();
 
-            return new FnHeader(params, parseType());
+            return new FnHeader(params, parseType(), offset);
         });
     }
 
@@ -580,13 +580,13 @@ public class DefaultParser implements Parser {
             type = parseType();
         }
 
-        NExpr init = null;
-        if (iterator.current().tok == TokenType.Assign) {
-            iterator.inc();
-            init = parseExpr();
-        }
+        if(iterator.current().tok != TokenType.Assign)
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
 
-        return init == null ? new NVar(cur.offset, type, name) : new NVarInit(cur.offset, type, name, init);
+        iterator.inc();
+        NExpr init = parseExpr();
+
+        return new NVarInit(cur.offset, type, name, init);
     }
 
     private NTypeDef parseTypeDef() throws ParseException {

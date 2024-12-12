@@ -1,162 +1,164 @@
 package com.kport.langueg.parse.ast;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.nodes.*;
-import com.kport.langueg.parse.ast.nodes.expr.*;
+import com.kport.langueg.parse.ast.nodes.expr.NAssign;
+import com.kport.langueg.parse.ast.nodes.expr.NBlock;
+import com.kport.langueg.parse.ast.nodes.expr.NBlockYielding;
+import com.kport.langueg.parse.ast.nodes.expr.NCast;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDeRef;
-import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NDotAccess;
+import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
 import com.kport.langueg.parse.ast.nodes.expr.controlFlow.*;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.*;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat32;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.floating.NFloat64;
 import com.kport.langueg.parse.ast.nodes.expr.dataTypes.number.integer.*;
 import com.kport.langueg.parse.ast.nodes.expr.operators.*;
-import com.kport.langueg.parse.ast.nodes.statement.*;
+import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
+import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Pair;
 
 import java.util.Arrays;
 
 public interface ASTVisitor {
-    default void visit(AST ast, VisitorContext context){}
+    default void visit(AST ast, VisitorContext context) throws LanguegException {}
 
 
-    default void visit(NExpr expr, VisitorContext context){}
-    default void visit(NStatement stmnt, VisitorContext context){}
-    default void visit(NProg prog, VisitorContext context){
+    default void visit(NExpr expr, VisitorContext context) throws LanguegException {}
+    default void visit(NStatement stmnt, VisitorContext context) throws LanguegException {}
+    default void visit(NProg prog, VisitorContext context) throws LanguegException {
         for (AST statement : prog.statements) {
             statement.accept(this, VisitorContext.clone(context));
         }
     }
 
 
-    default void visit(NAssignable assignable, VisitorContext context){}
-    default void visit(NDeRef deRef, VisitorContext context){
+    default void visit(NAssignable assignable, VisitorContext context) throws LanguegException {}
+    default void visit(NDeRef deRef, VisitorContext context) throws LanguegException {
         deRef.reference.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NDotAccess access, VisitorContext context){
+    default void visit(NDotAccess access, VisitorContext context) throws LanguegException {
         access.accessed.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NIdent ident, VisitorContext context){}
+    default void visit(NIdent ident, VisitorContext context) throws LanguegException {}
 
 
-    default void visit(NInt8 int8, VisitorContext context){}
-    default void visit(NInt16 int16, VisitorContext context){}
-    default void visit(NInt32 int32, VisitorContext context){}
-    default void visit(NInt64 int64, VisitorContext context){}
-    default void visit(NUInt8 uint8, VisitorContext context){}
-    default void visit(NUInt16 uint16, VisitorContext context){}
-    default void visit(NUInt32 uint32, VisitorContext context){}
-    default void visit(NUInt64 uint64, VisitorContext context){}
+    default void visit(NInt8 int8, VisitorContext context) throws LanguegException {}
+    default void visit(NInt16 int16, VisitorContext context) throws LanguegException {}
+    default void visit(NInt32 int32, VisitorContext context) throws LanguegException {}
+    default void visit(NInt64 int64, VisitorContext context) throws LanguegException {}
+    default void visit(NUInt8 uint8, VisitorContext context) throws LanguegException {}
+    default void visit(NUInt16 uint16, VisitorContext context) throws LanguegException {}
+    default void visit(NUInt32 uint32, VisitorContext context) throws LanguegException {}
+    default void visit(NUInt64 uint64, VisitorContext context) throws LanguegException {}
 
-    default void visit(NBool bool, VisitorContext context){}
-    default void visit(NChar char_, VisitorContext context){}
-    default void visit(NFloat32 float32, VisitorContext context){}
-    default void visit(NFloat64 float64, VisitorContext context){}
+    default void visit(NBool bool, VisitorContext context) throws LanguegException {}
+    default void visit(NChar char_, VisitorContext context) throws LanguegException {}
+    default void visit(NFloat32 float32, VisitorContext context) throws LanguegException {}
+    default void visit(NFloat64 float64, VisitorContext context) throws LanguegException {}
 
-    default void visit(NStr str, VisitorContext context){}
+    default void visit(NStr str, VisitorContext context) throws LanguegException {}
 
 
-    default void visit(NAssign assign, VisitorContext context){
+    default void visit(NAssign assign, VisitorContext context) throws LanguegException {
         assign.left.accept(this, VisitorContext.clone(context));
         assign.right.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NAssignCompound assignCompound, VisitorContext context){
+    default void visit(NAssignCompound assignCompound, VisitorContext context) throws LanguegException {
         assignCompound.left.accept(this, VisitorContext.clone(context));
         assignCompound.right.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NBinOp binOp, VisitorContext context){
+    default void visit(NBinOp binOp, VisitorContext context) throws LanguegException {
         binOp.left.accept(this, VisitorContext.clone(context));
         binOp.right.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NBlock block, VisitorContext context){
+    default void visit(NBlock block, VisitorContext context) throws LanguegException {
         for (AST statement : block.statements) {
             statement.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(NBlockYielding blockYielding, VisitorContext context){
+    default void visit(NBlockYielding blockYielding, VisitorContext context) throws LanguegException {
         for (AST statement : blockYielding.statements) {
             statement.accept(this, VisitorContext.clone(context));
         }
         blockYielding.value.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NCall call, VisitorContext context){
+    default void visit(NCall call, VisitorContext context) throws LanguegException {
         call.callee.accept(this, VisitorContext.clone(context));
         for (NExpr arg : call.args) {
             arg.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(NCast cast, VisitorContext context){
+    default void visit(NCast cast, VisitorContext context) throws LanguegException {
         cast.type.accept(this, VisitorContext.clone(context));
         cast.expr.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NIf if_, VisitorContext context){
+    default void visit(NIf if_, VisitorContext context) throws LanguegException {
         if_.cond.accept(this, VisitorContext.clone(context));
         if_.ifBlock.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NIfElse ifElse, VisitorContext context){
+    default void visit(NIfElse ifElse, VisitorContext context) throws LanguegException {
         ifElse.cond.accept(this, VisitorContext.clone(context));
         ifElse.ifBlock.accept(this, VisitorContext.clone(context));
         ifElse.elseBlock.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NMatch match, VisitorContext context){
+    default void visit(NMatch match, VisitorContext context) throws LanguegException {
         match.value.accept(this, VisitorContext.clone(context));
         for (Pair<NMatch.Pattern, NExpr> branch : match.branches) {
             branch.right.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(NRef ref, VisitorContext context){
+    default void visit(NRef ref, VisitorContext context) throws LanguegException {
         ref.referent.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NReturn return_, VisitorContext context){
+    default void visit(NReturn return_, VisitorContext context) throws LanguegException {
         return_.expr.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NTuple tuple, VisitorContext context){
+    default void visit(NTuple tuple, VisitorContext context) throws LanguegException {
         for (NExpr element : Arrays.stream(tuple.elements).map(p -> p.right).toList()) {
             element.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(NArray array, VisitorContext context){
+    default void visit(NArray array, VisitorContext context) throws LanguegException {
         for (NExpr element : array.elements) {
             element.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(NUnaryOpPost unaryOpPost, VisitorContext context){
+    default void visit(NUnaryOpPost unaryOpPost, VisitorContext context) throws LanguegException {
         unaryOpPost.operand.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NUnaryOpPre unaryOpPre, VisitorContext context){
+    default void visit(NUnaryOpPre unaryOpPre, VisitorContext context) throws LanguegException {
         unaryOpPre.operand.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NUnion union, VisitorContext context){
+    default void visit(NUnion union, VisitorContext context) throws LanguegException {
         union.initializedElement.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NWhile while_, VisitorContext context){
+    default void visit(NWhile while_, VisitorContext context) throws LanguegException {
         while_.cond.accept(this, VisitorContext.clone(context));
         while_.block.accept(this, VisitorContext.clone(context));
     }
 
 
-    default void visit(NTypeDef typeDef, VisitorContext context){}
-    default void visit(NVar var, VisitorContext context){
-        if(var.type != null) var.type.accept(this, VisitorContext.clone(context));
-    }
-    default void visit(NVarInit varInit, VisitorContext context){
+    default void visit(NTypeDef typeDef, VisitorContext context) throws LanguegException {}
+    default void visit(NVarInit varInit, VisitorContext context) throws LanguegException {
         if(varInit.type != null) varInit.type.accept(this, VisitorContext.clone(context));
         varInit.init.accept(this, VisitorContext.clone(context));
     }
 
 
-    default void visit(NAnonFn anonFn, VisitorContext context){
+    default void visit(NAnonFn anonFn, VisitorContext context) throws LanguegException {
         anonFn.header.accept(this, VisitorContext.clone(context));
         anonFn.body.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NNamedFn namedFn, VisitorContext context){
+    default void visit(NNamedFn namedFn, VisitorContext context) throws LanguegException {
         namedFn.header.accept(this, VisitorContext.clone(context));
         namedFn.body.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NFn fn, VisitorContext context){}
-    default void visit(FnHeader fnHeader, VisitorContext context){
+    default void visit(NFn fn, VisitorContext context) throws LanguegException {}
+    default void visit(FnHeader fnHeader, VisitorContext context) throws LanguegException {
         for (NameTypePair param : fnHeader.params) {
             param.type.accept(this, VisitorContext.clone(context));
         }
@@ -165,37 +167,37 @@ public interface ASTVisitor {
 
 
 
-    default void visit(Type type, VisitorContext context){}
-    default void visit(ArrayType arrayType, VisitorContext context){
+    default void visit(Type type, VisitorContext context) throws LanguegException {}
+    default void visit(ArrayType arrayType, VisitorContext context) throws LanguegException {
         arrayType.type.accept(this, VisitorContext.clone(context));
     }
-    default void visit(FnType fnType, VisitorContext context){
+    default void visit(FnType fnType, VisitorContext context) throws LanguegException {
         for (Type fnParam : fnType.fnParams) {
             fnParam.accept(this, VisitorContext.clone(context));
         }
         fnType.fnReturn.accept(this, VisitorContext.clone(context));
     }
-    default void visit(NamedType namedType, VisitorContext context){
+    default void visit(NamedType namedType, VisitorContext context) throws LanguegException {
         for (Type typeArg : namedType.typeArgs) {
             typeArg.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(PrimitiveType primitiveType, VisitorContext context){}
-    default void visit(RefType refType, VisitorContext context){
+    default void visit(PrimitiveType primitiveType, VisitorContext context) throws LanguegException {}
+    default void visit(RefType refType, VisitorContext context) throws LanguegException {
         refType.referentType.accept(this, VisitorContext.clone(context));
     }
-    default void visit(TupleType tupleType, VisitorContext context){
+    default void visit(TupleType tupleType, VisitorContext context) throws LanguegException {
         for (NameTypePair nameTypePair : tupleType.nameTypePairs) {
             nameTypePair.type.accept(this, VisitorContext.clone(context));
         }
     }
-    default void visit(UnionType unionType, VisitorContext context){
+    default void visit(UnionType unionType, VisitorContext context) throws LanguegException {
         for (NameTypePair nameTypePair : unionType.nameTypePairs) {
             nameTypePair.type.accept(this, VisitorContext.clone(context));
         }
     }
 
-    default void visit(NameTypePair nameTypePair, VisitorContext context){
+    default void visit(NameTypePair nameTypePair, VisitorContext context) throws LanguegException {
         nameTypePair.type.accept(this, VisitorContext.clone(context));
     }
 }

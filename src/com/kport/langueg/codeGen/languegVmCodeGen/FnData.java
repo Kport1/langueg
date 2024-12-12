@@ -4,7 +4,9 @@ import com.kport.langueg.util.CodeOutputStream;
 import com.kport.langueg.util.Identifier;
 import com.kport.langueg.util.Scope;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
 public class FnData {
     private final Stack<ScopeData> scopeData;

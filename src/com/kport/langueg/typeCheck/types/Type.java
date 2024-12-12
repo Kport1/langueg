@@ -1,5 +1,6 @@
 package com.kport.langueg.typeCheck.types;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
@@ -25,7 +26,7 @@ public sealed interface Type extends Visitable permits ArrayType, FnType, NamedT
     int getSize();
 
     @Override
-    default void accept(ASTVisitor visitor, VisitorContext context) {
+    default void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         visitor.visit(this, context);
     }
 

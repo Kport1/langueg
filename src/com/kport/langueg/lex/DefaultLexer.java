@@ -3,7 +3,9 @@ package com.kport.langueg.lex;
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.util.Pair;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +25,7 @@ public class DefaultLexer implements Lexer{
 
         tokens.put("<", TokenType.Greater);
         tokens.put(">", TokenType.Less);
+        tokens.put("==", TokenType.Eq);
         tokens.put("!=", TokenType.NotEq);
         tokens.put("&&", TokenType.BitAnd);
         tokens.put("&", TokenType.And);

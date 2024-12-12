@@ -1,5 +1,6 @@
 package com.kport.langueg.parse.ast.nodes.expr.operators;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.lex.TokenType;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
@@ -32,7 +33,7 @@ public class NUnaryOpPost extends NExpr {
     }
 
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context){
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         super.accept(visitor, context);
         visitor.visit(this, context);
     }

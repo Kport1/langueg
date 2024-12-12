@@ -68,10 +68,10 @@ public enum Errors {
     CHECK_CHECK_ARRAY(                          "Array can't be made to have type %1$s",
                                                 ""),
 
-    CHECK_CHECK_IF_COND(                        "Condition of if expression can't be made to have type boolean",
+    CHECK_CHECK_IF_COND(                        "Condition of if expression can't be made to have boolean type",
                                                 ""),
 
-    CHECK_CHECK_IF_ELSE_COND(                   "Condition of if-else expression can't be made to have type boolean",
+    CHECK_CHECK_IF_ELSE_COND(                   "Condition of if-else expression can't be made to have boolean type",
                                                 ""),
     CHECK_CHECK_IF_ELSE_IF(                     "If-else expression's if branch can't be made to have type %1$s",
                                                 ""),
@@ -80,24 +80,34 @@ public enum Errors {
     CHECK_CHECK_IF_ELSE_ELSE_SYN_FROM_IF(       "If-else expression's else branch can't be made to have type %1$s, expected by if branch",
                                                 ""),
 
-    CHECK_CHECK_WHILE_COND(                     "Condition of while loop can't be made to have type boolean",
+    CHECK_CHECK_WHILE_COND(                     "Condition of while loop can't be made to have boolean type",
                                                 ""),
     CHECK_CHECK_WHILE_BODY(                     "Body of while loop can't be made to have unit type",
                                                 ""),
 
-    CHECK_CHECK_MATCH(                          "Branch of match expression cant be made to have type %1$s, expected by first branch",
+    CHECK_CHECK_MATCH_VAL(                      "Matched on value can't be made to have union type",
+                                                ""),
+    CHECK_CHECK_MATCH_BRANCH(                   "Branch of match expression cant be made to have type %1$s, expected by first branch",
                                                 ""),
 
+    CHECK_CHECK_FN_CALLEE(                      "Callee can't be made to have function type",
+                                                ""),
     CHECK_CHECK_FN_ARG(                         "Function argument can't be made to have type %1$s",
                                                 ""),
 
     CHECK_CHECK_RETURN(                         "Returned value can't be made to have type %1$s",
                                                 ""),
 
-    CHECK_CHECK_ASSIGN(                         "Cannot assign to location expecting %1$s",
+    CHECK_CHECK_ASSIGN(                         "Cannot assign to location expecting value of type %1$s",
                                                 ""),
 
     CHECK_CHECK_REF(                            "Ref can't be made to have type %1$s",
+                                                ""),
+
+    CHECK_CHECK_DEREF(                          "Dereferenced value can't be made to have reference type",
+                                                ""),
+
+    CHECK_CHECK_DOT_ACCESS(                     "Value accessed with dot operator can't be made to have tuple type",
                                                 ""),
 
     CHECK_CHECK_NUM_INFER(                      "Number can't be made to have type %1$s",
@@ -106,6 +116,25 @@ public enum Errors {
     CHECK_CHECK_VAR_INIT(                       "Variable initializer can't be made to have type %1$s",
                                                 ""),
 
+    CHECK_SEMANTIC_UNKNOWN_SYMBOL(              "Symbol %1$s doesn't exist in this scope",
+                                                ""),
+    CHECK_SEMANTIC_DUPLICATE_SYMBOL(            "Symbol %1$s appears multiple times in the same scope",
+                                                ""),
+    CHECK_SEMANTIC_TYPE_AS_VAL(                 "Symbol %1$s refers to a type in this scope",
+                                                ""),
+
+    CHECK_SEMANTIC_BRANCH_UNCOVERED(            "Case %1$d aka %2$s is not covered",
+                                                ""),
+    CHECK_SEMANTIC_BRANCH_MULTI_COVER(          "Case is already covered",
+                                                ""),
+
+    CHECK_SEMANTIC_INVALID_CAST(                "Cannot cast expression to %1$s",
+                                                ""),
+
+    CHECK_SEMANTIC_INVALID_DOT_ACCESS_INDEX(    "Tuple has no element at index %1$d",
+                                                ""),
+    CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME(     "Tuple has no element with name %1$s",
+                                                ""),
 
     PLACEHOLDER(                                "Fix this error",
                                                 "pls");

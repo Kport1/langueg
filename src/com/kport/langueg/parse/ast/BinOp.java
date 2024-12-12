@@ -45,6 +45,7 @@ public enum BinOp {
 
         tokToBinOpMap.put(TokenType.Greater, Greater);
         tokToBinOpMap.put(TokenType.Less, Less);
+        tokToBinOpMap.put(TokenType.Eq, Eq);
         tokToBinOpMap.put(TokenType.NotEq, NotEq);
 
         tokToBinOpMap.put(TokenType.And, And);

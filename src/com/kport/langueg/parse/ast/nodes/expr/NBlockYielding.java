@@ -1,5 +1,6 @@
 package com.kport.langueg.parse.ast.nodes.expr;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
@@ -35,7 +36,7 @@ public class NBlockYielding extends NExpr {
     }
 
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context){
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         super.accept(visitor, context);
         visitor.visit(this, context);
     }

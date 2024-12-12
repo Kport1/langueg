@@ -1,5 +1,6 @@
 package com.kport.langueg.parse.ast.nodes;
 
+import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
@@ -53,7 +54,7 @@ public final class NAnonFn extends NExpr implements NFn {
     }
 
     @Override
-    public void accept(ASTVisitor visitor, VisitorContext context){
+    public void accept(ASTVisitor visitor, VisitorContext context) throws LanguegException {
         super.accept(visitor, context);
         visitor.visit((NFn) this, context);
         visitor.visit(this, context);
