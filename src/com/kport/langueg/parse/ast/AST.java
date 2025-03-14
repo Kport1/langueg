@@ -12,7 +12,7 @@ public abstract class AST implements Visitable, CodeLocatable {
 
     public Scope scope = null;
 
-    public AST(int offset_, AST... children){
+    public AST(int offset_, AST... children) {
         offset = offset_;
         for (AST child : children) {
             child.parent = this;
@@ -20,7 +20,7 @@ public abstract class AST implements Visitable, CodeLocatable {
     }
 
     @Override
-    public int codeOffset(){
+    public int codeOffset() {
         return offset;
     }
 
@@ -39,24 +39,24 @@ public abstract class AST implements Visitable, CodeLocatable {
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return toStringPretty(1);
     }
 
-    private String toStringPretty(int indent){
+    private String toStringPretty(int indent) {
         StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
         str.append(" [ ")
                 .append("offset: ")
                 .append(offset)
-                .append(scope != null? ", scope: " + scope : "")
-                .append(this instanceof NExpr expr && expr.exprType != null? ", exprType: " + expr.exprType : "")
-                .append(this instanceof NExpr expr? ", isExprStmnt: " + expr.isExprStmnt : "")
+                .append(scope != null ? ", scope: " + scope : "")
+                .append(this instanceof NExpr expr && expr.exprType != null ? ", exprType: " + expr.exprType : "")
+                .append(this instanceof NExpr expr ? ", isExprStmnt: " + expr.isExprStmnt : "")
                 .append(" ]")
                 .append("( ")
                 .append(nToString())
                 .append(" )");
 
-        if(!hasChildren() || getChildren().length == 0){
+        if (!hasChildren() || getChildren().length == 0) {
             return str.toString();
         }
         str.append(" {\n");

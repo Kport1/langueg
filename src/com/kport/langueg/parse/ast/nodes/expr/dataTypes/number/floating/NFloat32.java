@@ -37,8 +37,8 @@ public class NFloat32 extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NFloat32 a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NFloat32 a)) return false;
         return val == a.val;
     }
 }

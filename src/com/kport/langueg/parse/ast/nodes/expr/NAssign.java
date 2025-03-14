@@ -11,7 +11,7 @@ public class NAssign extends NExpr {
     public NAssignable left;
     public NExpr right;
 
-    public NAssign(int offset_, NAssignable left_, NExpr right_){
+    public NAssign(int offset_, NAssignable left_, NExpr right_) {
         super(offset_, left_, right_);
         left = left_;
         right = right_;
@@ -28,7 +28,7 @@ public class NAssign extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -39,8 +39,8 @@ public class NAssign extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NAssign a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NAssign a)) return false;
         return left.equals(a.left) && right.equals(a.right);
     }
 }

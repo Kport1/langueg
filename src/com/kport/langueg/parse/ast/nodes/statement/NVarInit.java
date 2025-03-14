@@ -43,8 +43,8 @@ public class NVarInit extends NStatement {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NVarInit a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NVarInit a)) return false;
         return type.equals(a.type) && name.equals(a.name) && init.equals(a.init);
     }
 }

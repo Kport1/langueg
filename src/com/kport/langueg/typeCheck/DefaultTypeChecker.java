@@ -49,11 +49,11 @@ public class DefaultTypeChecker implements TypeChecker {
     private final SymbolTable symbolTable = new SymbolTable();
 
     @Override
-    public AST process(Object ast, LanguegPipeline<?, ?> pipeline){
+    public AST process(Object ast, LanguegPipeline<?, ?> pipeline) {
         this.pipeline = pipeline;
         try {
             return analyze((AST) ast);
-        } catch (LanguegException e){
+        } catch (LanguegException e) {
             System.err.println(e.format());
             System.exit(1);
             return null;
@@ -147,7 +147,7 @@ public class DefaultTypeChecker implements TypeChecker {
         ast.accept(new ASTVisitor() {
             @Override
             public void visit(NNamedFn namedFn, VisitorContext context) throws LanguegException {
-                if (!symbolTable.registerFn(new Identifier(namedFn.scope, namedFn.name), namedFn.header))
+                if (!symbolTable.registerFn(new Identifier(namedFn.scope, namedFn.name), namedFn.type))
                     throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, namedFn.codeOffset(), pipeline.getSource(), namedFn.name);
 
                 ASTVisitor.super.visit(namedFn, context);
@@ -155,10 +155,13 @@ public class DefaultTypeChecker implements TypeChecker {
 
             @Override
             public void visit(NFn fn, VisitorContext context) throws LanguegException {
-                for (NameTypePair param : fn.getFnHeader().params) {
-                    if (!symbolTable.registerVar(new Identifier(fn.getBodyScope(), param.name), param.type))
-                        throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, fn.getFnHeader().codeOffset(), pipeline.getSource(), param.name);
+                if (fn.getFnType().fnParam() instanceof TupleType paramTuple && paramTuple.isFullyNamed()) {
+                    for (NameTypePair param : paramTuple.nameTypePairs) {
+                        if (!symbolTable.registerVar(new Identifier(fn.getBodyScope(), param.name), param.type))
+                            throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, 0, pipeline.getSource(), param.name);
+                    }
                 }
+                symbolTable.registerVar(new Identifier(fn.getBodyScope(), "_"), fn.getFnType().fnParam());
                 ASTVisitor.super.visit(fn, context);
             }
         }, null);
@@ -480,16 +483,18 @@ public class DefaultTypeChecker implements TypeChecker {
                 if (!(calledExprType instanceof FnType fnType))
                     throw new TypeCheckException(Errors.CHECK_CHECK_FN_CALLEE, call.callee.codeOffset(), pipeline.getSource());
 
-                for (int i = 0; i < call.args.length; i++) {
-                    try {
-                        checkType(call.args[i], fnType.fnParams()[i]);
-                    } catch (TypeCheckException reason) {
-                        throw new TypeCheckException(
-                                Errors.CHECK_CHECK_FN_ARG,
-                                reason,
-                                call.args[i].codeOffset(), pipeline.getSource(), fnType.fnParams()[i]
-                        );
-                    }
+
+                try {
+                    if (fnType.fnParam() instanceof TupleType paramTuple && paramTuple.isSinglet() && !(call.arg instanceof NTuple))
+                        checkType(call.arg, paramTuple.nameTypePairs[0].type);
+                    else
+                        checkType(call.arg, fnType.fnParam());
+                } catch (TypeCheckException reason) {
+                    throw new TypeCheckException(
+                            Errors.CHECK_CHECK_FN_ARG,
+                            reason,
+                            call.arg.codeOffset(), pipeline.getSource(), fnType.fnParam()
+                    );
                 }
 
                 yield fnType.fnReturn();
@@ -636,13 +641,13 @@ public class DefaultTypeChecker implements TypeChecker {
 
             case NAnonFn fn -> {
                 annotateTypes(fn.body);
-                yield fn.header.getFnType();
+                yield fn.getFnType();
             }
 
             case NReturn return_ -> {
                 NFn enclosingFn = (NFn) return_.scope.enclosingFnScope().scopeOpeningNode;
 
-                Type expectedType = enclosingFn.getFnHeader().returnType;
+                Type expectedType = enclosingFn.getFnType().fnReturn();
                 try {
                     checkType(return_.expr, expectedType);
                 } catch (TypeCheckException reason) {
@@ -781,7 +786,7 @@ public class DefaultTypeChecker implements TypeChecker {
 
                 SymbolTable.Identifiable identifiable = symbolTable.getById(id);
                 yield switch (identifiable) {
-                    case SymbolTable.Identifiable.Function fn -> fn.fnHeader.getFnType();
+                    case SymbolTable.Identifiable.Function fn -> fn.fnType;
                     case SymbolTable.Identifiable.Variable var -> var.varType;
                     case SymbolTable.Identifiable.NamedType ignored ->
                             throw new SemanticException(Errors.CHECK_SEMANTIC_TYPE_AS_VAL, ident.codeOffset(), pipeline.getSource(), ident.identifier);
@@ -824,10 +829,10 @@ public class DefaultTypeChecker implements TypeChecker {
                 if (!(symbolTable.tryInstantiateType(accessedType) instanceof TupleType tupleType))
                     throw new TypeCheckException(Errors.CHECK_CHECK_DOT_ACCESS, dotAccess.codeOffset(), pipeline.getSource());
 
-                if(!tupleType.hasElement(dotAccess.accessor)){
-                    if(dotAccess.accessor instanceof Either.Left<Integer, String>(Integer index))
+                if (!tupleType.hasElement(dotAccess.accessor)) {
+                    if (dotAccess.accessor instanceof Either.Left<Integer, String>(Integer index))
                         throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_INDEX, dotAccess.codeOffset(), pipeline.getSource(), index);
-                    if(dotAccess.accessor instanceof Either.Right<Integer, String>(String name))
+                    if (dotAccess.accessor instanceof Either.Right<Integer, String>(String name))
                         throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME, dotAccess.codeOffset(), pipeline.getSource(), name);
                 }
 
@@ -842,10 +847,11 @@ public class DefaultTypeChecker implements TypeChecker {
     }
 
     private void checkAssignableRec(NAssignable assignable) throws SemanticException {
-        switch(assignable){
-            case NIdent ignore -> {}
+        switch (assignable) {
+            case NIdent ignore -> {
+            }
             case NDotAccess dotAccess -> {
-                if(!(dotAccess.accessed instanceof NAssignable accessedAssignable))
+                if (!(dotAccess.accessed instanceof NAssignable accessedAssignable))
                     throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, dotAccess.accessed.codeOffset(), pipeline.getSource());
 
                 checkAssignableRec(accessedAssignable);

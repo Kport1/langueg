@@ -4,22 +4,25 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.util.Scope;
+
+import java.util.Objects;
 
 public final class NAnonFn extends NExpr implements NFn {
 
-    public FnHeader header;
+    public FnType type;
     public NExpr body;
 
-    public NAnonFn(int offset_, FnHeader header_, NExpr body_){
+    public NAnonFn(int offset_, FnType type_, NExpr body_) {
         super(offset_, body_);
-        header = header_;
+        type = type_;
         body = body_;
     }
 
     @Override
-    public FnHeader getFnHeader(){
-        return header;
+    public FnType getFnType() {
+        return type;
     }
 
     @Override
@@ -28,13 +31,14 @@ public final class NAnonFn extends NExpr implements NFn {
     }
 
     private Scope bodyScope = null;
+
     @Override
-    public Scope getBodyScope(){
+    public Scope getBodyScope() {
         return bodyScope;
     }
 
     @Override
-    public void setBodyScope(Scope scope_){
+    public void setBodyScope(Scope scope_) {
         bodyScope = scope_;
     }
 
@@ -49,8 +53,8 @@ public final class NAnonFn extends NExpr implements NFn {
     }
 
     @Override
-    public String nToString(){
-        return header.toString();
+    public String nToString() {
+        return type.toString();
     }
 
     @Override
@@ -61,8 +65,8 @@ public final class NAnonFn extends NExpr implements NFn {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NAnonFn a)) return false;
-        return header.equals(a.header) && body.equals(a.body);
+    public boolean equals(Object o) {
+        if (!(o instanceof NAnonFn a)) return false;
+        return Objects.equals(type, a.type) && Objects.equals(body, a.body);
     }
 }

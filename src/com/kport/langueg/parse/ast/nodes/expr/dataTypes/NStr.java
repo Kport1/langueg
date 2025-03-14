@@ -37,8 +37,8 @@ public class NStr extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NStr a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NStr a)) return false;
         return str.equals(a.str);
     }
 }

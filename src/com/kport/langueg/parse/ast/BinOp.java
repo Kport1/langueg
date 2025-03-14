@@ -31,6 +31,7 @@ public enum BinOp {
     XOr;
 
     private static final EnumMap<TokenType, BinOp> tokToBinOpMap = new EnumMap<>(TokenType.class);
+
     static {
         tokToBinOpMap.put(TokenType.Plus, Plus);
         tokToBinOpMap.put(TokenType.Minus, Minus);
@@ -52,11 +53,12 @@ public enum BinOp {
         tokToBinOpMap.put(TokenType.Or, Or);
         tokToBinOpMap.put(TokenType.XOr, XOr);
     }
-    public static BinOp fromTokenType(TokenType tok){
+
+    public static BinOp fromTokenType(TokenType tok) {
         return tokToBinOpMap.get(tok);
     }
 
-    public static boolean isBinOp(TokenType tok){
+    public static boolean isBinOp(TokenType tok) {
         return tokToBinOpMap.containsKey(tok);
     }
 }

@@ -11,7 +11,7 @@ public class NIf extends NExpr {
     public NExpr cond;
     public NExpr ifBlock;
 
-    public NIf(int offset_, NExpr cond_, NExpr ifBlock_){
+    public NIf(int offset_, NExpr cond_, NExpr ifBlock_) {
         super(offset_, cond_, ifBlock_);
         cond = cond_;
         ifBlock = ifBlock_;
@@ -28,7 +28,7 @@ public class NIf extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -39,8 +39,8 @@ public class NIf extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NIf a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NIf a)) return false;
         return cond.equals(a.cond) && ifBlock.equals(a.ifBlock);
     }
 }

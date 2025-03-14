@@ -37,8 +37,8 @@ public class NInt32 extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NInt32 a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NInt32 a)) return false;
         return val == a.val;
     }
 }

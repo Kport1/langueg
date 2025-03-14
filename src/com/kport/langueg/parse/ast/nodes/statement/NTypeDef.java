@@ -14,7 +14,7 @@ public class NTypeDef extends NStatement {
     public Type definition;
     public String[] typeParameters;
 
-    public NTypeDef(int offset_, String name_, Type definition_, String... typeParameters_){
+    public NTypeDef(int offset_, String name_, Type definition_, String... typeParameters_) {
         super(offset_);
         name = name_;
         definition = definition_;
@@ -32,7 +32,7 @@ public class NTypeDef extends NStatement {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "type" + Arrays.toString(typeParameters) + " " + name + " = " + definition;
     }
 
@@ -43,8 +43,8 @@ public class NTypeDef extends NStatement {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NTypeDef a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NTypeDef a)) return false;
         return definition.equals(a.definition) && Arrays.equals(typeParameters, a.typeParameters);
     }
 }

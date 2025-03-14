@@ -13,7 +13,7 @@ public class NAssignCompound extends NExpr {
     public NExpr right;
     public BinOp op;
 
-    public NAssignCompound(int offset_, NAssignable left_, NExpr right_, BinOp op_){
+    public NAssignCompound(int offset_, NAssignable left_, NExpr right_, BinOp op_) {
         super(offset_, left_, right_);
         left = left_;
         right = right_;
@@ -31,7 +31,7 @@ public class NAssignCompound extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return op.name();
     }
 
@@ -42,8 +42,8 @@ public class NAssignCompound extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NAssignCompound a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NAssignCompound a)) return false;
         return left.equals(a.left) && right.equals(a.right) && op == a.op;
     }
 }

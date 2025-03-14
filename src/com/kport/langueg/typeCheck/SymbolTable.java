@@ -1,6 +1,5 @@
 package com.kport.langueg.typeCheck;
 
-import com.kport.langueg.parse.ast.nodes.FnHeader;
 import com.kport.langueg.parse.ast.nodes.NameTypePair;
 import com.kport.langueg.parse.ast.nodes.statement.NTypeDef;
 import com.kport.langueg.typeCheck.types.*;
@@ -28,10 +27,10 @@ public class SymbolTable {
         }
 
         public static final class Function extends Identifiable {
-            public final FnHeader fnHeader;
+            public final FnType fnType;
 
-            public Function(FnHeader fnHeader_) {
-                fnHeader = fnHeader_;
+            public Function(FnType fnType_) {
+                fnType = fnType_;
             }
         }
 
@@ -94,9 +93,9 @@ public class SymbolTable {
         return true;
     }
 
-    public boolean registerFn(Identifier id, FnHeader header) {
+    public boolean registerFn(Identifier id, FnType type) {
         if (identifiers.containsKey(id)) return false;
-        identifiers.put(id, new Identifiable.Function(header));
+        identifiers.put(id, new Identifiable.Function(type));
         return true;
     }
 
@@ -132,7 +131,7 @@ public class SymbolTable {
 
             case FnType fnType -> new FnType(
                     instantiateTypeShallow(fnType.fnReturn(), arguments),
-                    Arrays.stream(fnType.fnParams()).map((t) -> instantiateTypeShallow(t, arguments)).toArray(Type[]::new)
+                    instantiateTypeShallow(fnType.fnParam(), arguments)
             );
 
             case NamedType namedType -> {

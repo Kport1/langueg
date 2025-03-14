@@ -5,6 +5,7 @@ import com.kport.langueg.parse.ast.nodes.NProg;
 import com.kport.langueg.parse.ast.nodes.NameTypePair;
 import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.typeCheck.types.RefType;
+import com.kport.langueg.typeCheck.types.TupleType;
 import com.kport.langueg.util.Identifier;
 import com.kport.langueg.util.Scope;
 import com.kport.langueg.util.Util;
@@ -27,16 +28,22 @@ public class CodeGenState {
     }
 
     public int enterFn(NFn fn) {
-        int paramLocalsSize = Arrays.stream(fn.getFnHeader().paramTypes()).reduce(0, (i, t) -> i + t.getSize(), Integer::sum);
+        int paramLocalsSize = fn.getFnType().fnParam().getSize();
         if (paramLocalsSize >= LanguegVmCodeGenerator.LOCALS_MAX_SIZE) throw new Error("Parameters too large");
-        int retLocalsSize = fn.getFnHeader().returnType.getSize();
+        int retLocalsSize = fn.getFnType().fnReturn().getSize();
         if (paramLocalsSize >= LanguegVmCodeGenerator.LOCALS_MAX_SIZE) throw new Error("Return too large");
 
         generatingFns.push(new FnData((short) paramLocalsSize, (short) retLocalsSize));
         generatedFns.add(generatingFns.peek());
-        for (NameTypePair param : fn.getFnHeader().params) {
-            allocateLocal(new Identifier(fn.getBodyScope(), param.name), (byte) param.type.getSize());
+        short paramsBegin = nextUnallocatedByte();
+        if (fn.getFnType().fnParam() instanceof TupleType paramTuple && paramTuple.isFullyNamed()) {
+            for (NameTypePair param : paramTuple.nameTypePairs) {
+                allocateLocal(new Identifier(fn.getBodyScope(), param.name), param.type.getSize());
+            }
         }
+        rewindLocalsTo(paramsBegin);
+        allocateLocal(new Identifier(fn.getBodyScope(), "_"), fn.getFnType().fnParam().getSize());
+
         return generatedFns.indexOf(generatingFns.peek());
     }
 

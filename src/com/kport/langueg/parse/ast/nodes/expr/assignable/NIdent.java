@@ -36,13 +36,13 @@ public final class NIdent extends NAssignable {
     }
 
     @Override
-    public int hashCode(){
+    public int hashCode() {
         return identifier.hashCode();
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NIdent ident)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NIdent ident)) return false;
         return identifier.equals(ident.identifier);
     }
 }

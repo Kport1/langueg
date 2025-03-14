@@ -14,7 +14,7 @@ public class NTuple extends NExpr {
     public Pair<Either<Integer, String>, NExpr>[] elements;
     //public NExpr[] elements;
 
-    public NTuple(int offset_, Pair<Either<Integer, String>, NExpr>... elements_){
+    public NTuple(int offset_, Pair<Either<Integer, String>, NExpr>... elements_) {
         super(offset_, Arrays.stream(elements_).map(p -> p.right).toArray(NExpr[]::new));
         elements = elements_;
     }
@@ -30,7 +30,7 @@ public class NTuple extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -41,8 +41,8 @@ public class NTuple extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NTuple a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NTuple a)) return false;
         return Arrays.deepEquals(elements, a.elements);
     }
 }

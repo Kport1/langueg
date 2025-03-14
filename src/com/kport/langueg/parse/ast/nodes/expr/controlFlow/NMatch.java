@@ -17,7 +17,7 @@ public class NMatch extends NExpr {
     public NExpr value;
     public Pair<Pattern, NExpr>[] branches;
 
-    public NMatch(int offset_, NExpr value_, Pair<Pattern, NExpr>... branches_){
+    public NMatch(int offset_, NExpr value_, Pair<Pattern, NExpr>... branches_) {
         super(offset_, value_);
         value = value_;
         branches = branches_;
@@ -38,7 +38,7 @@ public class NMatch extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -49,8 +49,8 @@ public class NMatch extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NMatch a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NMatch a)) return false;
         return Objects.equals(value, a.value) && Arrays.deepEquals(branches, a.branches);
     }
 
@@ -59,14 +59,14 @@ public class NMatch extends NExpr {
             public final Either<Integer, String> element;
             public final String elementVarName;
 
-            public Union(Either<Integer, String> element_, String elementVarName_){
+            public Union(Either<Integer, String> element_, String elementVarName_) {
                 element = element_;
                 elementVarName = elementVarName_;
             }
         }
 
         public static final class Default extends Pattern {
-            public Default(){
+            public Default() {
 
             }
         }

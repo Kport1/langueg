@@ -39,8 +39,8 @@ public class NBlock extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NBlock a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NBlock a)) return false;
         return Arrays.deepEquals(statements, a.statements);
     }
 }

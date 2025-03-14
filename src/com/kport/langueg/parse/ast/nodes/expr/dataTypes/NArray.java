@@ -11,7 +11,7 @@ import java.util.Arrays;
 public class NArray extends NExpr {
     public NExpr[] elements;
 
-    public NArray(int offset_, NExpr... elements_){
+    public NArray(int offset_, NExpr... elements_) {
         super(offset_, elements_);
         elements = elements_;
     }
@@ -27,7 +27,7 @@ public class NArray extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -38,8 +38,8 @@ public class NArray extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NArray a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NArray a)) return false;
         return Arrays.deepEquals(elements, a.elements);
     }
 }

@@ -12,41 +12,41 @@ public class CodeOutputStream extends ByteArrayOutputStream {
         super(size);
     }
 
-    public synchronized void writeShort(short s){
+    public synchronized void writeShort(short s) {
         write(s);
         write(s >>> 8);
     }
 
-    public synchronized void writeShort(short s, int index){
-        if(index + 1 >= count) throw new IndexOutOfBoundsException();
+    public synchronized void writeShort(short s, int index) {
+        if (index + 1 >= count) throw new IndexOutOfBoundsException();
         buf[index] = (byte) s;
         buf[index + 1] = (byte) (s >>> 8);
     }
 
-    public synchronized void writeInt(int i){
+    public synchronized void writeInt(int i) {
         write(i);
         write(i >>> 8);
         write(i >>> 16);
         write(i >>> 24);
     }
 
-    public synchronized void writeInt(int i, int index){
-        if(index + 3 >= count) throw new IndexOutOfBoundsException();
+    public synchronized void writeInt(int i, int index) {
+        if (index + 3 >= count) throw new IndexOutOfBoundsException();
         buf[index] = (byte) i;
         buf[index + 1] = (byte) (i >>> 8);
         buf[index + 2] = (byte) (i >>> 16);
         buf[index + 3] = (byte) (i >>> 24);
     }
 
-    public synchronized void writeLong(long l){
-        write((int)l);
-        write((int)(l >>> 8));
-        write((int)(l >>> 16));
-        write((int)(l >>> 24));
-        write((int)(l >>> 32));
-        write((int)(l >>> 40));
-        write((int)(l >>> 48));
-        write((int)(l >>> 56));
+    public synchronized void writeLong(long l) {
+        write((int) l);
+        write((int) (l >>> 8));
+        write((int) (l >>> 16));
+        write((int) (l >>> 24));
+        write((int) (l >>> 32));
+        write((int) (l >>> 40));
+        write((int) (l >>> 48));
+        write((int) (l >>> 56));
     }
 
     public synchronized void writeLong(long l, int index) {
@@ -62,12 +62,12 @@ public class CodeOutputStream extends ByteArrayOutputStream {
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         StringBuilder s = new StringBuilder();
-        for(int i = 0; i < count; i++){
+        for (int i = 0; i < count; i++) {
             s.append(Integer.toHexString(Byte.toUnsignedInt(buf[i]))).append(", ");
         }
-        if(s.length() > 2) s.delete(s.length() - 2, s.length());
+        if (s.length() > 2) s.delete(s.length() - 2, s.length());
         return s.toString();
     }
 }

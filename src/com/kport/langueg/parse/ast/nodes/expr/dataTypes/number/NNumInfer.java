@@ -39,8 +39,8 @@ public class NNumInfer extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NNumInfer a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NNumInfer a)) return false;
         return Objects.equals(valString, a.valString);
     }
 }

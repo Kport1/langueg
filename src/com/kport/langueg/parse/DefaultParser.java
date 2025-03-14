@@ -216,22 +216,22 @@ public class DefaultParser implements Parser {
         throw new ParseException(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.offset, pipeline.getSource(), cur.tok.expandedName());
     }
 
-    private BinOp parseBinOp(){
+    private BinOp parseBinOp() {
         Token cur = iterator.current();
         iterator.inc();
-        if(cur.tok == TokenType.Less && iterator.current().tok == TokenType.Less) {
+        if (cur.tok == TokenType.Less && iterator.current().tok == TokenType.Less) {
             iterator.inc();
             return BinOp.ShiftR;
         }
-        if(cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Greater) {
+        if (cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Greater) {
             iterator.inc();
             return BinOp.ShiftL;
         }
-        if(cur.tok == TokenType.Less && iterator.current().tok == TokenType.Assign) {
+        if (cur.tok == TokenType.Less && iterator.current().tok == TokenType.Assign) {
             iterator.inc();
             return BinOp.LessEq;
         }
-        if(cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Assign) {
+        if (cur.tok == TokenType.Greater && iterator.current().tok == TokenType.Assign) {
             iterator.inc();
             return BinOp.GreaterEq;
         }
@@ -240,17 +240,17 @@ public class DefaultParser implements Parser {
 
     private NExpr parseBinOpRec(NExpr left, int lastPrec) throws ParseException {
         Token cur = iterator.current();
-        if(cur.tok == TokenType.Assign)
+        if (cur.tok == TokenType.Assign)
             return parseAssign(left);
         if (!BinOp.isBinOp(cur.tok))
             return left;
 
         int iterIndex = iterator.getIndex();
         BinOp op = parseBinOp();
-        if(iterator.current().tok == TokenType.Assign)
+        if (iterator.current().tok == TokenType.Assign)
             return parseCompoundAssign(left, op);
         int currentPrec = opPrecedence.get(op);
-        if (currentPrec <= lastPrec){
+        if (currentPrec <= lastPrec) {
             iterator.setIndex(iterIndex);
             return left;
         }
@@ -260,7 +260,7 @@ public class DefaultParser implements Parser {
     }
 
     private NExpr parseAssign(NExpr left) throws ParseException {
-        if(!(left instanceof NAssignable leftAssignable)) {
+        if (!(left instanceof NAssignable leftAssignable)) {
             throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
         }
         Token cur = iterator.current();
@@ -269,7 +269,7 @@ public class DefaultParser implements Parser {
     }
 
     private NExpr parseCompoundAssign(NExpr left, BinOp op) throws ParseException {
-        if(!(left instanceof NAssignable leftAssignable)) {
+        if (!(left instanceof NAssignable leftAssignable)) {
             throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
         }
         Token cur = iterator.current();
@@ -312,8 +312,8 @@ public class DefaultParser implements Parser {
         Token cur = iterator.current();
         if (cur.tok != TokenType.LParen) return left;
 
-        NExpr[] args = parseDelim(TokenType.LParen, TokenType.RParen, TokenType.Comma);
-        return parseCall(new NCall(cur.offset, left, args));
+        NExpr arg = parseTuple();
+        return parseCall(new NCall(cur.offset, left, arg));
     }
 
     private NExpr parseCast(NExpr left) throws ParseException {
@@ -482,10 +482,18 @@ public class DefaultParser implements Parser {
         Token cur = iterator.current();
         iterator.inc();
 
-        FnHeader header = parseFnHeader();
+        Type type = parseType();
+        if (!(type instanceof FnType fnType))
+            throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+
+        if (iterator.current().tok != TokenType.Assign)
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+
+        iterator.inc();
+
         NExpr body = parseExpr();
 
-        return new NAnonFn(cur.offset, header, body);
+        return new NAnonFn(cur.offset, fnType, body);
     }
 
     private NNamedFn parseFn() throws ParseException {
@@ -495,41 +503,21 @@ public class DefaultParser implements Parser {
             throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
         String name = iterator.current().val;
 
+        if (iterator.next().tok != TokenType.Colon)
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
         iterator.inc();
 
-        FnHeader header = parseFnHeader();
+        Type type = parseType();
+        if (!(type instanceof FnType fnType))
+            throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+
+        if (iterator.current().tok != TokenType.Assign)
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+        iterator.inc();
+
         NExpr body = parseExpr();
 
-        return new NNamedFn(cur.offset, name, header, body);
-    }
-
-    private FnHeader parseFnHeader() throws ParseException {
-        int offset = iterator.current().offset;
-        return parseEnclosedAs(TokenType.LParen, TokenType.RParen, (v) -> {
-            NameTypePair[] params = parseFnParams();
-
-            if (iterator.current().tok != TokenType.SingleArrow)
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-            iterator.inc();
-
-            return new FnHeader(params, parseType(), offset);
-        });
-    }
-
-    private NameTypePair[] parseFnParams() throws ParseException {
-        return parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, (i) -> {
-            if (iterator.current().tok != TokenType.Identifier)
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-            String name = iterator.current().val;
-
-            if (iterator.next().tok != TokenType.Colon)
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-            iterator.inc();
-
-            Type type = parseType();
-
-            return new NameTypePair(type, name);
-        }, NameTypePair.class);
+        return new NNamedFn(cur.offset, name, fnType, body);
     }
 
     private NExpr parseBlock() throws ParseException {
@@ -580,7 +568,7 @@ public class DefaultParser implements Parser {
             type = parseType();
         }
 
-        if(iterator.current().tok != TokenType.Assign)
+        if (iterator.current().tok != TokenType.Assign)
             throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
 
         iterator.inc();
@@ -722,13 +710,7 @@ public class DefaultParser implements Parser {
     }
 
     private Type parseType() throws ParseException {
-        return unwrapTuple(parseFnType(parseArrayType(parseTypeAtom())));
-    }
-
-    public Type unwrapTuple(Type type) {
-        if (type instanceof TupleType tup && tup.tupleTypes().length == 1)
-            return tup.tupleTypes()[0];
-        return type;
+        return parseFnType(parseArrayType(parseTypeAtom()));
     }
 
     private Type parseTypeAtom() throws ParseException {
@@ -816,32 +798,39 @@ public class DefaultParser implements Parser {
             return left;
         iterator.inc();
 
-        Type returnType = parseFnType(parseArrayType(parseTypeAtom()));
+        Type returnType = parseType();
 
-        return new FnType(returnType, left instanceof TupleType tup ? tup.tupleTypes() : new Type[]{left});
+        return new FnType(returnType, left);
     }
 
-    public TupleType parseTupleType() throws ParseException {
-        NameTypePair[] nameTypePairs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, (i) -> {
+    public Type parseTupleType() throws ParseException {
+        final boolean[] trailingComma = {false};
+        NameTypePair[] nameTypePairs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, i -> {
+            trailingComma[0] = false;
+
             String name = null;
             if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok == TokenType.Colon) {
                 name = iterator.current().val;
                 iterator.inc();
                 iterator.inc();
             }
-            Type type = parseFnType(parseArrayType(parseTypeAtom()));
+            Type type = parseType();
+
+            if (iterator.current().tok == TokenType.Comma)
+                trailingComma[0] = true;
+
             return new NameTypePair(type, name);
         }, NameTypePair.class);
 
-        for (int i = 0; i < nameTypePairs.length; i++) {
-            if (nameTypePairs[i].name == null) continue;
-            for (int j = 0; j < nameTypePairs.length; j++) {
-                if (i == j) continue;
-                if (nameTypePairs[j].name == null) continue;
+        if (!trailingComma[0] && nameTypePairs.length == 1 && nameTypePairs[0].name == null)
+            return nameTypePairs[0].type;
 
-                if (Objects.equals(nameTypePairs[i].name, nameTypePairs[j].name))
-                    throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
-            }
+        HashSet<String> names = new HashSet<>();
+        for (NameTypePair nameTypePair : nameTypePairs) {
+            if (nameTypePair.name == null) continue;
+            if (names.contains(nameTypePair.name))
+                throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
+            names.add(nameTypePair.name);
         }
 
         return new TupleType(nameTypePairs);

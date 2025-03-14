@@ -60,8 +60,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
         try {
             symbolTable = pipeline.getAdditionalData("SymbolTable", SymbolTable.class);
-        }
-        catch (InvalidTypeException e){
+        } catch (InvalidTypeException e) {
             e.printStackTrace();
         }
 
@@ -73,7 +72,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
     }
 
     void gen(AST ast) {
-        switch (ast){
+        switch (ast) {
             case NProg prog -> {
                 state.enterProg(prog);
                 for (AST statement : prog.statements) {
@@ -82,13 +81,14 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 state.exitProg();
             }
 
-            case NTypeDef ignored -> {}
+            case NTypeDef ignored -> {
+            }
 
             case NAnonFn aFn -> {
                 state.enterFn(aFn);
                 gen(aFn.body);
                 int fnIndex = state.exitFn();
-                state.pushFn((short)fnIndex);
+                state.pushFn((short) fnIndex);
             }
 
             case NAssign assign -> {
@@ -119,25 +119,21 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 genAssign(assignCompound.left);
             }
 
-            case NBool bool ->
-                state.pushByte((byte)(bool.bool? 1 : 0));
+            case NBool bool -> state.pushByte((byte) (bool.bool ? 1 : 0));
 
             case NCall call -> {
-                short paramsBegin = state.nextUnallocatedByte();
-                for (int i = 0; i < call.args.length; i++) {
-                    gen(call.args[i]);
-                }
+                short argsBegin = state.nextUnallocatedByte();
+                gen(call.arg);
 
-                if(call.callee instanceof NIdent ident && symbolTable.fnExists(new Identifier(ident.scope, ident.identifier))){
-                    state.writeOp(Ops.CALL_DIRECT, state.getFnIndex(new Identifier(ident.scope, ident.identifier)), paramsBegin, paramsBegin);
-                }
-                else {
+                if (call.callee instanceof NIdent ident && symbolTable.fnExists(new Identifier(ident.scope, ident.identifier))) {
+                    state.writeOp(Ops.CALL_DIRECT, state.getFnIndex(new Identifier(ident.scope, ident.identifier)), argsBegin, argsBegin);
+                } else {
                     short calleeOffset = state.nextUnallocatedByte();
                     gen(call.callee);
-                    state.writeOp(Ops.CALL, calleeOffset, paramsBegin, paramsBegin);
+                    state.writeOp(Ops.CALL, calleeOffset, argsBegin, argsBegin);
                 }
 
-                state.rewindLocalsTo(paramsBegin);
+                state.rewindLocalsTo(argsBegin);
                 state.allocateAnonLocal(call.exprType.getSize());
             }
 
@@ -146,28 +142,29 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NFloat64 float64 -> state.pushLong(Double.doubleToRawLongBits(float64.val));
 
             case NIdent ident -> {
-                switch(symbolTable.getById(new Identifier(ident.scope, ident.identifier))){
+                switch (symbolTable.getById(new Identifier(ident.scope, ident.identifier))) {
                     case SymbolTable.Identifiable.Variable ignored -> {
-                        short size = (short)ident.exprType.getSize();
+                        short size = (short) ident.exprType.getSize();
                         state.mov(size, state.allocateAnonLocal(size), state.getLocalOffset(new Identifier(ident.scope, ident.identifier)), isOrContainsRef(ident.exprType));
                     }
 
                     case SymbolTable.Identifiable.Function ignored ->
-                        state.pushFn(state.getFnIndex(new Identifier(ident.scope, ident.identifier)));
+                            state.pushFn(state.getFnIndex(new Identifier(ident.scope, ident.identifier)));
 
                     case SymbolTable.Identifiable.NamedType ignored -> throw new Error();
                 }
             }
 
             case NDotAccess dotAccess -> {
-                if(!(symbolTable.tryInstantiateType(dotAccess.accessed.exprType) instanceof TupleType tupType)) throw new Error();
+                if (!(symbolTable.tryInstantiateType(dotAccess.accessed.exprType) instanceof TupleType tupType))
+                    throw new Error();
                 short accessedOffset = state.nextUnallocatedByte();
                 gen(dotAccess.accessed);
 
                 int tupIndex = dotAccess.accessor.match((uint) -> uint, tupType::indexByName);
                 Type tupElementType = tupType.tupleTypes()[tupIndex];
                 short tupElementSize = (short) tupElementType.getSize();
-                state.mov(tupElementSize, accessedOffset, (short)(accessedOffset + tupType.getStride(tupIndex)), isOrContainsRef(tupElementType));
+                state.mov(tupElementSize, accessedOffset, (short) (accessedOffset + tupType.getStride(tupIndex)), isOrContainsRef(tupElementType));
 
                 state.rewindLocalsTo(accessedOffset + tupElementSize);
             }
@@ -183,37 +180,37 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NUInt64 uint64 -> state.pushLong(uint64.val);
 
             case NArray array -> {
-                ArrayType arrayType = ((ArrayType)symbolTable.tryInstantiateType(array.exprType));
+                ArrayType arrayType = ((ArrayType) symbolTable.tryInstantiateType(array.exprType));
                 int elemSize = arrayType.type.getSize();
 
                 short refIndex = state.nextUnallocatedByte();
                 state.pushAllocDirect(elemSize * array.elements.length);
 
                 short elemIndex = state.nextUnallocatedByte();
-                for(int i = 0; i < array.elements.length; i++){
+                for (int i = 0; i < array.elements.length; i++) {
                     gen(array.elements[i]);
-                    state.movToHeapDirect((short)elemSize, i * elemSize, elemIndex, refIndex, isOrContainsRef(arrayType.type));
+                    state.movToHeapDirect((short) elemSize, i * elemSize, elemIndex, refIndex, isOrContainsRef(arrayType.type));
                     state.rewindLocalsTo(elemIndex);
                 }
             }
 
             case NTuple tuple -> {
-                TupleType tupleType = ((TupleType)symbolTable.tryInstantiateType(tuple.exprType));
+                TupleType tupleType = ((TupleType) symbolTable.tryInstantiateType(tuple.exprType));
                 short tupOffset = state.allocateAnonLocal(tupleType.getSize());
                 short genOffset = state.nextUnallocatedByte();
 
                 for (int i = 0; i < tuple.elements.length; i++) {
                     NExpr expr = tuple.elements[i].right;
                     gen(expr);
-                    int stride = tupleType.getStride(tuple.elements[i].left == null? i : tupleType.resolveElementIndex(tuple.elements[i].left));
-                    state.mov((short)expr.exprType.getSize(), (short)(tupOffset + stride), genOffset, isOrContainsRef(expr.exprType));
+                    int stride = tupleType.getStride(tuple.elements[i].left == null ? i : tupleType.resolveElementIndex(tuple.elements[i].left));
+                    state.mov((short) expr.exprType.getSize(), (short) (tupOffset + stride), genOffset, isOrContainsRef(expr.exprType));
                     state.popStack(expr.exprType.getSize());
                 }
             }
 
             case NUnion union -> {
-                UnionType unionType = (UnionType)symbolTable.tryInstantiateType(union.exprType);
-                state.pushShort((short)unionType.resolveElementIndex(union.initializedElementPosition));
+                UnionType unionType = (UnionType) symbolTable.tryInstantiateType(union.exprType);
+                state.pushShort((short) unionType.resolveElementIndex(union.initializedElementPosition));
                 gen(union.initializedElement);
                 state.allocateAnonLocal(union.exprType.getSize() - 2 - union.initializedElement.exprType.getSize());
             }
@@ -227,12 +224,12 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 short valIndex = state.nextUnallocatedByte();
                 gen(ref.referent);
 
-                state.movToHeapDirect(size, (short)0, valIndex, refIndex, isOrContainsRef(ref.referent.exprType));
+                state.movToHeapDirect(size, (short) 0, valIndex, refIndex, isOrContainsRef(ref.referent.exprType));
                 state.rewindLocalsTo(valIndex);
             }
 
             case NDeRef deRef -> {
-                Type referentType = ((RefType)deRef.reference.exprType).referentType;
+                Type referentType = ((RefType) deRef.reference.exprType).referentType;
                 short size = (short) referentType.getSize();
 
                 short valIndex = state.nextUnallocatedByte();
@@ -269,29 +266,29 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
             case NIf if_ -> {
                 short stackTop = state.nextUnallocatedByte();
                 gen(if_.cond);
-                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short)0);
+                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short) 0);
                 state.popStack(if_.cond.exprType.getSize());
 
                 int index = state.getCurrentCodeIndex();
                 gen(if_.ifBlock);
-                state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - index), index - 2);
+                state.generatingFns.peek().code.writeShort((short) (state.getCurrentCodeIndex() - index), index - 2);
             }
 
             case NIfElse ifElse -> {
                 short stackTop = state.nextUnallocatedByte();
 
                 gen(ifElse.cond);
-                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short)0);
+                state.writeOp(Ops.JMP_IF_FALSE, stackTop, (short) 0);
                 state.popStack(ifElse.cond.exprType.getSize());
                 int jmpFalseIndex = state.getCurrentCodeIndex();
 
                 gen(ifElse.ifBlock);
-                state.writeOp(Ops.JMP, (short)0);
+                state.writeOp(Ops.JMP, (short) 0);
                 int elseJmpIndex = state.getCurrentCodeIndex();
-                state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - jmpFalseIndex), jmpFalseIndex - 2);
+                state.generatingFns.peek().code.writeShort((short) (state.getCurrentCodeIndex() - jmpFalseIndex), jmpFalseIndex - 2);
 
                 gen(ifElse.elseBlock);
-                state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - elseJmpIndex), elseJmpIndex - 2);
+                state.generatingFns.peek().code.writeShort((short) (state.getCurrentCodeIndex() - elseJmpIndex), elseJmpIndex - 2);
             }
 
             case NMatch match -> {
@@ -305,7 +302,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                 state.writeOp(Ops.BRANCH, matchedValIndex);
                 int branchTableBegin = state.getCurrentCodeIndex();
-                for(int i = 0; i < numUnionElements; i++) {
+                for (int i = 0; i < numUnionElements; i++) {
                     state.generatingFns.peek().code.writeShort((short) 0);
                 }
                 short[] branchTable = new short[numUnionElements];
@@ -313,9 +310,9 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 List<Integer> jmpEndPatchList = new ArrayList<>();
 
                 for (Pair<NMatch.Pattern, NExpr> branch : match.branches) {
-                    switch(branch.left) {
+                    switch (branch.left) {
                         case NMatch.Pattern.Union unionPattern -> {
-                            short jmpDelta = (short)(state.getCurrentCodeIndex() - branchTableBegin);
+                            short jmpDelta = (short) (state.getCurrentCodeIndex() - branchTableBegin);
                             branchTable[matchValUnionType.resolveElementIndex(unionPattern.element)] = jmpDelta;
 
                             state.enterScope();
@@ -330,7 +327,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                                     ),
                                     elemSize
                             );
-                            state.mov((short)elemSize, elemVar, (short)(matchedValIndex + UnionType.UNION_TAG_BYTES), isOrContainsRef(elemType));
+                            state.mov((short) elemSize, elemVar, (short) (matchedValIndex + UnionType.UNION_TAG_BYTES), isOrContainsRef(elemType));
 
                             short branchValIndex = state.nextUnallocatedByte();
                             gen(branch.right);
@@ -338,14 +335,14 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                             state.exitScope();
 
-                            state.writeOp(Ops.JMP, (short)0);
+                            state.writeOp(Ops.JMP, (short) 0);
                             jmpEndPatchList.add(state.getCurrentCodeIndex());
                         }
 
                         case NMatch.Pattern.Default ignored -> {
-                            short jmpDelta = (short)(state.getCurrentCodeIndex() - branchTableBegin);
+                            short jmpDelta = (short) (state.getCurrentCodeIndex() - branchTableBegin);
                             for (int i = 0; i < branchTable.length; i++) {
-                                if(branchTable[i] == 0){
+                                if (branchTable[i] == 0) {
                                     branchTable[i] = jmpDelta;
                                 }
                             }
@@ -368,7 +365,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 }
 
                 for (Integer i : jmpEndPatchList) {
-                    short jmpDelta = (short)(state.getCurrentCodeIndex() - i);
+                    short jmpDelta = (short) (state.getCurrentCodeIndex() - i);
                     state.generatingFns.peek().code.writeShort(jmpDelta, i - 2);
                 }
 
@@ -400,30 +397,30 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 int jmpBackIndex = state.getCurrentCodeIndex();
                 short condValIndex = state.nextUnallocatedByte();
                 gen(while_.cond);
-                state.writeOp(Ops.JMP_IF_FALSE, condValIndex, (short)0);
+                state.writeOp(Ops.JMP_IF_FALSE, condValIndex, (short) 0);
                 int jmpFalseIndex = state.getCurrentCodeIndex();
                 gen(while_.block);
-                state.writeOp(Ops.JMP, (short)(jmpBackIndex - state.getCurrentCodeIndex() - 3));
-                state.generatingFns.peek().code.writeShort((short)(state.getCurrentCodeIndex() - jmpFalseIndex), jmpFalseIndex - 2);
+                state.writeOp(Ops.JMP, (short) (jmpBackIndex - state.getCurrentCodeIndex() - 3));
+                state.generatingFns.peek().code.writeShort((short) (state.getCurrentCodeIndex() - jmpFalseIndex), jmpFalseIndex - 2);
             }
 
             default -> throw new IllegalStateException("Unexpected value: " + ast);
         }
 
-        if(ast instanceof NExpr expr && expr.isExprStmnt)
+        if (ast instanceof NExpr expr && expr.isExprStmnt)
             state.generatingFns.peek().popStack(expr.exprType.getSize());
     }
 
-    private void genAssign(NAssignable assignable){
-        short size = (short)assignable.exprType.getSize();
-        short valueIndex = (short)(state.nextUnallocatedByte() - size);
+    private void genAssign(NAssignable assignable) {
+        short size = (short) assignable.exprType.getSize();
+        short valueIndex = (short) (state.nextUnallocatedByte() - size);
 
         int offset = 0;
-        while(true){
-            switch (assignable){
+        while (true) {
+            switch (assignable) {
                 case NIdent ident -> {
                     offset += state.getLocalOffset(new Identifier(ident.scope, ident.identifier));
-                    state.mov(size, (short)offset, valueIndex, isOrContainsRef(assignable.exprType));
+                    state.mov(size, (short) offset, valueIndex, isOrContainsRef(assignable.exprType));
                     return;
                 }
 
@@ -447,15 +444,17 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
     }
 
-    private boolean isOrContainsRef(Type t){
-        return switch (t){
+    private boolean isOrContainsRef(Type t) {
+        return switch (t) {
             case ArrayType ignored -> true;
             case FnType ignored -> false;
             case NamedType namedType -> isOrContainsRef(symbolTable.instantiateType(namedType));
             case PrimitiveType ignored -> false;
             case RefType ignored -> true;
-            case TupleType tupleType -> tupleType.tupleTypes().length != 0 && Arrays.stream(tupleType.tupleTypes()).anyMatch(this::isOrContainsRef);
-            case UnionType unionType -> unionType.unionTypes().length != 0 && Arrays.stream(unionType.unionTypes()).anyMatch(this::isOrContainsRef);
+            case TupleType tupleType ->
+                    tupleType.tupleTypes().length != 0 && Arrays.stream(tupleType.tupleTypes()).anyMatch(this::isOrContainsRef);
+            case UnionType unionType ->
+                    unionType.unionTypes().length != 0 && Arrays.stream(unionType.unionTypes()).anyMatch(this::isOrContainsRef);
         };
     }
 

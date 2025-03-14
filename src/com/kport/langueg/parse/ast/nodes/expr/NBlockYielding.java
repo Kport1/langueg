@@ -42,8 +42,8 @@ public class NBlockYielding extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NBlockYielding a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NBlockYielding a)) return false;
         return Arrays.deepEquals(statements, a.statements);
     }
 }

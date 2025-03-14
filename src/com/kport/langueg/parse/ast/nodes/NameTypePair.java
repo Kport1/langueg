@@ -12,19 +12,19 @@ public final class NameTypePair implements Visitable {
     public Type type;
     public String name;
 
-    public NameTypePair(Type type_, String name_){
+    public NameTypePair(Type type_, String name_) {
         type = type_;
         name = name_;
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return name + " : " + type;
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NameTypePair a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NameTypePair a)) return false;
         return Objects.equals(type, a.type) && Objects.equals(name, a.name);
     }
 

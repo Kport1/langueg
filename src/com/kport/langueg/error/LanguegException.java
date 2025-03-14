@@ -19,7 +19,7 @@ public abstract class LanguegException extends Exception {
     public String format() {
         StringBuilder str = new StringBuilder();
         String[] lines = error.split("\n");
-        for(String l : lines){
+        for (String l : lines) {
             str.append("| ").append(l).append("\n");
         }
 
@@ -28,7 +28,7 @@ public abstract class LanguegException extends Exception {
         while (reason != null) {
             str.append("| ".repeat(i)).append("Reason:\n");
             String[] reasonLines = reason.error.split("\n");
-            for(String l : reasonLines){
+            for (String l : reasonLines) {
                 str.append("| ".repeat(i)).append(l).append("\n");
             }
             reason = reason.reason;

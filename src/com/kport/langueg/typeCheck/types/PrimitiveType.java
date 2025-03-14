@@ -5,26 +5,20 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 
 public enum PrimitiveType implements Type {
-    Bool(1),
-    Char(2),
+    Bool,
+    Char,
 
-    U8(3),
-    I8(4),
-    U16(5),
-    I16(6),
-    U32(7),
-    I32(8),
-    U64(9),
-    I64(10),
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
 
-    F32(11),
-    F64(12);
-
-    private final byte code;
-
-    PrimitiveType(int code_) {
-        code = (byte) code_;
-    }
+    F32,
+    F64;
 
     public boolean isNumeric() {
         return switch (this) {
@@ -67,11 +61,6 @@ public enum PrimitiveType implements Type {
     @Override
     public String toString() {
         return this.name();
-    }
-
-    @Override
-    public byte[] serialize() {
-        return new byte[]{0x01, code};
     }
 
     @Override

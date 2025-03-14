@@ -12,11 +12,11 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class DefaultFileWriter implements FileWriter{
+public class DefaultFileWriter implements FileWriter {
     private static final byte[] MAGIC = {'g', 'u', 'e', 'g'};
     private final Path path;
 
-    public DefaultFileWriter(Path path_){
+    public DefaultFileWriter(Path path_) {
         path = path_;
     }
 
@@ -27,8 +27,7 @@ public class DefaultFileWriter implements FileWriter{
         CodeGenState state;
         try {
             state = pipeline.getAdditionalData("State", CodeGenState.class);
-        }
-        catch (InvalidTypeException e){
+        } catch (InvalidTypeException e) {
             e.printStackTrace();
             throw new Error();
         }
@@ -38,7 +37,7 @@ public class DefaultFileWriter implements FileWriter{
 
         outputStream.writeShort((short) state.constIndices.size());
         for (byte[] val : state.constIndices.sequencedKeySet()) {
-            outputStream.writeShort((short)val.length);
+            outputStream.writeShort((short) val.length);
             outputStream.writeBytes(val);
         }
 
@@ -47,13 +46,13 @@ public class DefaultFileWriter implements FileWriter{
             outputStream.writeShort(fn.paramLocalsSize);
             outputStream.writeShort(fn.retLocalsSize);
 
-            outputStream.writeShort((short)fn.localsSize);
+            outputStream.writeShort((short) fn.localsSize);
 
             outputStream.writeInt(fn.code.size());
             outputStream.writeBytes(fn.code.toByteArray());
         }
 
-        try(FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)){
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             channel.write(ByteBuffer.wrap(outputStream.toByteArray()));
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -63,7 +62,7 @@ public class DefaultFileWriter implements FileWriter{
     }
 
     @Override
-    public Path getFilePath(){
+    public Path getFilePath() {
         return path;
     }
 }

@@ -5,5 +5,6 @@ import com.kport.langueg.typeCheck.types.Type;
 
 public interface CastAllowlist {
     boolean allowCastImplicit(Type from, Type to, SymbolTable symbolTable);
+
     boolean allowCastExplicit(Type from, Type to, SymbolTable symbolTable);
 }

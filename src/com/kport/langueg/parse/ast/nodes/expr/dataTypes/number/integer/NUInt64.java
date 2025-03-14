@@ -37,8 +37,8 @@ public class NUInt64 extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NUInt64 a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NUInt64 a)) return false;
         return val == a.val;
     }
 }

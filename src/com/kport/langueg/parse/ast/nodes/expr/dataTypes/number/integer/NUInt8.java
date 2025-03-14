@@ -37,8 +37,8 @@ public class NUInt8 extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NUInt8 a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NUInt8 a)) return false;
         return val == a.val;
     }
 }

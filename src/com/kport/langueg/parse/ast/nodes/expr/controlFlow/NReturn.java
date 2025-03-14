@@ -37,8 +37,8 @@ public class NReturn extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NReturn a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NReturn a)) return false;
         return expr.equals(a.expr);
     }
 }

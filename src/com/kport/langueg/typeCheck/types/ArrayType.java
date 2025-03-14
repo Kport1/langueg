@@ -4,27 +4,17 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 
-import java.io.ByteArrayOutputStream;
-
 public final class ArrayType implements Type {
     public static final int ARRAY_REF_BYTES = 8;
 
     public final Type type;
 
-    public ArrayType(Type type_){
+    public ArrayType(Type type_) {
         type = type_;
     }
 
-    public Type arrayType(){
+    public Type arrayType() {
         return type;
-    }
-
-    @Override
-    public byte[] serialize() {
-        ByteArrayOutputStream o = new ByteArrayOutputStream();
-        o.write(0x05);
-        o.writeBytes(type.serialize());
-        return o.toByteArray();
     }
 
     @Override
@@ -33,18 +23,18 @@ public final class ArrayType implements Type {
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return type.toString() + "[]";
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof ArrayType a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof ArrayType a)) return false;
         return type.equals(a.type);
     }
 
     @Override
-    public int hashCode(){
+    public int hashCode() {
         return type.hashCode() ^ 0x6f3a05d9;
     }
 

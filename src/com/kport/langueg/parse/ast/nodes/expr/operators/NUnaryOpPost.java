@@ -11,7 +11,7 @@ public class NUnaryOpPost extends NExpr {
     public NExpr operand;
     public TokenType op;
 
-    public NUnaryOpPost(int offset_, NExpr operand_, TokenType op_){
+    public NUnaryOpPost(int offset_, NExpr operand_, TokenType op_) {
         super(offset_, operand_);
         operand = operand_;
         op = op_;
@@ -28,7 +28,7 @@ public class NUnaryOpPost extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return op.name();
     }
 
@@ -39,8 +39,8 @@ public class NUnaryOpPost extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NUnaryOpPost a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NUnaryOpPost a)) return false;
         return operand.equals(a.operand) && op == a.op;
     }
 }

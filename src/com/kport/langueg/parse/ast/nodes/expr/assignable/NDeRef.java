@@ -9,7 +9,7 @@ import com.kport.langueg.parse.ast.nodes.NExpr;
 public final class NDeRef extends NAssignable {
     public NExpr reference;
 
-    public NDeRef(int offset_, NExpr reference_){
+    public NDeRef(int offset_, NExpr reference_) {
         super(offset_);
         reference = reference_;
     }
@@ -36,8 +36,8 @@ public final class NDeRef extends NAssignable {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NDeRef a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NDeRef a)) return false;
         return reference.equals(a.reference);
     }
 }

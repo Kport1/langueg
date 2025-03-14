@@ -1,10 +1,11 @@
 package com.kport.langueg.codeGen.languegVmCodeGen;
 
-public final class ScopeData implements Cloneable{
+public final class ScopeData implements Cloneable {
 
     public int nextUnallocatedLocalByte = 0;
 
-    public ScopeData(){}
+    public ScopeData() {
+    }
 
     @Override
     public ScopeData clone() throws CloneNotSupportedException {

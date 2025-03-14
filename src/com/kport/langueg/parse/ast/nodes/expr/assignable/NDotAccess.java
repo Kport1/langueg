@@ -11,7 +11,7 @@ public final class NDotAccess extends NAssignable {
     public NExpr accessed;
     public Either<Integer, String> accessor;
 
-    public NDotAccess(int offset_, NExpr accessed_, Either<Integer, String> accessor_){
+    public NDotAccess(int offset_, NExpr accessed_, Either<Integer, String> accessor_) {
         super(offset_);
         accessed = accessed_;
         accessor = accessor_;
@@ -39,8 +39,8 @@ public final class NDotAccess extends NAssignable {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NDotAccess a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NDotAccess a)) return false;
         return accessed.equals(a.accessed) && accessor.equals(a.accessor);
     }
 }

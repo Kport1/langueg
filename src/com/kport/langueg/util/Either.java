@@ -6,7 +6,7 @@ import java.util.function.Function;
 public sealed interface Either<A, B> permits Either.Left, Either.Right {
     <R> R match(Function<A, R> left, Function<B, R> right);
 
-    default void consume(Consumer<A> left, Consumer<B> right){
+    default void consume(Consumer<A> left, Consumer<B> right) {
         match(
                 (a) -> {
                     left.accept(a);
@@ -19,10 +19,11 @@ public sealed interface Either<A, B> permits Either.Left, Either.Right {
         );
     }
 
-    static <A, B> Left<A, B> left(A value){
+    static <A, B> Left<A, B> left(A value) {
         return new Left<>(value);
     }
-    static <A, B> Right<A, B> right(B value){
+
+    static <A, B> Right<A, B> right(B value) {
         return new Right<>(value);
     }
 
@@ -34,8 +35,8 @@ public sealed interface Either<A, B> permits Either.Left, Either.Right {
         }
 
         @Override
-        public boolean equals(Object o){
-            if(!(o instanceof Either.Left<?,?> l)) return false;
+        public boolean equals(Object o) {
+            if (!(o instanceof Either.Left<?, ?> l)) return false;
             return value.equals(l.value);
         }
     }
@@ -48,8 +49,8 @@ public sealed interface Either<A, B> permits Either.Left, Either.Right {
         }
 
         @Override
-        public boolean equals(Object o){
-            if(!(o instanceof Either.Right<?,?> r)) return false;
+        public boolean equals(Object o) {
+            if (!(o instanceof Either.Right<?, ?> r)) return false;
             return value.equals(r.value);
         }
     }

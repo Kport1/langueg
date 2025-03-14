@@ -7,7 +7,7 @@ public class NUse extends AST {
 
     public NIdent usedModPath;
 
-    public NUse(int offset_, NIdent usedModPath_){
+    public NUse(int offset_, NIdent usedModPath_) {
         super(offset_);
         usedModPath = usedModPath_;
     }
@@ -28,8 +28,8 @@ public class NUse extends AST {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NUse a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NUse a)) return false;
         return usedModPath.equals(a.usedModPath);
     }
 }

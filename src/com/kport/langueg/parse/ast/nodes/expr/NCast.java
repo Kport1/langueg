@@ -39,8 +39,8 @@ public class NCast extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NCast a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NCast a)) return false;
         return type.equals(a.type) && expr.equals(a.expr);
     }
 }

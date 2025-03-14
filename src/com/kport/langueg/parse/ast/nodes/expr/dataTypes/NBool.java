@@ -37,8 +37,8 @@ public class NBool extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NBool a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NBool a)) return false;
         return bool == a.bool;
     }
 }

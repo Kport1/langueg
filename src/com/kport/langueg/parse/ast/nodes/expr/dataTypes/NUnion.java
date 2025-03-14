@@ -13,7 +13,7 @@ public class NUnion extends NExpr {
     public Either<Integer, String> initializedElementPosition;
     public NExpr initializedElement;
 
-    public NUnion(int offset_, NExpr initializedElement_, Either<Integer, String> initializedElementPosition_){
+    public NUnion(int offset_, NExpr initializedElement_, Either<Integer, String> initializedElementPosition_) {
         super(offset_, initializedElement_);
         initializedElement = initializedElement_;
         initializedElementPosition = initializedElementPosition_;
@@ -30,7 +30,7 @@ public class NUnion extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "." + initializedElementPosition.match(String::valueOf, str -> str);
     }
 
@@ -41,8 +41,8 @@ public class NUnion extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NUnion a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NUnion a)) return false;
         return a.initializedElementPosition.equals(initializedElementPosition) && Objects.equals(a.initializedElement, initializedElement);
     }
 }

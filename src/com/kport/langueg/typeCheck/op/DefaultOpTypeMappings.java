@@ -39,13 +39,13 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
             Map.entry(TokenType.Inc, primitiveIntegerUnaryOpPre(TokenType.Inc)),
             Map.entry(TokenType.Dec, primitiveIntegerUnaryOpPre(TokenType.Dec)),
             Map.entry(TokenType.Minus, (operand, op) -> {
-                if(!(operand instanceof PrimitiveType t && t.isNumeric())){
+                if (!(operand instanceof PrimitiveType t && t.isNumeric())) {
                     throw new Error("Cannot apply prefix operator \"" + TokenType.Minus.expandedName() + "\" to value of type \"" + operand + "\"");
                 }
                 return operand;
             }),
             Map.entry(TokenType.Not, (operand, op) -> {
-                if(!(operand instanceof PrimitiveType t && t == PrimitiveType.Bool)){
+                if (!(operand instanceof PrimitiveType t && t == PrimitiveType.Bool)) {
                     throw new Error("Cannot apply prefix operator \"" + TokenType.Not.expandedName() + "\" to value of type \"" + operand + "\"");
                 }
                 return operand;
@@ -58,72 +58,72 @@ public class DefaultOpTypeMappings implements OpTypeMappingSupplier {
     );
 
 
-    private static BinOpTypeMap primitiveArithmeticOp(BinOp op){
+    private static BinOpTypeMap primitiveArithmeticOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
+            if (!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveFloatingOp(BinOp op){
+    private static BinOpTypeMap primitiveFloatingOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && lt.isFloating() && leftType.equals(rightType))){
+            if (!(leftType instanceof PrimitiveType lt && lt.isFloating() && leftType.equals(rightType))) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveBitShiftOp(BinOp op){
+    private static BinOpTypeMap primitiveBitShiftOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt == PrimitiveType.U8)){
+            if (!(leftType instanceof PrimitiveType lt && rightType instanceof PrimitiveType rt && lt.isInteger() && rt == PrimitiveType.U8)) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveBitwiseOp(BinOp op){
+    private static BinOpTypeMap primitiveBitwiseOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && lt.isInteger() && leftType.equals(rightType))){
+            if (!(leftType instanceof PrimitiveType lt && lt.isInteger() && leftType.equals(rightType))) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return leftType;
         };
     }
 
-    private static BinOpTypeMap primitiveComparisonOp(BinOp op){
+    private static BinOpTypeMap primitiveComparisonOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))){
+            if (!(leftType instanceof PrimitiveType lt && lt.isNumeric() && leftType.equals(rightType))) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return PrimitiveType.Bool;
         };
     }
 
-    private static BinOpTypeMap primitiveBoolOp(BinOp op){
+    private static BinOpTypeMap primitiveBoolOp(BinOp op) {
         return (leftType, rightType) -> {
-            if(!(leftType instanceof PrimitiveType lt && lt == PrimitiveType.Bool && leftType.equals(rightType))){
+            if (!(leftType instanceof PrimitiveType lt && lt == PrimitiveType.Bool && leftType.equals(rightType))) {
                 throw new Error("Cannot apply operator \"" + op + "\" to left value of type \"" + leftType + "\" and right value of type \"" + rightType + "\"");
             }
             return PrimitiveType.Bool;
         };
     }
 
-    private static UnaryOpPreTypeMap primitiveIntegerUnaryOpPre(TokenType op){
+    private static UnaryOpPreTypeMap primitiveIntegerUnaryOpPre(TokenType op) {
         return (operand, _op) -> {
-            if(!(operand instanceof PrimitiveType t && t.isInteger())){
+            if (!(operand instanceof PrimitiveType t && t.isInteger())) {
                 throw new Error("Cannot apply prefix operator \"" + op.expandedName() + "\" to value of type \"" + operand + "\"");
             }
             return operand;
         };
     }
 
-    private static UnaryOpPostTypeMap primitiveIntegerUnaryOpPost(TokenType op){
+    private static UnaryOpPostTypeMap primitiveIntegerUnaryOpPost(TokenType op) {
         return (operand, _op) -> {
-            if(!(operand instanceof PrimitiveType t && t.isInteger())){
+            if (!(operand instanceof PrimitiveType t && t.isInteger())) {
                 throw new Error("Cannot apply postfix operator \"" + op.expandedName() + "\" to value of type \"" + operand + "\"");
             }
             return operand;

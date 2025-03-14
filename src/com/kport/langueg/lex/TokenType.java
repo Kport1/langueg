@@ -12,111 +12,111 @@ public enum TokenType {
     Var,
 
     //Binary Ops----------
-        //Num
-        Plus,
-        Minus,
-        Mul,
-        Div,
-        Mod,
-        Pow,
+    //Num
+    Plus,
+    Minus,
+    Mul,
+    Div,
+    Mod,
+    Pow,
 
-        //Bitwise
-        BitAnd,
-        BitOr,
-        BitXOr,
+    //Bitwise
+    BitAnd,
+    BitOr,
+    BitXOr,
 
-        //Comparison
-        Greater,
-        Less,
-        Eq,
-        NotEq,
+    //Comparison
+    Greater,
+    Less,
+    Eq,
+    NotEq,
 
-        //Bool
-        And,
-        Or,
-        XOr,
+    //Bool
+    And,
+    Or,
+    XOr,
     //--------------------
 
     //Unary Ops----------
-        //Num
-        Inc,
-        Dec,
+    //Num
+    Inc,
+    Dec,
 
-        //Bool
-        Not,
+    //Bool
+    Not,
     //-------------------
 
     //Control----------
-        If,
-        Else,
+    If,
+    Else,
 
-        Return,
+    Return,
 
-        Break,
-        Continue,
+    Break,
+    Continue,
 
-        Match,
-        Case,
+    Match,
+    Case,
 
-        While,
-        For,
+    While,
+    For,
     //-----------------
 
     //Func----------
-        Fn,
-        SingleArrow,
+    Fn,
+    SingleArrow,
     //--------------
 
     //Mod-----------
-        Module,
-        Use,
+    Module,
+    Use,
     //--------------
 
     //Struct----------
-        LParen,
-        RParen,
-        LBrack,
-        RBrack,
-        LCurl,
-        RCurl,
-        Colon,
-        Semicolon,
-        Comma,
-        Dot,
-        DoubleArrow,
+    LParen,
+    RParen,
+    LBrack,
+    RBrack,
+    LCurl,
+    RCurl,
+    Colon,
+    Semicolon,
+    Comma,
+    Dot,
+    DoubleArrow,
     //----------------
 
     //Literals----------
-        String,
-        Number,
-        Identifier,
-        True,
-        False,
+    String,
+    Number,
+    Identifier,
+    True,
+    False,
     //------------------
 
     //Types----------
-        //Primitive
-        Bool,
-        Char,
+    //Primitive
+    Bool,
+    Char,
 
-        U8,
-        U16,
-        U32,
-        U64,
+    U8,
+    U16,
+    U32,
+    U64,
 
-        I8,
-        I16,
-        I32,
-        I64,
+    I8,
+    I16,
+    I32,
+    I64,
 
-        F32,
-        F64,
+    F32,
+    F64,
 
-        //Typedef
-        TypeDef,
+    //Typedef
+    TypeDef,
 
-        //Cast
-        As,
+    //Cast
+    As,
     //---------------
 
 
@@ -124,6 +124,7 @@ public enum TokenType {
 
 
     private static final EnumMap<TokenType, String> expandedNames = new EnumMap<>(TokenType.class);
+
     static {
         expandedNames.put(Assign, "assign");
         expandedNames.put(Var, "var");
@@ -209,11 +210,11 @@ public enum TokenType {
             Dec
     );
 
-    public String expandedName(){
+    public String expandedName() {
         return expandedNames.get(this);
     }
 
-    public boolean isUnaryOpPost(){
+    public boolean isUnaryOpPost() {
         return unaryOpsPost.contains(this);
     }
 }

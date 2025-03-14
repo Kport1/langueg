@@ -9,7 +9,7 @@ import com.kport.langueg.parse.ast.nodes.NExpr;
 public class NRef extends NExpr {
     public NExpr referent;
 
-    public NRef(int offset_, NExpr right_){
+    public NRef(int offset_, NExpr right_) {
         super(offset_, right_);
         referent = right_;
     }
@@ -25,7 +25,7 @@ public class NRef extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -36,8 +36,8 @@ public class NRef extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NRef a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NRef a)) return false;
         return referent.equals(a.referent);
     }
 }

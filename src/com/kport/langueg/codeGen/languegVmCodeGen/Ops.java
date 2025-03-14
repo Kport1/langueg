@@ -18,8 +18,8 @@ public enum Ops {
     LOADP(0x16), //to: u16, index: u16
 
     LOADFN(0x1A), //to: u16, fnIndex: u16
-    CALL(0x1B), //fn: u16, paramsBegin: u16, retBegin: u16
-    CALL_DIRECT(0x1C), //fnIndex: u16, paramsBegin: u16, retBegin: u16
+    CALL(0x1B), //fn: u16, argsBegin: u16, retBegin: u16
+    CALL_DIRECT(0x1C), //fnIndex: u16, argsBegin: u16, retBegin: u16
     RET(0x1D), //retBegin: u16
 
     JMP_IF_FALSE(0x21), //byte: u16, jmp_delta: i16
@@ -128,7 +128,8 @@ public enum Ops {
     ;
 
     public final int code;
-    Ops(int code_){
+
+    Ops(int code_) {
         code = code_;
     }
 }

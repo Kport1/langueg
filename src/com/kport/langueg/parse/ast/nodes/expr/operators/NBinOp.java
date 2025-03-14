@@ -11,7 +11,7 @@ public class NBinOp extends NExpr {
     public NExpr left, right;
     public BinOp op;
 
-    public NBinOp(int offset_, NExpr left_, NExpr right_, BinOp op_){
+    public NBinOp(int offset_, NExpr left_, NExpr right_, BinOp op_) {
         super(offset_, left_, right_);
         left = left_;
         right = right_;
@@ -29,7 +29,7 @@ public class NBinOp extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return op.name();
     }
 
@@ -40,8 +40,8 @@ public class NBinOp extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NBinOp a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NBinOp a)) return false;
         return left.equals(a.left) && right.equals(a.right) && op == a.op;
     }
 }

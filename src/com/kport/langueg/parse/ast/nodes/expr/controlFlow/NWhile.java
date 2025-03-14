@@ -11,7 +11,7 @@ public class NWhile extends NExpr {
     public NExpr cond;
     public NExpr block;
 
-    public NWhile(int offset_, NExpr condition_, NExpr block_){
+    public NWhile(int offset_, NExpr condition_, NExpr block_) {
         super(offset_, condition_, block_);
         cond = condition_;
         block = block_;
@@ -28,7 +28,7 @@ public class NWhile extends NExpr {
     }
 
     @Override
-    public String nToString(){
+    public String nToString() {
         return "";
     }
 
@@ -39,8 +39,8 @@ public class NWhile extends NExpr {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NWhile a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NWhile a)) return false;
         return cond.equals(a.cond) && block.equals(a.block);
     }
 }

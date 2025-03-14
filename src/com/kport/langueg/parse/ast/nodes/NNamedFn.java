@@ -4,24 +4,27 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.util.Scope;
+
+import java.util.Objects;
 
 public final class NNamedFn extends NStatement implements NFn {
 
     public String name;
-    public FnHeader header;
+    public FnType type;
     public NExpr body;
 
-    public NNamedFn(int offset_, String name_, FnHeader header_ , NExpr body_){
+    public NNamedFn(int offset_, String name_, FnType type_, NExpr body_) {
         super(offset_, body_);
         name = name_;
-        header = header_;
+        type = type_;
         body = body_;
     }
 
     @Override
-    public FnHeader getFnHeader(){
-        return header;
+    public FnType getFnType() {
+        return type;
     }
 
     @Override
@@ -30,18 +33,15 @@ public final class NNamedFn extends NStatement implements NFn {
     }
 
     private Scope bodyScope = null;
+
     @Override
-    public Scope getBodyScope(){
+    public Scope getBodyScope() {
         return bodyScope;
     }
 
     @Override
-    public void setBodyScope(Scope scope_){
+    public void setBodyScope(Scope scope_) {
         bodyScope = scope_;
-    }
-
-    public FnHeader getHeader(){
-        return header;
     }
 
     @Override
@@ -55,8 +55,8 @@ public final class NNamedFn extends NStatement implements NFn {
     }
 
     @Override
-    public String nToString(){
-        return name + " " + header;
+    public String nToString() {
+        return name + " : " + type;
     }
 
     @Override
@@ -67,8 +67,8 @@ public final class NNamedFn extends NStatement implements NFn {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NNamedFn a)) return false;
-        return name.equals(a.name) && header.equals(a.header) && body.equals(a.body);
+    public boolean equals(Object o) {
+        if (!(o instanceof NNamedFn a)) return false;
+        return Objects.equals(name, a.name) && Objects.equals(type, a.type) && Objects.equals(body, a.body);
     }
 }

@@ -9,9 +9,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class DefaultLexer implements Lexer{
+public class DefaultLexer implements Lexer {
     private static final HashMap<CharSequence, TokenType> tokens = new HashMap<>();
     private static int maxTokenLen = 1;
+
     static {
         tokens.put("=", TokenType.Assign);
         tokens.put("var", TokenType.Var);
@@ -95,42 +96,48 @@ public class DefaultLexer implements Lexer{
     private static final Pattern string = Pattern.compile("\"([^\"\\\\]|\\\\.)*\"");
 
     private static final List<LexemeMatcher> lexemes = new ArrayList<>();
+
     static {
         lexemes.add((begin, code) -> {
             Matcher m = lineComment.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.LineComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if (m.lookingAt())
+                return new Pair<>(new Token(TokenType.LineComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
         lexemes.add((begin, code) -> {
             Matcher m = blockComment.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.BlockComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if (m.lookingAt())
+                return new Pair<>(new Token(TokenType.BlockComment, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
         lexemes.add((begin, code) -> {
             Matcher m = string.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.String, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if (m.lookingAt())
+                return new Pair<>(new Token(TokenType.String, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
         lexemes.add((begin, code) -> {
-            for(int i = Math.min(maxTokenLen - 1, code.length() - begin); i > 0; i--){
+            for (int i = Math.min(maxTokenLen - 1, code.length() - begin); i > 0; i--) {
                 CharSequence cs = code.subSequence(begin, begin + i);
-                if(tokens.containsKey(cs)) return new Pair<>(new Token(tokens.get(cs)), i);
+                if (tokens.containsKey(cs)) return new Pair<>(new Token(tokens.get(cs)), i);
             }
             return null;
         });
 
         lexemes.add((begin, code) -> {
             Matcher m = integerPattern.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.Number, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if (m.lookingAt())
+                return new Pair<>(new Token(TokenType.Number, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
 
         lexemes.add((begin, code) -> {
             Matcher m = identifier.matcher(code).region(begin, code.length());
-            if(m.lookingAt()) return new Pair<>(new Token(TokenType.Identifier, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
+            if (m.lookingAt())
+                return new Pair<>(new Token(TokenType.Identifier, code.subSequence(m.start(), m.end()).toString()), m.end() - begin);
             return null;
         });
     }
@@ -142,8 +149,8 @@ public class DefaultLexer implements Lexer{
 
         int offset = 0;
         OUTER:
-        while (offset < code.length()){
-            if(Character.isWhitespace(code.charAt(offset))){
+        while (offset < code.length()) {
+            if (Character.isWhitespace(code.charAt(offset))) {
                 offset++;
                 continue;
             }
@@ -163,7 +170,7 @@ public class DefaultLexer implements Lexer{
         return tokens;
     }
 
-    private interface LexemeMatcher{
+    private interface LexemeMatcher {
         Pair<Token, Integer> getNext(int begin, CharSequence code);
     }
 }

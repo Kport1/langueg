@@ -3,10 +3,10 @@ package com.kport.langueg.parse.ast;
 import java.util.HashMap;
 import java.util.Map;
 
-public class VisitorContext implements Cloneable{
+public class VisitorContext implements Cloneable {
     private HashMap<String, Object> values = new HashMap<>();
 
-    public VisitorContext(Map<String, Object> initValues){
+    public VisitorContext(Map<String, Object> initValues) {
         values.putAll(initValues);
     }
 
@@ -18,17 +18,17 @@ public class VisitorContext implements Cloneable{
         return c;
     }
 
-    public Object get(String s){
+    public Object get(String s) {
         return values.get(s);
     }
 
-    public void put(String s, Object val){
+    public void put(String s, Object val) {
         values.put(s, val);
     }
 
-    public static VisitorContext clone(VisitorContext context){
+    public static VisitorContext clone(VisitorContext context) {
         try {
-            return context == null? null : (VisitorContext) context.clone();
+            return context == null ? null : (VisitorContext) context.clone();
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }

@@ -38,8 +38,8 @@ public class NProg extends AST {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(!(o instanceof NProg a)) return false;
+    public boolean equals(Object o) {
+        if (!(o instanceof NProg a)) return false;
         return Arrays.deepEquals(statements, a.statements);
     }
 }
