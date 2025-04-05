@@ -5,14 +5,15 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NIfElse extends NExpr {
 
     public NExpr cond;
     public NExpr ifBlock, elseBlock;
 
-    public NIfElse(int offset_, NExpr cond_, NExpr ifBlock_, NExpr elseBlock_) {
-        super(offset_, cond_, ifBlock_, elseBlock_);
+    public NIfElse(Span location_, NExpr cond_, NExpr ifBlock_, NExpr elseBlock_) {
+        super(location_, cond_, ifBlock_, elseBlock_);
         cond = cond_;
         ifBlock = ifBlock_;
         elseBlock = elseBlock_;

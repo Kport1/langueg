@@ -1,10 +1,13 @@
 package com.kport.langueg.lex;
 
-public class Token {
+import com.kport.langueg.parse.ast.CodeLocatable;
+import com.kport.langueg.util.Span;
+
+public class Token implements CodeLocatable {
     public TokenType tok;
     public String val;
 
-    public int offset;
+    public Span location;
 
     public Token(TokenType tok_) {
         tok = tok_;
@@ -19,7 +22,12 @@ public class Token {
     public String toString() {
         return tok.name() + "( " +
                 (val != null ? val + ", " : "") +
-                "o: " + offset +
+                "l: " + location +
                 " )";
+    }
+
+    @Override
+    public Span location() {
+        return location;
     }
 }

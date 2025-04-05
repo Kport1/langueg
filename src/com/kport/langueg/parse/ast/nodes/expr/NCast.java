@@ -6,13 +6,14 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.Span;
 
 public class NCast extends NExpr {
     public Type type;
     public NExpr expr;
 
-    public NCast(int offset_, Type type_, NExpr expr_) {
-        super(offset_, expr_);
+    public NCast(Span location_, Type type_, NExpr expr_) {
+        super(location_, expr_);
         type = type_;
         expr = expr_;
     }

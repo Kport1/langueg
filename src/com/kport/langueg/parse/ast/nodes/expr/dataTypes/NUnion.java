@@ -4,24 +4,25 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NDotAccessSpecifier;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.util.Either;
+import com.kport.langueg.util.Span;
 
 import java.util.Objects;
 
 public class NUnion extends NExpr {
-    public Either<Integer, String> initializedElementPosition;
-    public NExpr initializedElement;
+    public NDotAccessSpecifier specifier;
+    public NExpr initElement;
 
-    public NUnion(int offset_, NExpr initializedElement_, Either<Integer, String> initializedElementPosition_) {
-        super(offset_, initializedElement_);
-        initializedElement = initializedElement_;
-        initializedElementPosition = initializedElementPosition_;
+    public NUnion(Span location_, NExpr initElement_, NDotAccessSpecifier specifier_) {
+        super(location_, initElement_, specifier_);
+        initElement = initElement_;
+        specifier = specifier_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{initializedElement};
+        return new AST[]{initElement, specifier};
     }
 
     @Override
@@ -31,7 +32,7 @@ public class NUnion extends NExpr {
 
     @Override
     public String nToString() {
-        return "." + initializedElementPosition.match(String::valueOf, str -> str);
+        return specifier.toString();
     }
 
     @Override
@@ -43,6 +44,6 @@ public class NUnion extends NExpr {
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof NUnion a)) return false;
-        return a.initializedElementPosition.equals(initializedElementPosition) && Objects.equals(a.initializedElement, initializedElement);
+        return Objects.equals(specifier, a.specifier) && Objects.equals(initElement, a.initElement);
     }
 }

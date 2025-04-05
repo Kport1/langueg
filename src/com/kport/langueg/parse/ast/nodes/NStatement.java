@@ -4,10 +4,11 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.util.Span;
 
 public abstract class NStatement extends AST {
-    public NStatement(int offset_, AST... children) {
-        super(offset_, children);
+    public NStatement(Span location_, AST... children) {
+        super(location_, children);
     }
 
     @Override

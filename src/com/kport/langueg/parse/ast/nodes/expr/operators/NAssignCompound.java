@@ -7,14 +7,15 @@ import com.kport.langueg.parse.ast.BinOp;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.util.Span;
 
 public class NAssignCompound extends NExpr {
     public NAssignable left;
     public NExpr right;
     public BinOp op;
 
-    public NAssignCompound(int offset_, NAssignable left_, NExpr right_, BinOp op_) {
-        super(offset_, left_, right_);
+    public NAssignCompound(Span location_, NAssignable left_, NExpr right_, BinOp op_) {
+        super(location_, left_, right_);
         left = left_;
         right = right_;
         op = op_;

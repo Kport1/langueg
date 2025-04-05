@@ -25,6 +25,7 @@ import com.kport.langueg.typeCheck.types.NamedType;
 import com.kport.langueg.typeCheck.types.PrimitiveType;
 import com.kport.langueg.typeCheck.types.TupleType;
 import com.kport.langueg.util.Pair;
+import com.kport.langueg.util.Span;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -51,23 +52,23 @@ class DefaultParserTest {
     @Test
     public void test1() {
         AST actual = pipeline.evaluate("var a : i32 = 5i32");
-        AST expect = new NProg(0, new NVarInit(0, PrimitiveType.I32, "a", new NInt32(14, 5)));
+        AST expect = new NProg(new Span(0, 17), new NVarInit(new Span(0, 17), PrimitiveType.I32, "a", new NInt32(new Span(14, 17), 5)));
         assertEquals(expect, actual);
     }
 
     @Test
     public void test2() {
         AST actual = pipeline.evaluate("var b:i32 -> f32 = fn (a: i32)-> f32 = a \n\n\t\n");
-        AST expect = new NProg(0,
-                new NVarInit(0,
+        AST expect = new NProg(new Span(0, 37),
+                new NVarInit(new Span(0, 37),
                         new FnType(PrimitiveType.F32, PrimitiveType.I32),
                         "b",
-                        new NAnonFn(19,
+                        new NAnonFn(new Span(19, 37),
                                 new FnType(
                                         PrimitiveType.F32,
                                         new TupleType(new NameTypePair(PrimitiveType.I32, "a"))
                                 ),
-                                new NIdent(37, "a")
+                                new NIdent(new Span(37, 37), "a")
                         )
                 )
         );
@@ -81,17 +82,17 @@ class DefaultParserTest {
                 type<T> Succ = (T,)
                 var x : Succ<Succ<Zero>> = (((),),)
                 """);
-        AST expect = new NProg(0,
-                new NTypeDef(0, "Zero", new TupleType()),
-                new NTypeDef(15, "Succ",
+        AST expect = new NProg(new Span(0, 69),
+                new NTypeDef(new Span(0, 13), "Zero", new TupleType()),
+                new NTypeDef(new Span(15, 33), "Succ",
                         new TupleType(new NameTypePair(new NamedType("T"), null)),
                         "T"),
-                new NVarInit(35,
+                new NVarInit(new Span(35, 69),
                         new NamedType("Succ", new NamedType("Succ", new NamedType("Zero"))),
                         "x",
-                        new NTuple(62, new Pair<>(null,
-                                new NTuple(63, new Pair<>(null,
-                                        new NTuple(64))))
+                        new NTuple(new Span(62, 69), new Pair<>(null,
+                                new NTuple(new Span(63, 67), new Pair<>(null,
+                                        new NTuple(new Span(64, 65)))))
                         )
                 )
         );
@@ -106,25 +107,25 @@ class DefaultParserTest {
                     return i * f(i - 1u64)
                 }
                 """);
-        AST expect = new NProg(0,
-                new NNamedFn(0, "f",
+        AST expect = new NProg(new Span(0, 85),
+                new NNamedFn(new Span(0, 85), "f",
                         new FnType(
                                 PrimitiveType.U64,
                                 new TupleType(new NameTypePair(PrimitiveType.U64, "i"))
                         ),
-                        new NBlock(26,
-                                new NIf(32,
-                                        new NBinOp(37, new NIdent(35, "i"), new NUInt64(40, 0), BinOp.Eq),
-                                        new NReturn(46, new NUInt64(53, 1))
+                        new NBlock(new Span(26, 85),
+                                new NIf(new Span(32, 56),
+                                        new NBinOp(new Span(35, 43), new NIdent(new Span(35, 35), "i"), new NUInt64(new Span(40, 43), 0), BinOp.Eq),
+                                        new NReturn(new Span(46, 56), new NUInt64(new Span(53, 56), 1))
                                 ),
-                                new NReturn(62,
-                                        new NBinOp(71,
-                                                new NIdent(69, "i"),
-                                                new NCall(74,
-                                                        new NIdent(73, "f"),
-                                                        new NBinOp(77,
-                                                                new NIdent(75, "i"),
-                                                                new NUInt64(79, 1),
+                                new NReturn(new Span(62, 83),
+                                        new NBinOp(new Span(69, 83),
+                                                new NIdent(new Span(69, 69), "i"),
+                                                new NCall(new Span(73, 83),
+                                                        new NIdent(new Span(73, 73), "f"),
+                                                        new NBinOp(new Span(75, 82),
+                                                                new NIdent(new Span(75, 75), "i"),
+                                                                new NUInt64(new Span(79, 82), 1),
                                                                 BinOp.Minus
                                                         )
                                                 ),

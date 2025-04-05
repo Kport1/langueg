@@ -31,10 +31,7 @@ import com.kport.langueg.typeCheck.cast.CastAllowlist;
 import com.kport.langueg.typeCheck.cast.DefaultCastAllowlist;
 import com.kport.langueg.typeCheck.op.*;
 import com.kport.langueg.typeCheck.types.*;
-import com.kport.langueg.util.Either;
-import com.kport.langueg.util.Identifier;
-import com.kport.langueg.util.Pair;
-import com.kport.langueg.util.Scope;
+import com.kport.langueg.util.*;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -129,7 +126,7 @@ public class DefaultTypeChecker implements TypeChecker {
             @Override
             public void visit(NTypeDef typeDef, VisitorContext context) throws LanguegException {
                 if (!symbolTable.registerType(new Identifier(typeDef.scope, typeDef.name), typeDef))
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, typeDef.codeOffset(), pipeline.getSource(), typeDef.name);
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, typeDef.location(), pipeline.getSource(), typeDef.name);
                 ASTVisitor.super.visit(typeDef, context);
             }
         }, null);
@@ -148,7 +145,7 @@ public class DefaultTypeChecker implements TypeChecker {
             @Override
             public void visit(NNamedFn namedFn, VisitorContext context) throws LanguegException {
                 if (!symbolTable.registerFn(new Identifier(namedFn.scope, namedFn.name), namedFn.type))
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, namedFn.codeOffset(), pipeline.getSource(), namedFn.name);
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, namedFn.location(), pipeline.getSource(), namedFn.name);
 
                 ASTVisitor.super.visit(namedFn, context);
             }
@@ -158,7 +155,8 @@ public class DefaultTypeChecker implements TypeChecker {
                 if (fn.getFnType().fnParam() instanceof TupleType paramTuple && paramTuple.isFullyNamed()) {
                     for (NameTypePair param : paramTuple.nameTypePairs) {
                         if (!symbolTable.registerVar(new Identifier(fn.getBodyScope(), param.name), param.type))
-                            throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, 0, pipeline.getSource(), param.name);
+                            //TODO add span to other syntactic constructs
+                            throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, new Span(0, 0), pipeline.getSource(), param.name);
                     }
                 }
                 symbolTable.registerVar(new Identifier(fn.getBodyScope(), "_"), fn.getFnType().fnParam());
@@ -218,7 +216,7 @@ public class DefaultTypeChecker implements TypeChecker {
                             throw new TypeSynthesisException(
                                     Errors.CHECK_SYNTHESIZE_VAR_INIT,
                                     reason,
-                                    varInit.codeOffset(), pipeline.getSource(), varInit.name
+                                    varInit.location(), pipeline.getSource(), varInit.name
                             );
                         }
                     } else {
@@ -228,13 +226,13 @@ public class DefaultTypeChecker implements TypeChecker {
                             throw new TypeCheckException(
                                     Errors.CHECK_CHECK_VAR_INIT,
                                     reason,
-                                    varInit.codeOffset(), pipeline.getSource(), varInit.type
+                                    varInit.location(), pipeline.getSource(), varInit.type
                             );
                         }
                     }
 
                     if (!symbolTable.registerVar(new Identifier(varInit.scope, varInit.name), varInit.type))
-                        throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, varInit.codeOffset(), pipeline.getSource(), varInit.name);
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_DUPLICATE_SYMBOL, varInit.location(), pipeline.getSource(), varInit.name);
                 }
 
                 case NNamedFn namedFn -> annotateTypes(namedFn.body);
@@ -246,7 +244,7 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeSynthesisException(
                                 Errors.CHECK_SYNTHESIZE_EXPR_STMNT,
                                 reason,
-                                expr.codeOffset(), pipeline.getSource()
+                                expr.location(), pipeline.getSource()
                         );
                     }
                     expr.isExprStmnt = true;
@@ -266,40 +264,40 @@ public class DefaultTypeChecker implements TypeChecker {
         switch (expr) {
             case NTuple tuple -> {
                 if (!(symbolTable.tryInstantiateType(type) instanceof TupleType tupleType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.codeOffset(), pipeline.getSource(), type);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.location(), pipeline.getSource(), type);
                 if (tuple.elements.length != tupleType.nameTypePairs().length)
-                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.codeOffset(), pipeline.getSource(), tupleType);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_TUPLE, tuple.location(), pipeline.getSource(), tupleType);
 
                 boolean[] elemIsSet = new boolean[tupleType.nameTypePairs().length];
                 for (int i = 0; i < tuple.elements.length; i++) {
-                    Pair<Either<Integer, String>, NExpr> element = tuple.elements[i];
+                    Pair<NDotAccessSpecifier, NExpr> element = tuple.elements[i];
 
                     int tupleTypeIndex = i;
                     if (element.left != null) {
-                        if (!tupleType.hasElement(element.left)) {
-                            if (element.left instanceof Either.Left<Integer, String>(Integer index)) {
+                        if (!tupleType.hasElement(element.left.specifier)) {
+                            if (element.left.specifier instanceof Either.Left<Integer, String>(Integer index)) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.codeOffset(), pipeline.getSource(), index),
-                                        tuple.codeOffset(), pipeline.getSource(), tupleType
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_INDEX, element.right.location(), pipeline.getSource(), index),
+                                        tuple.location(), pipeline.getSource(), tupleType
                                 );
                             }
-                            if (element.left instanceof Either.Right<Integer, String>(String name)) {
+                            if (element.left.specifier instanceof Either.Right<Integer, String>(String name)) {
                                 throw new TypeCheckException(
                                         Errors.CHECK_CHECK_TUPLE,
-                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.codeOffset(), pipeline.getSource(), name),
-                                        tuple.codeOffset(), pipeline.getSource(), tupleType
+                                        new TypeCheckException(Errors.CHECK_CHECK_TUPLE_NO_NAME, element.right.location(), pipeline.getSource(), name),
+                                        tuple.location(), pipeline.getSource(), tupleType
                                 );
                             }
                         }
-                        tupleTypeIndex = tupleType.resolveElementIndex(element.left);
+                        tupleTypeIndex = tupleType.resolveElementIndex(element.left.specifier);
                     }
 
                     if (elemIsSet[tupleTypeIndex]) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_TUPLE,
-                                new TypeCheckException(Errors.CHECK_CHECK_TUPLE_ALREADY_INIT, element.right.codeOffset(), pipeline.getSource()),
-                                tuple.codeOffset(), pipeline.getSource(), tupleType
+                                new TypeCheckException(Errors.CHECK_CHECK_TUPLE_ALREADY_INIT, element.right.location(), pipeline.getSource()),
+                                tuple.location(), pipeline.getSource(), tupleType
                         );
                     }
 
@@ -309,7 +307,7 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_TUPLE,
                                 reason,
-                                tuple.codeOffset(), pipeline.getSource(), tupleType
+                                tuple.location(), pipeline.getSource(), tupleType
                         );
                     }
                     elemIsSet[tupleTypeIndex] = true;
@@ -318,32 +316,32 @@ public class DefaultTypeChecker implements TypeChecker {
 
             case NUnion union -> {
                 if (!(symbolTable.tryInstantiateType(type) instanceof UnionType unionType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_UNION, union.codeOffset(), pipeline.getSource(), type);
-                if (!unionType.hasElement(union.initializedElementPosition)) {
-                    if (union.initializedElementPosition instanceof Either.Left<Integer, String>(Integer index)) {
+                    throw new TypeCheckException(Errors.CHECK_CHECK_UNION, union.location(), pipeline.getSource(), type);
+                if (!unionType.hasElement(union.specifier.specifier)) {
+                    if (union.specifier.specifier instanceof Either.Left<Integer, String>(Integer index)) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.codeOffset(), pipeline.getSource(), index),
-                                union.codeOffset(), pipeline.getSource(), unionType
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_INDEX, union.location(), pipeline.getSource(), index),
+                                union.location(), pipeline.getSource(), unionType
                         );
                     }
-                    if (union.initializedElementPosition instanceof Either.Right<Integer, String>(String name)) {
+                    if (union.specifier.specifier instanceof Either.Right<Integer, String>(String name)) {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_UNION,
-                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.codeOffset(), pipeline.getSource(), name),
-                                union.codeOffset(), pipeline.getSource(), unionType
+                                new TypeCheckException(Errors.CHECK_CHECK_UNION_NO_NAME, union.location(), pipeline.getSource(), name),
+                                union.location(), pipeline.getSource(), unionType
                         );
                     }
                 }
 
-                Type expectedType = unionType.resolveElementType(union.initializedElementPosition);
+                Type expectedType = unionType.resolveElementType(union.specifier.specifier);
                 try {
-                    checkType(union.initializedElement, expectedType);
+                    checkType(union.initElement, expectedType);
                 } catch (TypeCheckException reason) {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_UNION,
                             reason,
-                            union.codeOffset(), pipeline.getSource(), unionType
+                            union.location(), pipeline.getSource(), unionType
                     );
                 }
             }
@@ -355,7 +353,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_IF_ELSE_COND,
                             reason,
-                            ifElse.cond.codeOffset(), pipeline.getSource()
+                            ifElse.cond.location(), pipeline.getSource()
                     );
                 }
 
@@ -365,7 +363,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_IF_ELSE_IF,
                             reason,
-                            ifElse.ifBlock.codeOffset(), pipeline.getSource(), type
+                            ifElse.ifBlock.location(), pipeline.getSource(), type
                     );
                 }
 
@@ -375,34 +373,34 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_IF_ELSE_ELSE,
                             reason,
-                            ifElse.elseBlock.codeOffset(), pipeline.getSource(), type
+                            ifElse.elseBlock.location(), pipeline.getSource(), type
                     );
                 }
             }
 
             case NRef ref -> {
                 if (!(symbolTable.tryInstantiateType(type) instanceof RefType refType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_REF, ref.codeOffset(), pipeline.getSource(), type);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_REF, ref.location(), pipeline.getSource(), type);
                 try {
                     checkType(ref.referent, refType.referentType());
                 } catch (TypeCheckException exception) {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_REF,
                             exception,
-                            ref.codeOffset(), pipeline.getSource(), type
+                            ref.location(), pipeline.getSource(), type
                     );
                 }
             }
 
             case NNumInfer numInfer -> {
                 if (!(symbolTable.tryInstantiateType(type) instanceof PrimitiveType primitiveType && primitiveType.isNumeric()))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_NUM_INFER, numInfer.codeOffset(), pipeline.getSource(), type);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_NUM_INFER, numInfer.location(), pipeline.getSource(), type);
 
             }
 
             case NArray array -> {
                 if (!(symbolTable.tryInstantiateType(type) instanceof ArrayType arrayType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_ARRAY, array.codeOffset(), pipeline.getSource(), type);
+                    throw new TypeCheckException(Errors.CHECK_CHECK_ARRAY, array.location(), pipeline.getSource(), type);
                 for (NExpr element : array.elements) {
                     try {
                         checkType(element, arrayType.type);
@@ -410,7 +408,7 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_ARRAY,
                                 reason,
-                                array.codeOffset(), pipeline.getSource(), arrayType
+                                array.location(), pipeline.getSource(), arrayType
                         );
                     }
                 }
@@ -420,7 +418,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 try {
                     Type synthesizedType = synthesizeType(exp);
                     if (!castAllowlist.allowCastImplicit(synthesizedType, type, symbolTable)) {
-                        throw new TypeCheckException(Errors.CHECK_CHECK_GENERIC, exp.codeOffset(), pipeline.getSource(), type, synthesizedType);
+                        throw new TypeCheckException(Errors.CHECK_CHECK_GENERIC, exp.location(), pipeline.getSource(), type, synthesizedType);
                     }
                 } catch (TypeSynthesisException e) {
                     throw new RuntimeException(exp.toString());
@@ -464,7 +462,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_BLOCK_VAL,
                             reason,
-                            block.value.codeOffset(), pipeline.getSource()
+                            block.value.location(), pipeline.getSource()
                     );
                 }
             }
@@ -477,11 +475,11 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_CALLED,
                             reason,
-                            call.codeOffset(), pipeline.getSource()
+                            call.location(), pipeline.getSource()
                     );
                 }
                 if (!(calledExprType instanceof FnType fnType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_FN_CALLEE, call.callee.codeOffset(), pipeline.getSource());
+                    throw new TypeCheckException(Errors.CHECK_CHECK_FN_CALLEE, call.callee.location(), pipeline.getSource());
 
 
                 try {
@@ -493,7 +491,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_FN_ARG,
                             reason,
-                            call.arg.codeOffset(), pipeline.getSource(), fnType.fnParam()
+                            call.arg.location(), pipeline.getSource(), fnType.fnParam()
                     );
                 }
 
@@ -507,7 +505,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_IF_COND,
                             reason,
-                            if_.cond.codeOffset(), pipeline.getSource()
+                            if_.cond.location(), pipeline.getSource()
                     );
                 }
 
@@ -523,7 +521,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_IF_ELSE_COND,
                             reason,
-                            ifElse.cond.codeOffset(), pipeline.getSource()
+                            ifElse.cond.location(), pipeline.getSource()
                     );
                 }
 
@@ -535,7 +533,7 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_IF_ELSE_ELSE_SYN_FROM_IF,
                                 reason,
-                                ifElse.elseBlock.codeOffset(), pipeline.getSource(), ifType
+                                ifElse.elseBlock.location(), pipeline.getSource(), ifType
                         );
                     }
 
@@ -544,7 +542,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_IF_ELSE_FIRST_IF,
                             reason,
-                            ifElse.ifBlock.codeOffset(), pipeline.getSource()
+                            ifElse.ifBlock.location(), pipeline.getSource()
                     );
                 }
             }
@@ -556,7 +554,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_WHILE_COND,
                             reason,
-                            while_.cond.codeOffset(), pipeline.getSource()
+                            while_.cond.location(), pipeline.getSource()
                     );
                 }
 
@@ -566,7 +564,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_WHILE_BODY,
                             reason,
-                            while_.block.codeOffset(), pipeline.getSource()
+                            while_.block.location(), pipeline.getSource()
                     );
                 }
 
@@ -581,24 +579,24 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_MATCHED_VAL,
                             reason,
-                            match.value.codeOffset(), pipeline.getSource()
+                            match.value.location(), pipeline.getSource()
                     );
                 }
                 if (!(symbolTable.tryInstantiateType(valType) instanceof UnionType unionType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_MATCH_VAL, match.value.codeOffset(), pipeline.getSource());
+                    throw new TypeCheckException(Errors.CHECK_CHECK_MATCH_VAL, match.value.location(), pipeline.getSource());
 
                 boolean[] casesCovered = new boolean[unionType.unionTypes().length];
                 Type expectedBranchType = null;
                 for (int i = 0; i < match.branches.length; i++) {
                     switch (match.branches[i].left) {
                         case NMatch.Pattern.Union unionPattern -> {
-                            int unionTypeElementIndex = unionType.resolveElementIndex(unionPattern.element);
+                            int unionTypeElementIndex = unionType.resolveElementIndex(unionPattern.specifier.specifier);
 
                             Type unionElementType = unionType.unionTypes()[unionTypeElementIndex];
                             symbolTable.registerVar(new Identifier(match.branches[i].right.scope, unionPattern.elementVarName), unionElementType);
 
                             if (casesCovered[unionTypeElementIndex])
-                                throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_MULTI_COVER, match.branches[i].right.codeOffset(), pipeline.getSource());
+                                throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_MULTI_COVER, match.branches[i].right.location(), pipeline.getSource());
 
                             casesCovered[unionTypeElementIndex] = true;
                         }
@@ -615,7 +613,7 @@ public class DefaultTypeChecker implements TypeChecker {
                             throw new TypeSynthesisException(
                                     Errors.CHECK_SYNTHESIZE_MATCH_BRANCH,
                                     reason,
-                                    match.branches[i].right.codeOffset(), pipeline.getSource()
+                                    match.branches[i].right.location(), pipeline.getSource()
                             );
                         }
                     }
@@ -626,14 +624,14 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeCheckException(
                                 Errors.CHECK_CHECK_MATCH_BRANCH,
                                 reason,
-                                match.branches[i].right.codeOffset(), pipeline.getSource(), expectedBranchType
+                                match.branches[i].right.location(), pipeline.getSource(), expectedBranchType
                         );
                     }
                 }
 
                 for (int i = 0; i < casesCovered.length; i++) {
                     if (!casesCovered[i])
-                        throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_UNCOVERED, match.codeOffset(), pipeline.getSource(), i, unionType.nameTypePairs()[i].name);
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_BRANCH_UNCOVERED, match.location(), pipeline.getSource(), i, unionType.nameTypePairs()[i].name);
                 }
 
                 yield expectedBranchType;
@@ -654,7 +652,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_RETURN,
                             reason,
-                            return_.expr.codeOffset(), pipeline.getSource(), expectedType
+                            return_.expr.location(), pipeline.getSource(), expectedType
                     );
                 }
 
@@ -669,7 +667,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_ASSIGN_LEFT,
                             reason,
-                            assign.left.codeOffset(), pipeline.getSource()
+                            assign.left.location(), pipeline.getSource()
                     );
                 }
 
@@ -679,7 +677,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeCheckException(
                             Errors.CHECK_CHECK_ASSIGN,
                             reason,
-                            assign.right.codeOffset(), pipeline.getSource(), leftExpectedType
+                            assign.right.location(), pipeline.getSource(), leftExpectedType
                     );
                 }
 
@@ -692,15 +690,15 @@ public class DefaultTypeChecker implements TypeChecker {
                 NameTypePair[] nameTypePairs = new NameTypePair[tup.elements.length];
 
                 for (int i = 0; i < tup.elements.length; i++) {
-                    Pair<Either<Integer, String>, NExpr> element = tup.elements[i];
+                    Pair<NDotAccessSpecifier, NExpr> element = tup.elements[i];
 
                     int finalI = i;
-                    int index = element.left == null ? i : element.left.match(integer -> integer, ignored -> finalI);
+                    int index = element.left == null ? i : element.left.specifier.match(integer -> integer, ignored -> finalI);
 
                     if (nameTypePairs[index] != null) {
                         throw new TypeSynthesisException(
                                 Errors.CHECK_SYNTHESIZE_TUPLE_MULTI_INIT,
-                                element.right.codeOffset(), pipeline.getSource()
+                                element.right.location(), pipeline.getSource()
                         );
                     }
 
@@ -711,20 +709,20 @@ public class DefaultTypeChecker implements TypeChecker {
                         throw new TypeSynthesisException(
                                 Errors.CHECK_SYNTHESIZE_TUPLE_ELEM,
                                 reason,
-                                element.right.codeOffset(), pipeline.getSource()
+                                element.right.location(), pipeline.getSource()
                         );
                     }
-                    nameTypePairs[index] = new NameTypePair(elemType, element.left == null ? null : element.left.match(i_ -> null, str -> str));
+                    nameTypePairs[index] = new NameTypePair(elemType, element.left == null ? null : element.left.specifier.match(i_ -> null, str -> str));
                 }
 
                 yield new TupleType(nameTypePairs);
             }
 
             case NUnion union ->
-                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_UNION, union.codeOffset(), pipeline.getSource());
+                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_UNION, union.location(), pipeline.getSource());
 
             case NNumInfer numInfer ->
-                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_NUM_INFER, numInfer.codeOffset(), pipeline.getSource());
+                    throw new TypeSynthesisException(Errors.CHECK_SYNTHESIZE_NUM_INFER, numInfer.location(), pipeline.getSource());
 
             case NCast cast -> {
                 try {
@@ -733,7 +731,7 @@ public class DefaultTypeChecker implements TypeChecker {
                 } catch (TypeCheckException reason) {
                     if (castAllowlist.allowCastExplicit(synthesizeType(cast.expr), cast.type, symbolTable))
                         yield cast.type;
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_CAST, cast.codeOffset(), pipeline.getSource(), cast.type);
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_CAST, cast.location(), pipeline.getSource(), cast.type);
                 }
             }
 
@@ -782,14 +780,14 @@ public class DefaultTypeChecker implements TypeChecker {
             case NIdent ident -> {
                 Identifier id = new Identifier(ident.scope, ident.identifier);
                 if (!symbolTable.anyExists(id))
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_UNKNOWN_SYMBOL, ident.codeOffset(), pipeline.getSource(), id.name());
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_UNKNOWN_SYMBOL, ident.location(), pipeline.getSource(), id.name());
 
                 SymbolTable.Identifiable identifiable = symbolTable.getById(id);
                 yield switch (identifiable) {
                     case SymbolTable.Identifiable.Function fn -> fn.fnType;
                     case SymbolTable.Identifiable.Variable var -> var.varType;
                     case SymbolTable.Identifiable.NamedType ignored ->
-                            throw new SemanticException(Errors.CHECK_SEMANTIC_TYPE_AS_VAL, ident.codeOffset(), pipeline.getSource(), ident.identifier);
+                            throw new SemanticException(Errors.CHECK_SEMANTIC_TYPE_AS_VAL, ident.location(), pipeline.getSource(), ident.identifier);
                 };
             }
 
@@ -800,7 +798,7 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_REF_REFERENT,
                             reason,
-                            ref.referent.codeOffset(), pipeline.getSource()
+                            ref.referent.location(), pipeline.getSource()
                     );
                 }
             }
@@ -813,12 +811,12 @@ public class DefaultTypeChecker implements TypeChecker {
                     throw new TypeSynthesisException(
                             Errors.CHECK_SYNTHESIZE_DEREF_REF,
                             reason,
-                            deRef.reference.codeOffset(), pipeline.getSource()
+                            deRef.reference.location(), pipeline.getSource()
                     );
                 }
 
                 if (!(deRefType instanceof RefType refType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_DEREF, deRef.codeOffset(), pipeline.getSource());
+                    throw new TypeCheckException(Errors.CHECK_CHECK_DEREF, deRef.location(), pipeline.getSource());
 
                 yield refType.referentType;
             }
@@ -827,16 +825,16 @@ public class DefaultTypeChecker implements TypeChecker {
                 Type accessedType = synthesizeType(dotAccess.accessed);
 
                 if (!(symbolTable.tryInstantiateType(accessedType) instanceof TupleType tupleType))
-                    throw new TypeCheckException(Errors.CHECK_CHECK_DOT_ACCESS, dotAccess.codeOffset(), pipeline.getSource());
+                    throw new TypeCheckException(Errors.CHECK_CHECK_DOT_ACCESS, dotAccess.location(), pipeline.getSource());
 
-                if (!tupleType.hasElement(dotAccess.accessor)) {
-                    if (dotAccess.accessor instanceof Either.Left<Integer, String>(Integer index))
-                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_INDEX, dotAccess.codeOffset(), pipeline.getSource(), index);
-                    if (dotAccess.accessor instanceof Either.Right<Integer, String>(String name))
-                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME, dotAccess.codeOffset(), pipeline.getSource(), name);
+                if (!tupleType.hasElement(dotAccess.specifier.specifier)) {
+                    if (dotAccess.specifier.specifier instanceof Either.Left<Integer, String>(Integer index))
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_INDEX, dotAccess.location(), pipeline.getSource(), index);
+                    if (dotAccess.specifier.specifier instanceof Either.Right<Integer, String>(String name))
+                        throw new SemanticException(Errors.CHECK_SEMANTIC_INVALID_DOT_ACCESS_NAME, dotAccess.location(), pipeline.getSource(), name);
                 }
 
-                yield tupleType.resolveElementType(dotAccess.accessor);
+                yield tupleType.resolveElementType(dotAccess.specifier.specifier);
             }
 
             default -> throw new IllegalStateException("Unexpected value: " + expr);
@@ -852,13 +850,13 @@ public class DefaultTypeChecker implements TypeChecker {
             }
             case NDotAccess dotAccess -> {
                 if (!(dotAccess.accessed instanceof NAssignable accessedAssignable))
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, dotAccess.accessed.codeOffset(), pipeline.getSource());
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, dotAccess.accessed.location(), pipeline.getSource());
 
                 checkAssignableRec(accessedAssignable);
             }
             case NDeRef deRef -> {
                 if (!(deRef.reference instanceof NAssignable dereferencedAssignable))
-                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, deRef.reference.codeOffset(), pipeline.getSource());
+                    throw new SemanticException(Errors.CHECK_SEMANTIC_NOT_ASSIGNABLE, deRef.reference.location(), pipeline.getSource());
 
                 checkAssignableRec(dereferencedAssignable);
             }

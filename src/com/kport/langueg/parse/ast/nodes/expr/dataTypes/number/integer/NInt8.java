@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NInt8 extends NExpr {
 
     public byte val;
 
-    public NInt8(int offset_, byte val_) {
-        super(offset_);
+    public NInt8(Span location_, byte val_) {
+        super(location_);
         val = val_;
     }
 

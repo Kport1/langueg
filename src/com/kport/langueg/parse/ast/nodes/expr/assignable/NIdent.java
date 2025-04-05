@@ -4,13 +4,14 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.util.Span;
 
 public final class NIdent extends NAssignable {
 
     public String identifier;
 
-    public NIdent(int offset_, String identifier_) {
-        super(offset_);
+    public NIdent(Span location_, String identifier_) {
+        super(location_);
         identifier = identifier_;
     }
 

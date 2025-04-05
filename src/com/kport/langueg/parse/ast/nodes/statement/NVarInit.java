@@ -7,6 +7,7 @@ import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.Span;
 
 public class NVarInit extends NStatement {
 
@@ -14,8 +15,8 @@ public class NVarInit extends NStatement {
     public String name;
     public NExpr init;
 
-    public NVarInit(int offset_, Type type_, String name_, NExpr init_) {
-        super(offset_, init_);
+    public NVarInit(Span location_, Type type_, String name_, NExpr init_) {
+        super(location_, init_);
         type = type_;
         name = name_;
         init = init_;

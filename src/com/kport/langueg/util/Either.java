@@ -1,23 +1,10 @@
 package com.kport.langueg.util;
 
-import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.function.Function;
 
 public sealed interface Either<A, B> permits Either.Left, Either.Right {
     <R> R match(Function<A, R> left, Function<B, R> right);
-
-    default void consume(Consumer<A> left, Consumer<B> right) {
-        match(
-                (a) -> {
-                    left.accept(a);
-                    return null;
-                },
-                (b) -> {
-                    right.accept(b);
-                    return null;
-                }
-        );
-    }
 
     static <A, B> Left<A, B> left(A value) {
         return new Left<>(value);
@@ -36,8 +23,8 @@ public sealed interface Either<A, B> permits Either.Left, Either.Right {
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof Either.Left<?, ?> l)) return false;
-            return value.equals(l.value);
+            if (!(o instanceof Left<?, ?>(Object v))) return false;
+            return Objects.equals(value, v);
         }
     }
 
@@ -50,8 +37,8 @@ public sealed interface Either<A, B> permits Either.Left, Either.Right {
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof Either.Right<?, ?> r)) return false;
-            return value.equals(r.value);
+            if (!(o instanceof Right<?, ?>(Object v))) return false;
+            return Objects.equals(value, v);
         }
     }
 }

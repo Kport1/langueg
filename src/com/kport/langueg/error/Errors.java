@@ -1,5 +1,9 @@
 package com.kport.langueg.error;
 
+import com.kport.langueg.util.Span;
+
+import java.util.Arrays;
+
 public enum Errors {
 
     PARSE_BLOCK_NOT_CLOSED("Block opened on line %1$d isn't ever closed!",
@@ -150,33 +154,59 @@ public enum Errors {
         suggestion = suggestion_;
     }
 
-    public static String grabCodeLinePointer(CharSequence source, int offset) {
-        int indexOfPrevNewline = offset;
+    private static String grabHighlightedCodeSection(CharSequence source, Span location) {
+        int indexOfPrevNewline = location.begin();
         while (indexOfPrevNewline >= 0 && source.charAt(indexOfPrevNewline) != '\n')
             indexOfPrevNewline--;
 
-        int indexOfNextNewline = offset;
+        int indexOfNextNewline = location.end();
         while (indexOfNextNewline < source.length() && source.charAt(indexOfNextNewline) != '\n')
             indexOfNextNewline++;
 
-        String line = source.subSequence(indexOfPrevNewline + 1, indexOfNextNewline).toString();
-        line += "\n" +
-                " ".repeat(offset - indexOfPrevNewline - 1) +
-                "^" +
-                "_".repeat(indexOfNextNewline - offset - 1);
-        return line;
+        String section = source.subSequence(indexOfPrevNewline + 1, indexOfNextNewline).toString();
+        int beginOffFromNewline = location.begin() - indexOfPrevNewline;
+        int endOffFromNewline = location.end() - indexOfNextNewline;
+
+        StringBuilder res = new StringBuilder();
+        String[] sectionLines = section.split("\n");
+        for (int i = 0; i < sectionLines.length; i++) {
+            String line = sectionLines[i];
+            int lineLen = line.length();
+            res.append(line).append("\n");
+            if (i == 0) {
+                res.append(" ".repeat(beginOffFromNewline - 1));
+                res.append("^");
+                if(sectionLines.length == 1){
+                    int singleLineDashes = lineLen - beginOffFromNewline + endOffFromNewline;
+                    if(singleLineDashes < 0) break;
+                    res.append("-".repeat(singleLineDashes));
+                    res.append("^");
+                } else {
+                    res.append("-".repeat(lineLen - beginOffFromNewline)).append("\n");
+                }
+            } else if (i == sectionLines.length - 1) {
+                res.append("-".repeat(lineLen + endOffFromNewline));
+                res.append("^");
+            } else {
+                res.append("-".repeat(lineLen)).append("\n");
+            }
+        }
+
+        return res.toString();
     }
 
-    public static String formatError(Errors error, CharSequence source, int offset, Object... args) {
+    public static String formatError(Errors error, CharSequence source, Span location, Object... args) {
         String formattedErrMsg = String.format(error.format, args);
         String suggestion = "Suggestion: " + error.suggestion;
-        String cLPointer = Errors.grabCodeLinePointer(source, offset);
-        String cLPointerPad = " ".repeat(Math.max(formattedErrMsg.length() / 2 - cLPointer.length() / 4, 0));
+
+        String codeLine = Errors.grabHighlightedCodeSection(source, location);
+        int codeLineLen = Arrays.stream(codeLine.split("\n")).map(String::length).max(Integer::compareTo).orElse(0);
+        String codeLinePad = " ".repeat(Math.max(formattedErrMsg.length() / 2 - codeLineLen / 2, 0));
 
         return formattedErrMsg +
                 "\n" +
-                "\n" + cLPointerPad + cLPointer
-                .replace("\n", "\n" + cLPointerPad) +
+                "\n" + codeLinePad + codeLine
+                .replace("\n", "\n" + codeLinePad) +
                 "\n " +
                 "\n" + (error.suggestion.isEmpty() ? "" : suggestion);
     }

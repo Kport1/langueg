@@ -5,6 +5,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 import com.kport.langueg.util.Util;
 
 import java.util.Arrays;
@@ -14,15 +15,15 @@ public class NBlockYielding extends NExpr {
     public AST[] statements;
     public NExpr value;
 
-    public NBlockYielding(int offset_, NExpr value_, AST... statements_) {
-        super(offset_, statements_);
+    public NBlockYielding(Span location_, NExpr value_, AST... statements_) {
+        super(location_, Util.concatArrays(statements_, new AST[]{value_}));
         statements = statements_;
         value = value_;
     }
 
     @Override
     public AST[] getChildren() {
-        return Util.concatArrays(statements, new AST[]{value}, AST[].class);
+        return Util.concatArrays(statements, new AST[]{value});
     }
 
     @Override

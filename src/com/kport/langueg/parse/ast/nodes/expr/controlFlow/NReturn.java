@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NReturn extends NExpr {
 
     public NExpr expr;
 
-    public NReturn(int offset_, NExpr expr_) {
-        super(offset_, expr_);
+    public NReturn(Span location_, NExpr expr_) {
+        super(location_, expr_);
         expr = expr_;
     }
 

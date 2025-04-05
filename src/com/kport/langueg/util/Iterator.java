@@ -44,6 +44,10 @@ public class Iterator<T> {
         return list.get(Math.max(Math.min(i, list.size() - 1), 0));
     }
 
+    public T last(){
+        return list.getLast();
+    }
+
     public void setIndex(int i) {
         index = i;
     }

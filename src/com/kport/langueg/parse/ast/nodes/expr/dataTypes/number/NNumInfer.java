@@ -5,6 +5,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 import java.util.Objects;
 
@@ -12,8 +13,8 @@ public class NNumInfer extends NExpr {
 
     public String valString;
 
-    public NNumInfer(int offset_, String valString_) {
-        super(offset_);
+    public NNumInfer(Span location_, String valString_) {
+        super(location_);
         valString = valString_;
     }
 

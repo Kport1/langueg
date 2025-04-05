@@ -161,7 +161,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 short accessedOffset = state.nextUnallocatedByte();
                 gen(dotAccess.accessed);
 
-                int tupIndex = dotAccess.accessor.match((uint) -> uint, tupType::indexByName);
+                int tupIndex = dotAccess.specifier.specifier.match((uint) -> uint, tupType::indexByName);
                 Type tupElementType = tupType.tupleTypes()[tupIndex];
                 short tupElementSize = (short) tupElementType.getSize();
                 state.mov(tupElementSize, accessedOffset, (short) (accessedOffset + tupType.getStride(tupIndex)), isOrContainsRef(tupElementType));
@@ -202,7 +202,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                 for (int i = 0; i < tuple.elements.length; i++) {
                     NExpr expr = tuple.elements[i].right;
                     gen(expr);
-                    int stride = tupleType.getStride(tuple.elements[i].left == null ? i : tupleType.resolveElementIndex(tuple.elements[i].left));
+                    int stride = tupleType.getStride(tuple.elements[i].left == null ? i : tupleType.resolveElementIndex(tuple.elements[i].left.specifier));
                     state.mov((short) expr.exprType.getSize(), (short) (tupOffset + stride), genOffset, isOrContainsRef(expr.exprType));
                     state.popStack(expr.exprType.getSize());
                 }
@@ -210,9 +210,9 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
             case NUnion union -> {
                 UnionType unionType = (UnionType) symbolTable.tryInstantiateType(union.exprType);
-                state.pushShort((short) unionType.resolveElementIndex(union.initializedElementPosition));
-                gen(union.initializedElement);
-                state.allocateAnonLocal(union.exprType.getSize() - 2 - union.initializedElement.exprType.getSize());
+                state.pushShort((short) unionType.resolveElementIndex(union.specifier.specifier));
+                gen(union.initElement);
+                state.allocateAnonLocal(union.exprType.getSize() - 2 - union.initElement.exprType.getSize());
             }
 
             case NRef ref -> {
@@ -313,11 +313,11 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
                     switch (branch.left) {
                         case NMatch.Pattern.Union unionPattern -> {
                             short jmpDelta = (short) (state.getCurrentCodeIndex() - branchTableBegin);
-                            branchTable[matchValUnionType.resolveElementIndex(unionPattern.element)] = jmpDelta;
+                            branchTable[matchValUnionType.resolveElementIndex(unionPattern.specifier.specifier)] = jmpDelta;
 
                             state.enterScope();
 
-                            Type elemType = matchValUnionType.resolveElementType(unionPattern.element);
+                            Type elemType = matchValUnionType.resolveElementType(unionPattern.specifier.specifier);
                             int elemSize = elemType.getSize();
 
                             short elemVar = state.allocateLocal(
@@ -426,7 +426,7 @@ public class LanguegVmCodeGenerator implements CodeGenerator {
 
                 case NDotAccess dotAccess -> {
                     TupleType tupleType = (TupleType) symbolTable.tryInstantiateType(dotAccess.accessed.exprType);
-                    offset += (short) tupleType.getStride(tupleType.resolveElementIndex(dotAccess.accessor));
+                    offset += (short) tupleType.getStride(tupleType.resolveElementIndex(dotAccess.specifier.specifier));
                     assignable = (NAssignable) dotAccess.accessed;
                 }
 

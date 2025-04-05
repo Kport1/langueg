@@ -5,6 +5,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 import java.util.Objects;
 
@@ -12,8 +13,8 @@ public class NCall extends NExpr {
     public NExpr callee;
     public NExpr arg;
 
-    public NCall(int offset_, NExpr callee_, NExpr arg_) {
-        super(offset_, callee_, arg_);
+    public NCall(Span location_, NExpr callee_, NExpr arg_) {
+        super(location_, callee_, arg_);
         callee = callee_;
         arg = arg_;
     }

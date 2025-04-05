@@ -4,32 +4,39 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NDotAccessSpecifier;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.util.Either;
 import com.kport.langueg.util.Pair;
+import com.kport.langueg.util.Span;
 import com.kport.langueg.util.Util;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class NMatch extends NExpr {
 
     public NExpr value;
     public Pair<Pattern, NExpr>[] branches;
 
-    public NMatch(int offset_, NExpr value_, Pair<Pattern, NExpr>... branches_) {
-        super(offset_, value_);
+    public NMatch(Span location_, NExpr value_, Pair<Pattern, NExpr>... branches_) {
+        super(location_, Util.concatArrays(new AST[]{value_}, Arrays.stream(branches_).mapMulti((BiConsumer<Pair<Pattern, NExpr>, Consumer<AST>>) (pair, consumer) -> {
+            if (pair.left instanceof Pattern.Union unionPattern)
+                consumer.accept(unionPattern.specifier);
+            consumer.accept(pair.right);
+        }).toArray(AST[]::new)));
         value = value_;
         branches = branches_;
     }
 
     @Override
     public AST[] getChildren() {
-        AST[] branchExprs = new AST[branches.length];
-        for (int i = 0; i < branches.length; i++) {
-            branchExprs[i] = branches[i].right;
-        }
-        return Util.concatArrays(new AST[]{value}, branchExprs, AST[].class);
+        return Util.concatArrays(new AST[]{value}, Arrays.stream(branches).mapMulti((BiConsumer<Pair<Pattern, NExpr>, Consumer<AST>>) (pair, consumer) -> {
+            if (pair.left instanceof Pattern.Union unionPattern)
+                consumer.accept(unionPattern.specifier);
+            consumer.accept(pair.right);
+        }).toArray(AST[]::new));
     }
 
     @Override
@@ -56,11 +63,11 @@ public class NMatch extends NExpr {
 
     public sealed static class Pattern {
         public static final class Union extends Pattern {
-            public final Either<Integer, String> element;
+            public final NDotAccessSpecifier specifier;
             public final String elementVarName;
 
-            public Union(Either<Integer, String> element_, String elementVarName_) {
-                element = element_;
+            public Union(NDotAccessSpecifier specifier_, String elementVarName_) {
+                specifier = specifier_;
                 elementVarName = elementVarName_;
             }
         }

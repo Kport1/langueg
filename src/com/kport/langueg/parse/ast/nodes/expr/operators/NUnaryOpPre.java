@@ -6,13 +6,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NUnaryOpPre extends NExpr {
     public NExpr operand;
     public TokenType op;
 
-    public NUnaryOpPre(int offset_, NExpr operand_, TokenType op_) {
-        super(offset_, operand_);
+    public NUnaryOpPre(Span location_, NExpr operand_, TokenType op_) {
+        super(location_, operand_);
         operand = operand_;
         op = op_;
     }

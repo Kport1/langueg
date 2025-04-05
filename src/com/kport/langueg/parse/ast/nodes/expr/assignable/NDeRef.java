@@ -5,12 +5,13 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public final class NDeRef extends NAssignable {
     public NExpr reference;
 
-    public NDeRef(int offset_, NExpr reference_) {
-        super(offset_);
+    public NDeRef(Span location_, NExpr reference_) {
+        super(location_);
         reference = reference_;
     }
 

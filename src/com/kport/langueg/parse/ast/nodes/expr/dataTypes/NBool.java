@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NBool extends NExpr {
 
     public boolean bool;
 
-    public NBool(int offset_, boolean bool_) {
-        super(offset_);
+    public NBool(Span location_, boolean bool_) {
+        super(location_);
         bool = bool_;
     }
 

@@ -2,13 +2,14 @@ package com.kport.langueg.parse.ast.nodes;
 
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NIdent;
+import com.kport.langueg.util.Span;
 
 public class NUse extends AST {
 
     public NIdent usedModPath;
 
-    public NUse(int offset_, NIdent usedModPath_) {
-        super(offset_);
+    public NUse(Span location_, NIdent usedModPath_) {
+        super(location_);
         usedModPath = usedModPath_;
     }
 

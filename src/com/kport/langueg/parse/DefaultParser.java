@@ -29,14 +29,12 @@ import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Either;
 import com.kport.langueg.util.Iterator;
 import com.kport.langueg.util.Pair;
+import com.kport.langueg.util.Span;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 public class DefaultParser implements Parser {
 
@@ -93,7 +91,7 @@ public class DefaultParser implements Parser {
         while (!iterator.isEOF()) {
             stmnts.add(parseStatement());
         }
-        return new NProg(0, stmnts.toArray(AST[]::new));
+        return new NProg(new Span(0, iterator.last().location().end()), stmnts.toArray(AST[]::new));
     }
 
     private AST parseStatement() throws ParseException {
@@ -114,7 +112,7 @@ public class DefaultParser implements Parser {
     private NExpr parseExpr() throws ParseException {
         if (iterator.current().tok == TokenType.Semicolon) {
             iterator.inc();
-            return new NBlock(iterator.current().offset);
+            return new NBlock(iterator.current().location());
         }
 
         return parseBinOpRec(
@@ -131,7 +129,7 @@ public class DefaultParser implements Parser {
     private NExpr parseAtom() throws ParseException {
 
         if (iterator.isEOF())
-            throw new ParseException(Errors.PARSE_ATOM_REACHED_EOF, iterator.previous().offset, pipeline.getSource());
+            throw new ParseException(Errors.PARSE_ATOM_REACHED_EOF, iterator.previous().location(), pipeline.getSource());
 
         Token cur = iterator.current();
 
@@ -154,7 +152,7 @@ public class DefaultParser implements Parser {
 
             case String -> {
                 iterator.inc();
-                return new NStr(cur.offset, cur.val);
+                return new NStr(cur.location(), cur.val);
             }
 
             case Number -> {
@@ -163,17 +161,17 @@ public class DefaultParser implements Parser {
 
             case Identifier -> {
                 iterator.inc();
-                return new NIdent(cur.offset, cur.val);
+                return new NIdent(cur.location(), cur.val);
             }
 
             case True -> {
                 iterator.inc();
-                return new NBool(cur.offset, true);
+                return new NBool(cur.location(), true);
             }
 
             case False -> {
                 iterator.inc();
-                return new NBool(cur.offset, false);
+                return new NBool(cur.location(), false);
             }
 
             case If -> {
@@ -194,26 +192,30 @@ public class DefaultParser implements Parser {
 
             case Return -> {
                 iterator.inc();
-                return new NReturn(cur.offset, parseExpr());
+                NExpr expr = parseExpr();
+                return new NReturn(Span.union(cur.location(), expr.location()), expr);
             }
 
             case Minus, Not, Inc, Dec -> {
                 iterator.inc();
-                return new NUnaryOpPre(cur.offset, parseUnaryOp(parseDotAccess(parseCall(parseAtom()))), cur.tok);
+                NExpr expr = parseUnaryOp(parseDotAccess(parseCall(parseAtom())));
+                return new NUnaryOpPre(Span.union(cur.location(), expr.location()), expr, cur.tok);
             }
 
             case And -> {
                 iterator.inc();
-                return new NRef(cur.offset, parseUnaryOp(parseDotAccess(parseCall(parseAtom()))));
+                NExpr expr = parseUnaryOp(parseDotAccess(parseCall(parseAtom())));
+                return new NRef(Span.union(cur.location(), expr.location()), expr);
             }
 
             case Mul -> {
                 iterator.inc();
-                return new NDeRef(cur.offset, parseUnaryOp(parseDotAccess(parseCall(parseAtom()))));
+                NExpr expr = parseUnaryOp(parseDotAccess(parseCall(parseAtom())));
+                return new NDeRef(Span.union(cur.location(), expr.location()), expr);
             }
         }
 
-        throw new ParseException(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.offset, pipeline.getSource(), cur.tok.expandedName());
+        throw new ParseException(Errors.PARSE_ATOM_UNEXPECTED_TOKEN, cur.location(), pipeline.getSource(), cur.tok.expandedName());
     }
 
     private BinOp parseBinOp() {
@@ -256,25 +258,25 @@ public class DefaultParser implements Parser {
         }
 
         NExpr right = parseBinOpRec(parseCast(parseUnaryOp(parseDotAccess(parseCall(parseAtom())))), currentPrec);
-        return parseBinOpRec(new NBinOp(cur.offset, left, right, op), lastPrec);
+        return parseBinOpRec(new NBinOp(Span.union(left.location(), right.location()), left, right, op), lastPrec);
     }
 
     private NExpr parseAssign(NExpr left) throws ParseException {
         if (!(left instanceof NAssignable leftAssignable)) {
-            throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, left.location(), pipeline.getSource());
         }
-        Token cur = iterator.current();
         iterator.inc();
-        return new NAssign(cur.offset, leftAssignable, parseExpr());
+        NExpr expr = parseExpr();
+        return new NAssign(Span.union(left.location(), expr.location()), leftAssignable, expr);
     }
 
     private NExpr parseCompoundAssign(NExpr left, BinOp op) throws ParseException {
         if (!(left instanceof NAssignable leftAssignable)) {
-            throw new ParseException(Errors.PLACEHOLDER, left.codeOffset(), pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, left.location(), pipeline.getSource());
         }
-        Token cur = iterator.current();
         iterator.inc();
-        return new NAssignCompound(cur.offset, leftAssignable, parseExpr(), op);
+        NExpr right = parseExpr();
+        return new NAssignCompound(Span.union(left.location(), right.location()), leftAssignable, right, op);
     }
 
     private NExpr parseUnaryOp(NExpr left) {
@@ -282,7 +284,7 @@ public class DefaultParser implements Parser {
         if (!cur.tok.isUnaryOpPost()) return left;
 
         iterator.inc();
-        return new NUnaryOpPost(cur.offset, left, cur.tok);
+        return new NUnaryOpPost(Span.union(left.location(), cur.location()), left, cur.tok);
     }
 
     private NExpr parseDotAccess(NExpr left) throws ParseException {
@@ -290,21 +292,19 @@ public class DefaultParser implements Parser {
         if (cur.tok != TokenType.Dot) return left;
         iterator.inc();
 
-        Either<Integer, String> accessor = parseDotAccessor();
-        if (accessor == null) throw new ParseException(Errors.PLACEHOLDER, cur.offset + 1, pipeline.getSource());
-
-        return parseDotAccess(new NDotAccess(cur.offset, left, accessor));
+        NDotAccessSpecifier specifier = parseDotAccessor();
+        return parseDotAccess(new NDotAccess(Span.union(left.location(), specifier.location()), left, specifier));
     }
 
-    private Either<Integer, String> parseDotAccessor() throws ParseException {
+    private NDotAccessSpecifier parseDotAccessor() throws ParseException {
         Token cur = iterator.current();
         iterator.inc();
         return switch (cur.tok) {
-            case TokenType.Number -> Either.left(Integer.parseInt(cur.val));
+            case TokenType.Number -> new NDotAccessSpecifier(cur.location(), Either.left(Integer.parseInt(cur.val)));
 
-            case TokenType.Identifier -> Either.right(cur.val);
+            case TokenType.Identifier -> new NDotAccessSpecifier(cur.location(), Either.right(cur.val));
 
-            default -> throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+            default -> throw new ParseException(Errors.PLACEHOLDER, cur.location(), pipeline.getSource());
         };
     }
 
@@ -313,7 +313,7 @@ public class DefaultParser implements Parser {
         if (cur.tok != TokenType.LParen) return left;
 
         NExpr arg = parseTuple();
-        return parseCall(new NCall(cur.offset, left, arg));
+        return parseCall(new NCall(Span.union(left.location(), arg.location()), left, arg));
     }
 
     private NExpr parseCast(NExpr left) throws ParseException {
@@ -321,31 +321,34 @@ public class DefaultParser implements Parser {
         if (cur.tok != TokenType.As) return left;
 
         iterator.inc();
-        return new NCast(cur.offset, parseType(), left);
+        Pair<Type, Span> type = parseType();
+        return new NCast(Span.union(left.location(), type.right), type.left, left);
     }
 
     @SuppressWarnings("unchecked")
     private NExpr parseTuple() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
 
         final boolean[] trailingComma = {false};
-        Pair<Either<Integer, String>, NExpr>[] exprs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, i -> {
+        Pair<NDotAccessSpecifier, NExpr>[] exprs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, i -> {
             trailingComma[0] = false;
 
-            Either<Integer, String> position = null;
+            NDotAccessSpecifier specifier = null;
             if (iterator.current().tok == TokenType.Dot) {
                 iterator.inc();
-                position = parseDotAccessor();
+                specifier = parseDotAccessor();
                 if (iterator.current().tok != TokenType.Assign)
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
                 iterator.inc();
             }
 
             NExpr expr = parseExpr();
             if (iterator.current().tok == TokenType.Comma)
                 trailingComma[0] = true;
-            return new Pair<>(position, expr);
+            return new Pair<>(specifier, expr);
         }, Pair.class);
+
+        Span endSpan = iterator.peek(-1).location();
 
         if (!trailingComma[0] && exprs.length == 1 && exprs[0].left == null) return exprs[0].right;
 
@@ -354,63 +357,66 @@ public class DefaultParser implements Parser {
         for (int i = 0; i < exprs.length; i++) {
             if (exprs[i].left == null) {
                 if (elemIsSet[i])
-                    throw new ParseException(Errors.PLACEHOLDER, exprs[i].right.codeOffset(), pipeline.getSource());
+                    throw new ParseException(Errors.PLACEHOLDER, exprs[i].right.location(), pipeline.getSource());
                 elemIsSet[i] = true;
                 continue;
             }
 
-            switch (exprs[i].left) {
+            switch (exprs[i].left.specifier) {
                 case Either.Left<Integer, String> index -> {
                     if (index.value() >= exprs.length)
-                        throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
+                        throw new ParseException(Errors.PLACEHOLDER, exprs[i].left.location(), pipeline.getSource());
                     if (elemIsSet[index.value()])
-                        throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
+                        throw new ParseException(Errors.PLACEHOLDER, exprs[i].left.location(), pipeline.getSource());
                     elemIsSet[index.value()] = true;
                 }
                 case Either.Right<Integer, String> name -> {
                     if (usedNames.contains(name.value()))
-                        throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
+                        throw new ParseException(Errors.PLACEHOLDER, exprs[i].left.location(), pipeline.getSource());
                     usedNames.add(name.value());
                 }
             }
         }
 
-        return new NTuple(cur.offset, exprs);
+        return new NTuple(Span.union(beginSpan, endSpan), exprs);
     }
 
     private NUnion parseUnion() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
+
         if (iterator.current().tok != TokenType.LCurl)
-            throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
 
         if (iterator.next().tok != TokenType.Dot)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
-        Either<Integer, String> position = parseDotAccessor();
-        if (position == null) throw new ParseException(Errors.PLACEHOLDER, cur.offset + 1, pipeline.getSource());
+        NDotAccessSpecifier specifier = parseDotAccessor();
 
         if (iterator.current().tok != TokenType.Assign)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
 
         iterator.inc();
         NExpr expr = parseExpr();
 
         if (iterator.current().tok != TokenType.RCurl)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+
+        Span endSpan = iterator.current().location();
         iterator.inc();
 
-        return new NUnion(cur.offset, expr, position);
+        return new NUnion(Span.union(beginSpan, endSpan), expr, specifier);
     }
 
     private NArray parseArray() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
         NExpr[] elems = parseDelim(TokenType.LBrack, TokenType.RBrack, TokenType.Comma);
-        return new NArray(cur.offset, elems);
+        Span endSpan = iterator.peek(-1).location();
+        return new NArray(Span.union(beginSpan, endSpan), elems);
     }
 
     private NExpr parseIf() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
         iterator.inc();
 
         NExpr condition = parseEnclosed(TokenType.LParen, TokenType.RParen);
@@ -421,113 +427,112 @@ public class DefaultParser implements Parser {
             iterator.inc();
             NExpr elseBlock = parseExpr();
 
-            return new NIfElse(cur.offset, condition, block, elseBlock);
+            return new NIfElse(Span.union(beginSpan, elseBlock.location()), condition, block, elseBlock);
         }
 
-        return new NIf(cur.offset, condition, block);
+        return new NIf(Span.union(beginSpan, block.location()), condition, block);
     }
 
     @SuppressWarnings("unchecked")
     private NMatch parseMatch() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
         iterator.inc();
 
         NExpr value = parseEnclosed(TokenType.LParen, TokenType.RParen);
 
         ArrayList<Pair<NMatch.Pattern, NExpr>> branches = new ArrayList<>();
         while (iterator.current().tok == TokenType.Case) {
-            if (iterator.next().tok == TokenType.Dot) {
-                int elemOffset = iterator.next().offset;
-                Either<Integer, String> element = parseDotAccessor();
-                if (element == null) throw new ParseException(Errors.PLACEHOLDER, elemOffset, pipeline.getSource());
+            if (iterator.next().tok != TokenType.Dot)
+                throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
 
-                if (iterator.current().tok != TokenType.Identifier)
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                String elementVarName = iterator.current().val;
+            NDotAccessSpecifier specifier = parseDotAccessor();
 
-                if (iterator.next().tok != TokenType.DoubleArrow)
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                iterator.inc();
+            if (iterator.current().tok != TokenType.Identifier)
+                throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+            String elementVarName = iterator.current().val;
 
-                NExpr expr = parseExpr();
-                branches.add(new Pair<>(new NMatch.Pattern.Union(element, elementVarName), expr));
-            } else {
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-            }
+            if (iterator.next().tok != TokenType.DoubleArrow)
+                throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+            iterator.inc();
+
+            NExpr expr = parseExpr();
+            branches.add(new Pair<>(new NMatch.Pattern.Union(specifier, elementVarName), expr));
         }
 
         if (iterator.current().tok == TokenType.Else) {
             if (iterator.next().tok != TokenType.DoubleArrow)
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
             iterator.inc();
             NExpr expr = parseExpr();
             branches.add(new Pair<>(new NMatch.Pattern.Default(), expr));
         }
 
-        return new NMatch(cur.offset, value, branches.toArray(new Pair[0]));
+        Span endSpan = iterator.peek(-1).location();
+
+        return new NMatch(Span.union(beginSpan, endSpan), value, branches.toArray(new Pair[0]));
     }
 
     private NWhile parseWhile() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
         iterator.inc();
 
         NExpr condition = parseEnclosed(TokenType.LParen, TokenType.RParen);
 
         NExpr block = parseExpr();
 
-        return new NWhile(cur.offset, condition, block);
+        return new NWhile(Span.union(beginSpan, block.location()), condition, block);
     }
 
     private NAnonFn parseAnonFn() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
         iterator.inc();
 
-        Type type = parseType();
-        if (!(type instanceof FnType fnType))
-            throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+        Pair<Type, Span> type = parseType();
+        if (!(type.left instanceof FnType fnType))
+            throw new ParseException(Errors.PLACEHOLDER, type.right, pipeline.getSource());
 
         if (iterator.current().tok != TokenType.Assign)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
 
         iterator.inc();
 
         NExpr body = parseExpr();
 
-        return new NAnonFn(cur.offset, fnType, body);
+        return new NAnonFn(Span.union(beginSpan, body.location()), fnType, body);
     }
 
     private NNamedFn parseFn() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
 
         if (iterator.next().tok != TokenType.Identifier)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         String name = iterator.current().val;
 
         if (iterator.next().tok != TokenType.Colon)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
-        Type type = parseType();
-        if (!(type instanceof FnType fnType))
-            throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+        Pair<Type, Span> type = parseType();
+        if (!(type.left instanceof FnType fnType))
+            throw new ParseException(Errors.PLACEHOLDER, type.right, pipeline.getSource());
 
         if (iterator.current().tok != TokenType.Assign)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
         NExpr body = parseExpr();
 
-        return new NNamedFn(cur.offset, name, fnType, body);
+        return new NNamedFn(Span.union(beginSpan, body.location()), name, fnType, body);
     }
 
     private NExpr parseBlock() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
 
         ArrayList<AST> stmnts = new ArrayList<>();
 
         if (iterator.next().tok == TokenType.RCurl) {
             iterator.inc();
-            return new NBlock(cur.offset);
+            return new NBlock(Span.union(beginSpan, iterator.peek(-1).location()));
         }
 
         do {
@@ -541,44 +546,44 @@ public class DefaultParser implements Parser {
                     AST lastStatement = stmnts.getLast();
 
                     if (!(lastStatement instanceof NExpr lastExpr))
-                        throw new ParseException(Errors.PLACEHOLDER, lastStatement.codeOffset(), pipeline.getSource());
+                        throw new ParseException(Errors.PLACEHOLDER, lastStatement.location(), pipeline.getSource());
 
                     stmnts.removeLast();
-                    return new NBlockYielding(cur.offset, lastExpr, stmnts.toArray(new AST[0]));
+                    return new NBlockYielding(Span.union(beginSpan, iterator.peek(-1).location()), lastExpr, stmnts.toArray(new AST[0]));
                 }
 
-                return new NBlock(cur.offset, stmnts.toArray(new AST[0]));
+                return new NBlock(Span.union(beginSpan, iterator.peek(-1).location()), stmnts.toArray(new AST[0]));
             }
         } while (!iterator.isEOF());
 
 
-        throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
+        throw new ParseException(Errors.PLACEHOLDER, beginSpan, pipeline.getSource());
     }
 
     private AST parseVar() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
 
         if (iterator.next().tok != TokenType.Identifier)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         String name = iterator.current().val;
 
         Type type = null;
         if (iterator.next().tok == TokenType.Colon) {
             iterator.inc();
-            type = parseType();
+            type = parseType().left;
         }
 
         if (iterator.current().tok != TokenType.Assign)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
 
         iterator.inc();
         NExpr init = parseExpr();
 
-        return new NVarInit(cur.offset, type, name, init);
+        return new NVarInit(Span.union(beginSpan, init.location()), type, name, init);
     }
 
     private NTypeDef parseTypeDef() throws ParseException {
-        Token cur = iterator.current();
+        Span beginSpan = iterator.current().location();
 
         String[] typeParameters = new String[0];
 
@@ -586,7 +591,7 @@ public class DefaultParser implements Parser {
             typeParameters = parseDelimAs(TokenType.Greater, TokenType.Less, TokenType.Comma, (i) ->
                     {
                         if (iterator.current().tok != TokenType.Identifier)
-                            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
                         String str = iterator.current().val;
                         iterator.inc();
                         return str;
@@ -595,218 +600,203 @@ public class DefaultParser implements Parser {
         }
 
         if (iterator.current().tok != TokenType.Identifier)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         String name = iterator.current().val;
 
         if (iterator.next().tok != TokenType.Assign)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
-        return new NTypeDef(cur.offset, name, parseType(), typeParameters);
+        Pair<Type, Span> definition = parseType();
+
+        return new NTypeDef(Span.union(beginSpan, definition.right), name, definition.left, typeParameters);
     }
 
     private NExpr parseNumber() throws ParseException {
-        Token cur = iterator.current();
+        Span numSpan = iterator.current().location();
 
-        if (cur.tok != TokenType.Number) throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-        String integerPartString = cur.val;
+        if (iterator.current().tok != TokenType.Number)
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+
+        String integerPartString = iterator.current().val;
         String decimalPartString = "";
+
         if (iterator.next().tok == TokenType.Dot) {
             if (iterator.next().tok != TokenType.Number)
-                throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+                throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
             decimalPartString = iterator.current().val;
+            numSpan = Span.union(numSpan, iterator.current().location);
             iterator.inc();
         }
 
         BigInteger integerPart = new BigInteger(integerPartString);
 
-        switch (iterator.current().tok) {
+        Token typePostfix = iterator.current();
+        iterator.inc();
+        switch (typePostfix.tok) {
             case U8 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NUInt8(cur.offset, integerPart.byteValue());
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NUInt8(Span.union(numSpan, typePostfix.location()), integerPart.byteValue());
             }
 
             case U16 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NUInt16(cur.offset, integerPart.shortValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NUInt16(Span.union(numSpan, typePostfix.location()), integerPart.shortValue());
             }
 
             case U32 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0, 0, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NUInt32(cur.offset, integerPart.intValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0, 0, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NUInt32(Span.union(numSpan, typePostfix.location()), integerPart.intValue());
             }
 
             case U64 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NUInt64(cur.offset, integerPart.longValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NUInt64(Span.union(numSpan, typePostfix.location()), integerPart.longValue());
             }
 
             case I8 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NInt8(cur.offset, integerPart.byteValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NInt8(Span.union(numSpan, typePostfix.location()), integerPart.byteValue());
             }
 
             case I16 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NInt16(cur.offset, integerPart.shortValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NInt16(Span.union(numSpan, typePostfix.location()), integerPart.shortValue());
             }
 
             case I32 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NInt32(cur.offset, integerPart.intValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NInt32(Span.union(numSpan, typePostfix.location()), integerPart.intValue());
             }
 
             case I64 -> {
                 if (!decimalPartString.isEmpty())
-                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
-                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0, 0, 0, 0, 0})) != -1)
-                    throw new ParseException(Errors.PLACEHOLDER, cur.offset, pipeline.getSource());
-                iterator.inc();
-                return new NInt64(cur.offset, integerPart.longValue());
+                    throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
+                if (integerPart.compareTo(new BigInteger(new byte[]{0, -128, 0, 0, 0, 0, 0, 0, 0})) > -1)
+                    throw new ParseException(Errors.PLACEHOLDER, numSpan, pipeline.getSource());
+                return new NInt64(Span.union(numSpan, typePostfix.location()), integerPart.longValue());
             }
 
             case F32 -> {
                 BigDecimal decimal = new BigDecimal(integerPartString + "." + decimalPartString);
-                iterator.inc();
-                return new NFloat32(cur.offset, decimal.floatValue());
+                return new NFloat32(Span.union(numSpan, typePostfix.location()), decimal.floatValue());
             }
 
             case F64 -> {
                 BigDecimal decimal = new BigDecimal(integerPartString + "." + decimalPartString);
-                iterator.inc();
-                return new NFloat64(cur.offset, decimal.doubleValue());
+                return new NFloat64(Span.union(numSpan, typePostfix.location()), decimal.doubleValue());
             }
+
+            default -> iterator.dec();
         }
 
-        return new NNumInfer(cur.offset, integerPartString + (decimalPartString.isEmpty() ? "" : "." + decimalPartString));
+        return new NNumInfer(numSpan, integerPartString + (decimalPartString.isEmpty() ? "" : "." + decimalPartString));
     }
 
-    private Type parseType() throws ParseException {
+    private Pair<Type, Span> parseType() throws ParseException {
         return parseFnType(parseArrayType(parseTypeAtom()));
     }
 
-    private Type parseTypeAtom() throws ParseException {
+    private Pair<Type, Span> parseTypeAtom() throws ParseException {
         Token cur = iterator.current();
         iterator.inc();
 
-        switch (cur.tok) {
-            case Bool -> {
-                return PrimitiveType.Bool;
-            }
-            case Char -> {
-                return PrimitiveType.Char;
-            }
+        return switch (cur.tok) {
+            case Bool -> new Pair<>(PrimitiveType.Bool, cur.location());
+            case Char -> new Pair<>(PrimitiveType.Char, cur.location());
 
-            case U8 -> {
-                return PrimitiveType.U8;
-            }
-            case U16 -> {
-                return PrimitiveType.U16;
-            }
-            case U32 -> {
-                return PrimitiveType.U32;
-            }
-            case U64 -> {
-                return PrimitiveType.U64;
-            }
+            case U8 -> new Pair<>(PrimitiveType.U8, cur.location());
+            case U16 -> new Pair<>(PrimitiveType.U16, cur.location());
+            case U32 -> new Pair<>(PrimitiveType.U32, cur.location());
+            case U64 -> new Pair<>(PrimitiveType.U64, cur.location());
 
-            case I8 -> {
-                return PrimitiveType.I8;
-            }
-            case I16 -> {
-                return PrimitiveType.I16;
-            }
-            case I32 -> {
-                return PrimitiveType.I32;
-            }
-            case I64 -> {
-                return PrimitiveType.I64;
-            }
+            case I8 -> new Pair<>(PrimitiveType.I8, cur.location());
+            case I16 -> new Pair<>(PrimitiveType.I16, cur.location());
+            case I32 -> new Pair<>(PrimitiveType.I32, cur.location());
+            case I64 -> new Pair<>(PrimitiveType.I64, cur.location());
 
-            case F32 -> {
-                return PrimitiveType.F32;
-            }
-            case F64 -> {
-                return PrimitiveType.F64;
-            }
+            case F32 -> new Pair<>(PrimitiveType.F32, cur.location());
+            case F64 -> new Pair<>(PrimitiveType.F64, cur.location());
+
 
             case LParen -> {
                 iterator.dec();
-                return parseTupleType();
+                yield parseTupleType();
             }
 
             case LCurl -> {
                 iterator.dec();
-                return parseUnionType();
+                yield parseUnionType();
             }
 
             case And -> {
-                return new RefType(parseType());
+                Pair<Type, Span> type = parseType();
+                yield new Pair<>(new RefType(type.left), Span.union(cur.location(), type.right));
             }
 
             case Identifier -> {
+                Span namedTypeSpan = cur.location();
+
                 String name = cur.val;
                 Type[] typeArgs = new Type[0];
                 if (iterator.current().tok == TokenType.Greater) {
-                    typeArgs = parseDelimAs(TokenType.Greater, TokenType.Less, TokenType.Comma, (i) -> parseType(), Type.class);
+                    typeArgs = parseDelimAs(TokenType.Greater, TokenType.Less, TokenType.Comma, (i) -> parseType().left, Type.class);
+                    namedTypeSpan = Span.union(namedTypeSpan, iterator.peek(-1).location());
                 }
-                return new NamedType(name, typeArgs);
+                yield new Pair<>(new NamedType(name, typeArgs), namedTypeSpan);
             }
-        }
 
-        return null;
+            default -> throw new ParseException(Errors.PLACEHOLDER, cur.location(), pipeline.getSource());
+        };
     }
 
-    private Type parseArrayType(Type left) {
+    private Pair<Type, Span> parseArrayType(Pair<Type, Span> left) {
         if (iterator.current().tok == TokenType.LBrack && iterator.next().tok == TokenType.RBrack) {
             iterator.inc();
-            return new ArrayType(left);
+            return new Pair<>(new ArrayType(left.left), Span.union(left.right, iterator.peek(-1).location()));
         }
         return left;
     }
 
-    private Type parseFnType(Type left) throws ParseException {
+    private Pair<Type, Span> parseFnType(Pair<Type, Span> left) throws ParseException {
         if (iterator.current().tok != TokenType.SingleArrow)
             return left;
         iterator.inc();
 
-        Type returnType = parseType();
+        Pair<Type, Span> returnType = parseType();
 
-        return new FnType(returnType, left);
+        return new Pair<>(new FnType(returnType.left, left.left), Span.union(left.right, returnType.right));
     }
 
-    public Type parseTupleType() throws ParseException {
+    @SuppressWarnings("unchecked")
+    public Pair<Type, Span> parseTupleType() throws ParseException {
+        Span beginSpan = iterator.current().location();
+
         final boolean[] trailingComma = {false};
-        NameTypePair[] nameTypePairs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, i -> {
+        Pair<NameTypePair, Span>[] nameTypePairs = parseDelimAs(TokenType.LParen, TokenType.RParen, TokenType.Comma, i -> {
             trailingComma[0] = false;
+            Span beginSpanPair = iterator.current().location();
 
             String name = null;
             if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok == TokenType.Colon) {
@@ -814,67 +804,76 @@ public class DefaultParser implements Parser {
                 iterator.inc();
                 iterator.inc();
             }
-            Type type = parseType();
+            Pair<Type, Span> type = parseType();
+
+            Span endSpanPair = iterator.peek(-1).location();
 
             if (iterator.current().tok == TokenType.Comma)
                 trailingComma[0] = true;
 
-            return new NameTypePair(type, name);
-        }, NameTypePair.class);
+            return new Pair<>(new NameTypePair(type.left, name), Span.union(beginSpanPair, endSpanPair));
+        }, Pair.class);
 
-        if (!trailingComma[0] && nameTypePairs.length == 1 && nameTypePairs[0].name == null)
-            return nameTypePairs[0].type;
+        Span endSpan = iterator.peek(-1).location();
+
+        if (!trailingComma[0] && nameTypePairs.length == 1 && nameTypePairs[0].left.name == null)
+            return new Pair<>(nameTypePairs[0].left.type, Span.union(beginSpan, endSpan));
 
         HashSet<String> names = new HashSet<>();
-        for (NameTypePair nameTypePair : nameTypePairs) {
-            if (nameTypePair.name == null) continue;
-            if (names.contains(nameTypePair.name))
-                throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
-            names.add(nameTypePair.name);
+        for (Pair<NameTypePair, Span> nameTypePair : nameTypePairs) {
+            if (nameTypePair.left.name == null) continue;
+            if (names.contains(nameTypePair.left.name))
+                throw new ParseException(Errors.PLACEHOLDER, nameTypePair.right, pipeline.getSource());
+            names.add(nameTypePair.left.name);
         }
 
-        return new TupleType(nameTypePairs);
+        return new Pair<>(new TupleType(Arrays.stream(nameTypePairs).map(pair -> pair.left).toArray(NameTypePair[]::new)), Span.union(beginSpan, endSpan));
     }
 
-    public UnionType parseUnionType() throws ParseException {
-        NameTypePair[] nameTypePairs = parseDelimAs(TokenType.LCurl, TokenType.RCurl, TokenType.Comma, (i) -> {
+    @SuppressWarnings("unchecked")
+    public Pair<Type, Span> parseUnionType() throws ParseException {
+        Span beginSpan = iterator.current().location();
+        Pair<NameTypePair, Span>[] nameTypePairs = parseDelimAs(TokenType.LCurl, TokenType.RCurl, TokenType.Comma, (i) -> {
+            Span beginSpanPair = iterator.current().location();
+
             String name = null;
             if (iterator.current().tok == TokenType.Identifier && iterator.peek().tok == TokenType.Colon) {
                 name = iterator.current().val;
                 iterator.inc();
                 iterator.inc();
             }
-            Type type = parseFnType(parseArrayType(parseTypeAtom()));
-            return new NameTypePair(type, name);
-        }, NameTypePair.class);
+            Pair<Type, Span> type = parseType();
 
-        for (int i = 0; i < nameTypePairs.length; i++) {
-            if (nameTypePairs[i].name == null) continue;
-            for (int j = 0; j < nameTypePairs.length; j++) {
-                if (i == j) continue;
-                if (nameTypePairs[j].name == null) continue;
+            Span endSpanPair = iterator.peek(-1).location();
 
-                if (Objects.equals(nameTypePairs[i].name, nameTypePairs[j].name))
-                    throw new ParseException(Errors.PLACEHOLDER, 0, pipeline.getSource());
-            }
+            return new Pair<>(new NameTypePair(type.left, name), Span.union(beginSpanPair, endSpanPair));
+        }, Pair.class);
+        Span endSpan = iterator.peek(-1).location();
+
+        HashSet<String> names = new HashSet<>();
+        for (Pair<NameTypePair, Span> nameTypePair : nameTypePairs) {
+            if (nameTypePair.left.name == null) continue;
+            if (names.contains(nameTypePair.left.name))
+                throw new ParseException(Errors.PLACEHOLDER, nameTypePair.right, pipeline.getSource());
+            names.add(nameTypePair.left.name);
         }
 
-        return new UnionType(nameTypePairs);
+        return new Pair<>(new UnionType(Arrays.stream(nameTypePairs).map(pair -> pair.left).toArray(NameTypePair[]::new)), Span.union(beginSpan, endSpan));
     }
 
     private NExpr parseEnclosed(TokenType start, TokenType end) throws ParseException {
         return parseEnclosedAs(start, end, (v) -> parseExpr());
     }
 
-    private <T> T parseEnclosedAs(TokenType start, TokenType end, FunctionThrowsParseException<Void, T> sup) throws ParseException {
+    private <T> T parseEnclosedAs(TokenType start, TokenType end, FunctionThrowsParseException<Void, T> supplier) throws ParseException {
         if (iterator.current().tok != start)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
-        T ret = sup.apply(null);
+        T ret = supplier.apply(null);
 
         if (iterator.current().tok != end)
-            throw new ParseException(Errors.PLACEHOLDER, iterator.current().offset, pipeline.getSource());
+            throw new ParseException(Errors.PLACEHOLDER, iterator.current().location(), pipeline.getSource());
         iterator.inc();
 
         return ret;
@@ -887,7 +886,7 @@ public class DefaultParser implements Parser {
     @SuppressWarnings("unchecked")
     private <T> T[] parseDelimAs(TokenType start, TokenType end, TokenType separator, FunctionThrowsParseException<Integer, T> fn, Class<T> clazz) throws ParseException {
         if (iterator.current().tok != start)
-            throw new ParseException(Errors.PARSE_DELIM_EXPECTED_START, iterator.current().offset, pipeline.getSource(), start.expandedName());
+            throw new ParseException(Errors.PARSE_DELIM_EXPECTED_START, iterator.current().location(), pipeline.getSource(), start.expandedName());
 
         ArrayList<T> exprs = new ArrayList<>();
 
@@ -906,7 +905,7 @@ public class DefaultParser implements Parser {
             }
 
             if (iterator.current().tok != separator)
-                throw new ParseException(Errors.PARSE_DELIM_EXPECTED_SEPARATOR, iterator.current().offset, pipeline.getSource(), separator.expandedName());
+                throw new ParseException(Errors.PARSE_DELIM_EXPECTED_SEPARATOR, iterator.current().location(), pipeline.getSource(), separator.expandedName());
 
             iterator.inc();
         }

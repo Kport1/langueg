@@ -5,14 +5,15 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NWhile extends NExpr {
 
     public NExpr cond;
     public NExpr block;
 
-    public NWhile(int offset_, NExpr condition_, NExpr block_) {
-        super(offset_, condition_, block_);
+    public NWhile(Span location_, NExpr condition_, NExpr block_) {
+        super(location_, condition_, block_);
         cond = condition_;
         block = block_;
     }

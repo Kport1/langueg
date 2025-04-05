@@ -6,6 +6,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.util.Scope;
+import com.kport.langueg.util.Span;
 
 import java.util.Objects;
 
@@ -15,8 +16,8 @@ public final class NNamedFn extends NStatement implements NFn {
     public FnType type;
     public NExpr body;
 
-    public NNamedFn(int offset_, String name_, FnType type_, NExpr body_) {
-        super(offset_, body_);
+    public NNamedFn(Span location_, String name_, FnType type_, NExpr body_) {
+        super(location_, body_);
         name = name_;
         type = type_;
         body = body_;

@@ -6,6 +6,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.typeCheck.types.FnType;
 import com.kport.langueg.util.Scope;
+import com.kport.langueg.util.Span;
 
 import java.util.Objects;
 
@@ -14,8 +15,8 @@ public final class NAnonFn extends NExpr implements NFn {
     public FnType type;
     public NExpr body;
 
-    public NAnonFn(int offset_, FnType type_, NExpr body_) {
-        super(offset_, body_);
+    public NAnonFn(Span location_, FnType type_, NExpr body_) {
+        super(location_, body_);
         type = type_;
         body = body_;
     }

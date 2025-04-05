@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NChar extends NExpr {
 
     public char val;
 
-    public NChar(int offset_, char val_) {
-        super(offset_);
+    public NChar(Span location_, char val_) {
+        super(location_);
         val = val_;
     }
 

@@ -4,6 +4,7 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.util.Span;
 
 import java.util.Arrays;
 
@@ -11,8 +12,8 @@ public class NProg extends AST {
 
     public AST[] statements;
 
-    public NProg(int offset_, AST... children) {
-        super(offset_, children);
+    public NProg(Span location_, AST... children) {
+        super(location_, children);
         statements = children;
     }
 

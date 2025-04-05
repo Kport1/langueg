@@ -4,24 +4,31 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.Visitable;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.util.Scope;
+import com.kport.langueg.util.Span;
+
+import java.util.Arrays;
 
 public abstract class AST implements Visitable, CodeLocatable {
     public AST parent;
 
-    private final int offset;
+    private final Span location;
 
     public Scope scope = null;
 
-    public AST(int offset_, AST... children) {
-        offset = offset_;
+    public AST(Span location_, AST... children) {
+        location = location_;
         for (AST child : children) {
             child.parent = this;
         }
     }
 
+    public AST(Span location_) {
+        this(location_, new AST[]{});
+    }
+
     @Override
-    public int codeOffset() {
-        return offset;
+    public Span location() {
+        return location;
     }
 
     public abstract AST[] getChildren();
@@ -46,8 +53,8 @@ public abstract class AST implements Visitable, CodeLocatable {
     private String toStringPretty(int indent) {
         StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
         str.append(" [ ")
-                .append("offset: ")
-                .append(offset)
+                .append("location: ")
+                .append(location)
                 .append(scope != null ? ", scope: " + scope : "")
                 .append(this instanceof NExpr expr && expr.exprType != null ? ", exprType: " + expr.exprType : "")
                 .append(this instanceof NExpr expr ? ", isExprStmnt: " + expr.isExprStmnt : "")

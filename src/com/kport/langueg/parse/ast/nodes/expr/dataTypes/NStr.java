@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NStr extends NExpr {
 
     public String str;
 
-    public NStr(int offset_, String str_) {
-        super(offset_);
+    public NStr(Span location_, String str_) {
+        super(location_);
         str = str_;
     }
 

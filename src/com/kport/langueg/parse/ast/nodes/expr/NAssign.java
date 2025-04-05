@@ -6,13 +6,14 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
 import com.kport.langueg.parse.ast.nodes.expr.assignable.NAssignable;
+import com.kport.langueg.util.Span;
 
 public class NAssign extends NExpr {
     public NAssignable left;
     public NExpr right;
 
-    public NAssign(int offset_, NAssignable left_, NExpr right_) {
-        super(offset_, left_, right_);
+    public NAssign(Span location_, NAssignable left_, NExpr right_) {
+        super(location_, left_, right_);
         left = left_;
         right = right_;
     }

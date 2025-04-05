@@ -1,18 +1,20 @@
 package com.kport.langueg.error;
 
+import com.kport.langueg.util.Span;
+
 public abstract class LanguegException extends Exception {
     private final String error;
     private final LanguegException reason;
 
-    public LanguegException(Errors error_, int offset_, CharSequence source, Object... args) {
+    public LanguegException(Errors error_, Span location_, CharSequence source, Object... args) {
         super();
-        error = Errors.formatError(error_, source, offset_, args);
+        error = Errors.formatError(error_, source, location_, args);
         reason = null;
     }
 
-    public LanguegException(Errors error_, LanguegException reason_, int offset_, CharSequence source, Object... args) {
+    public LanguegException(Errors error_, LanguegException reason_, Span location_, CharSequence source, Object... args) {
         super();
-        error = Errors.formatError(error_, source, offset_, args);
+        error = Errors.formatError(error_, source, location_, args);
         reason = reason_;
     }
 

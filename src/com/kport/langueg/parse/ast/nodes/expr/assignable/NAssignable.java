@@ -5,10 +5,11 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public abstract sealed class NAssignable extends NExpr permits NDeRef, NDotAccess, NIdent {
-    public NAssignable(int offset_, AST... children) {
-        super(offset_, children);
+    public NAssignable(Span location_, AST... children) {
+        super(location_, children);
     }
 
     @Override

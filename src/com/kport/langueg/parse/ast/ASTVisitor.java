@@ -21,8 +21,6 @@ import com.kport.langueg.parse.ast.nodes.statement.NVarInit;
 import com.kport.langueg.typeCheck.types.*;
 import com.kport.langueg.util.Pair;
 
-import java.util.Arrays;
-
 public interface ASTVisitor {
     default void visit(AST ast, VisitorContext context) throws LanguegException {
     }
@@ -161,8 +159,10 @@ public interface ASTVisitor {
     }
 
     default void visit(NTuple tuple, VisitorContext context) throws LanguegException {
-        for (NExpr element : Arrays.stream(tuple.elements).map(p -> p.right).toList()) {
-            element.accept(this, VisitorContext.clone(context));
+        for (Pair<NDotAccessSpecifier, NExpr> element : tuple.elements) {
+            if(element.left != null)
+                element.left.accept(this, VisitorContext.clone(context));
+            element.right.accept(this, VisitorContext.clone(context));
         }
     }
 
@@ -181,7 +181,8 @@ public interface ASTVisitor {
     }
 
     default void visit(NUnion union, VisitorContext context) throws LanguegException {
-        union.initializedElement.accept(this, VisitorContext.clone(context));
+        union.initElement.accept(this, VisitorContext.clone(context));
+        union.specifier.accept(this, VisitorContext.clone(context));
     }
 
     default void visit(NWhile while_, VisitorContext context) throws LanguegException {
@@ -196,6 +197,9 @@ public interface ASTVisitor {
     default void visit(NVarInit varInit, VisitorContext context) throws LanguegException {
         if (varInit.type != null) varInit.type.accept(this, VisitorContext.clone(context));
         varInit.init.accept(this, VisitorContext.clone(context));
+    }
+
+    default void visit(NDotAccessSpecifier ignoredSpecifier, VisitorContext ignoredContext) throws LanguegException {
     }
 
 

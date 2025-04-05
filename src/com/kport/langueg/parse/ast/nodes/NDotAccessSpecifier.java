@@ -1,36 +1,35 @@
-package com.kport.langueg.parse.ast.nodes.expr.controlFlow;
+package com.kport.langueg.parse.ast.nodes;
 
 import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
-import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Either;
 import com.kport.langueg.util.Span;
 
-public class NIf extends NExpr {
+import java.util.Objects;
 
-    public NExpr cond;
-    public NExpr ifBlock;
+public class NDotAccessSpecifier extends AST {
+    public final Either<Integer, String> specifier;
 
-    public NIf(Span location_, NExpr cond_, NExpr ifBlock_) {
-        super(location_, cond_, ifBlock_);
-        cond = cond_;
-        ifBlock = ifBlock_;
+    public NDotAccessSpecifier(Span location_, Either<Integer, String> specifier_) {
+        super(location_);
+        specifier = specifier_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{cond, ifBlock};
+        return new AST[0];
     }
 
     @Override
     public boolean hasChildren() {
-        return true;
+        return false;
     }
 
     @Override
-    public String nToString() {
-        return "";
+    protected String nToString() {
+        return "." + specifier.match(Object::toString, s -> s);
     }
 
     @Override
@@ -41,7 +40,7 @@ public class NIf extends NExpr {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof NIf a)) return false;
-        return cond.equals(a.cond) && ifBlock.equals(a.ifBlock);
+        if (!(o instanceof NDotAccessSpecifier a)) return false;
+        return Objects.equals(specifier, a.specifier);
     }
 }

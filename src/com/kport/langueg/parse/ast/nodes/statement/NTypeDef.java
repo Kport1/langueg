@@ -6,6 +6,7 @@ import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NStatement;
 import com.kport.langueg.typeCheck.types.Type;
+import com.kport.langueg.util.Span;
 
 import java.util.Arrays;
 
@@ -14,8 +15,8 @@ public class NTypeDef extends NStatement {
     public Type definition;
     public String[] typeParameters;
 
-    public NTypeDef(int offset_, String name_, Type definition_, String... typeParameters_) {
-        super(offset_);
+    public NTypeDef(Span location_, String name_, Type definition_, String... typeParameters_) {
+        super(location_);
         name = name_;
         definition = definition_;
         typeParameters = typeParameters_;

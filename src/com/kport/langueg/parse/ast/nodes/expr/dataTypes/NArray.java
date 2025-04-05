@@ -5,14 +5,15 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 import java.util.Arrays;
 
 public class NArray extends NExpr {
     public NExpr[] elements;
 
-    public NArray(int offset_, NExpr... elements_) {
-        super(offset_, elements_);
+    public NArray(Span location_, NExpr... elements_) {
+        super(location_, elements_);
         elements = elements_;
     }
 

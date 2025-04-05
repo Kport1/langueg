@@ -4,24 +4,34 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NDotAccessSpecifier;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.util.Either;
 import com.kport.langueg.util.Pair;
+import com.kport.langueg.util.Span;
 
 import java.util.Arrays;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class NTuple extends NExpr {
-    public Pair<Either<Integer, String>, NExpr>[] elements;
-    //public NExpr[] elements;
+    public Pair<NDotAccessSpecifier, NExpr>[] elements;
 
-    public NTuple(int offset_, Pair<Either<Integer, String>, NExpr>... elements_) {
-        super(offset_, Arrays.stream(elements_).map(p -> p.right).toArray(NExpr[]::new));
+    public NTuple(Span location_, Pair<NDotAccessSpecifier, NExpr>... elements_) {
+        super(location_, Arrays.stream(elements_).mapMulti((BiConsumer<Pair<NDotAccessSpecifier, NExpr>, Consumer<AST>>) (pair, consumer) -> {
+            if(pair.left != null)
+                consumer.accept(pair.left);
+            consumer.accept(pair.right);
+        }).toArray(AST[]::new));
         elements = elements_;
     }
 
     @Override
     public AST[] getChildren() {
-        return Arrays.stream(elements).map(p -> p.right).toArray(NExpr[]::new);
+        return Arrays.stream(elements).mapMulti((BiConsumer<Pair<NDotAccessSpecifier, NExpr>, Consumer<AST>>) (pair, consumer) -> {
+            if(pair.left != null)
+                consumer.accept(pair.left);
+            consumer.accept(pair.right);
+        }).toArray(AST[]::new);
     }
 
     @Override

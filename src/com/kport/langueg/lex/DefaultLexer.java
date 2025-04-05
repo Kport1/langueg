@@ -2,6 +2,7 @@ package com.kport.langueg.lex;
 
 import com.kport.langueg.pipeline.LanguegPipeline;
 import com.kport.langueg.util.Pair;
+import com.kport.langueg.util.Span;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -155,13 +156,15 @@ public class DefaultLexer implements Lexer {
                 continue;
             }
             for (LexemeMatcher lexeme : lexemes) {
-                Pair<Token, Integer> token_len = lexeme.getNext(offset, code);
-                if (token_len == null) continue;
-                if (token_len.left.tok != TokenType.LineComment && token_len.left.tok != TokenType.BlockComment) {
-                    token_len.left.offset = offset;
-                    tokens.add(token_len.left);
+                Pair<Token, Integer> tokenAndLen = lexeme.getNext(offset, code);
+                if (tokenAndLen == null) continue;
+                Token token = tokenAndLen.left;
+                int len = tokenAndLen.right;
+                if (token.tok != TokenType.LineComment && token.tok != TokenType.BlockComment) {
+                    token.location = new Span(offset, offset + len - 1);
+                    tokens.add(token);
                 }
-                offset += token_len.right;
+                offset += len;
                 continue OUTER;
             }
             throw new Error("Lexical analysis failed at " + offset);

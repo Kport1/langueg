@@ -4,22 +4,23 @@ import com.kport.langueg.error.LanguegException;
 import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
+import com.kport.langueg.parse.ast.nodes.NDotAccessSpecifier;
 import com.kport.langueg.parse.ast.nodes.NExpr;
-import com.kport.langueg.util.Either;
+import com.kport.langueg.util.Span;
 
 public final class NDotAccess extends NAssignable {
     public NExpr accessed;
-    public Either<Integer, String> accessor;
+    public NDotAccessSpecifier specifier;
 
-    public NDotAccess(int offset_, NExpr accessed_, Either<Integer, String> accessor_) {
-        super(offset_);
+    public NDotAccess(Span location_, NExpr accessed_, NDotAccessSpecifier specifier_) {
+        super(location_, accessed_, specifier_);
         accessed = accessed_;
-        accessor = accessor_;
+        specifier = specifier_;
     }
 
     @Override
     public AST[] getChildren() {
-        return new AST[]{accessed};
+        return new AST[]{accessed, specifier};
     }
 
     @Override
@@ -41,6 +42,6 @@ public final class NDotAccess extends NAssignable {
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof NDotAccess a)) return false;
-        return accessed.equals(a.accessed) && accessor.equals(a.accessor);
+        return accessed.equals(a.accessed) && specifier.equals(a.specifier);
     }
 }

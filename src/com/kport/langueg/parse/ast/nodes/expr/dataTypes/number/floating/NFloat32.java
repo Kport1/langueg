@@ -5,13 +5,14 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NFloat32 extends NExpr {
 
     public float val;
 
-    public NFloat32(int offset_, float val_) {
-        super(offset_);
+    public NFloat32(Span location_, float val_) {
+        super(location_);
         val = val_;
     }
 

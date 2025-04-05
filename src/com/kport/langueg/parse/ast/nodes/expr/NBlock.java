@@ -5,6 +5,7 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 import java.util.Arrays;
 
@@ -12,8 +13,8 @@ public class NBlock extends NExpr {
 
     public AST[] statements;
 
-    public NBlock(int offset_, AST... statements_) {
-        super(offset_, statements_);
+    public NBlock(Span location_, AST... statements_) {
+        super(location_, statements_);
         statements = statements_;
     }
 

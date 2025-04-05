@@ -5,12 +5,13 @@ import com.kport.langueg.parse.ast.AST;
 import com.kport.langueg.parse.ast.ASTVisitor;
 import com.kport.langueg.parse.ast.VisitorContext;
 import com.kport.langueg.parse.ast.nodes.NExpr;
+import com.kport.langueg.util.Span;
 
 public class NRef extends NExpr {
     public NExpr referent;
 
-    public NRef(int offset_, NExpr right_) {
-        super(offset_, right_);
+    public NRef(Span location_, NExpr right_) {
+        super(location_, right_);
         referent = right_;
     }
 
